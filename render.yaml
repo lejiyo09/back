@@ -1,0 +1,13 @@
+# Render Blueprint — one Web Service serves both the built client and the Socket.IO server.
+# Note: free web services sleep after 15 minutes of inactivity (first visit wakes them, ~1 min).
+services:
+  - type: web
+    name: lost-signal
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22

@@ -1,0 +1,20 @@
+{
+  "name": "lost-signal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "LOST SIGNAL — browser-based first-person Backrooms survival horror (Prototype 0.1)",
+  "workspaces": ["client", "server"],
+  "scripts": {
+    "dev": "concurrently -n server,client -c magenta,cyan \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev:client": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w client",
+    "typecheck": "npm run typecheck -w client && npm run typecheck -w server",
+    "start": "npm run start -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "engines": { "node": ">=20" }
+}
