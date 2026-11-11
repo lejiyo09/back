@@ -55,6 +55,19 @@ export class PhysicsWorld {
     return hit ? { collider: hit.collider, distance: hit.timeOfImpact } : null;
   }
 
+  /** Ray against solid geometry only: skips sensors and any collider handle in `ignore`. */
+  castRaySolid(
+    origin: { x: number; y: number; z: number },
+    dir: { x: number; y: number; z: number },
+    maxDist: number,
+    ignore: Set<number>,
+  ): number | null {
+    const ray = new this.R.Ray(origin, dir);
+    const hit = this.world.castRay(ray, maxDist, true, this.R.QueryFilterFlags.EXCLUDE_SENSORS, undefined, undefined, undefined,
+      (c) => !ignore.has(c.handle));
+    return hit ? hit.timeOfImpact : null;
+  }
+
   dispose(): void {
     this.world.free();
   }

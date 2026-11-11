@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { NET, PLAYER } from '@shared/Constants';
 import type { PlayerNetState } from '@shared/GameTypes';
 import type { AudioManager } from '../audio/AudioManager';
+import type { AITarget } from '../entities/ReceiverAI';
 
-interface Snapshot { t: number; p: THREE.Vector3; yaw: number; pitch: number; c: boolean; f: boolean; s: number }
+interface Snapshot { t: number; p: THREE.Vector3; yaw: number; pitch: number; c: boolean; f: boolean; s: number; n: number; d: boolean }
 
 class RemoteAvatar {
   readonly root = new THREE.Group();
@@ -17,6 +18,7 @@ class RemoteAvatar {
   readonly pos = new THREE.Vector3();
   speed = 0;
   lastSeen = performance.now();
+  latest?: PlayerNetState;
 
   constructor(name: string, materials: { body: THREE.Material; head: THREE.Material }) {
     this.body = new THREE.Mesh(new THREE.CapsuleGeometry(0.27, 0.95, 6, 12), materials.body);
@@ -34,7 +36,8 @@ class RemoteAvatar {
 
   push(st: PlayerNetState, now: number): void {
     this.lastSeen = now;
-    this.buffer.push({ t: now, p: new THREE.Vector3(...st.p), yaw: st.r[0], pitch: st.r[1], c: st.c, f: st.f, s: st.s });
+    this.buffer.push({ t: now, p: new THREE.Vector3(...st.p), yaw: st.r[0], pitch: st.r[1], c: st.c, f: st.f, s: st.s, n: st.n, d: st.d });
+    this.latest = st;
     if (this.buffer.length > 30) this.buffer.shift();
   }
 
@@ -63,7 +66,8 @@ class RemoteAvatar {
     this.head.position.y = 1.58 * sy + 0.02;
     this.light.position.y = 1.4 * sy;
     this.target.position.set(0.18, this.light.position.y + Math.sin(pitch) * 5, -Math.cos(pitch) * 5);
-    this.light.intensity = c.f ? 16 : 0;
+    this.light.intensity = c.f && !c.d ? 16 : 0;
+    this.root.visible = !c.d;
     this.speed = c.s;
 
     // footsteps from replicated speed (stride ≈ 0.75 m walking, 1 m running)
@@ -140,6 +144,22 @@ export class RemotePlayers {
     this.group.remove(a.root);
     a.dispose();
     this.avatars.delete(id);
+  }
+
+  /** What the host's AI may know about remote players (latest, un-delayed state). */
+  targets(): AITarget[] {
+    const out: AITarget[] = [];
+    for (const [id, a] of this.avatars) {
+      const s = a.latest;
+      if (!s) continue;
+      const feet = new THREE.Vector3(...s.p);
+      const [yaw, pitch] = s.r;
+      // camera convention: yaw/pitch in YXZ order, looking down -Z at yaw 0
+      const viewDir = new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+      const eye = feet.clone().setY(feet.y + (s.c ? PLAYER.CROUCH_EYE_HEIGHT : PLAYER.EYE_HEIGHT));
+      out.push({ id, feet, crouching: s.c, flashlight: s.f, noise: s.n, dead: s.d, speed: s.s, eye, viewDir });
+    }
+    return out;
   }
 
   get count(): number {

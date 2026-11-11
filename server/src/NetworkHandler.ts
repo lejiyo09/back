@@ -2,7 +2,7 @@ import type { Server, Socket } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents, SessionInfo } from '../../shared/Protocol.ts';
 import { RoomManager, type Room } from './RoomManager';
 import {
-  cleanCode, cleanName, isInteractionConfirmed, isInteractionRequest, isPlayerState, isWorldSnapshot,
+  cleanCode, cleanName, isEntityStates, isInteractionConfirmed, isPlayerHit, isInteractionRequest, isPlayerState, isWorldSnapshot,
 } from './ProtocolValidator';
 
 type IO = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -111,6 +111,22 @@ export function attachNetworkHandler(io: IO, rooms = new RoomManager()): RoomMan
       } else {
         socket.to(room.code).emit('world:sync', msg.snapshot);
       }
+    });
+
+    // Host-only AI channels.
+    socket.on('entity:state', (list) => {
+      if (!stateLimiter.take() || !isEntityStates(list)) return;
+      const room = rooms.roomOf(socket.id);
+      if (!room || room.hostId !== socket.id) return;
+      // reliable on purpose (small, 12 Hz) — volatile would be dropped behind player:state
+      socket.to(room.code).emit('entity:state', list);
+    });
+
+    socket.on('player:hit', (hit) => {
+      if (!eventLimiter.take() || !isPlayerHit(hit)) return;
+      const room = rooms.roomOf(socket.id);
+      if (!room || room.hostId !== socket.id || !room.players.has(hit.target)) return;
+      io.to(hit.target).emit('player:hit', hit);
     });
 
     socket.on('disconnect', leaveCurrent);

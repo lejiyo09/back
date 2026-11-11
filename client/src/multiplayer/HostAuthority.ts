@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import type { PlayerNetState } from '@shared/GameTypes';
+import type { EntityNetState, PlayerHit, PlayerNetState } from '@shared/GameTypes';
 import type { World } from '../world/World';
 import type { NetworkManager } from './NetworkManager';
-import { EventDedup, newEventId, resolveInteraction, type AuthorityCallbacks, type GameAuthority } from './GameAuthority';
+import { EventDedup, newEventId, resolveEntityInteraction, resolveInteraction, type AuthorityCallbacks, type GameAuthority } from './GameAuthority';
 
 /** Host browser: authoritative over world state; validates and confirms peer requests. */
 export class HostAuthority implements GameAuthority {
@@ -57,6 +57,23 @@ export class HostAuthority implements GameAuthority {
 
   publishState(state: PlayerNetState): void {
     this.net.socket.volatile.emit('player:state', state);
+  }
+
+  readonly simulates = true;
+
+  entityRequest(targetId: string, from: THREE.Vector3): void {
+    if (!this.world) return;
+    const v = resolveEntityInteraction(this.world, targetId, from);
+    if (v !== null) this.confirm(newEventId('receiver'), targetId, 'receiver', v);
+  }
+
+  publishEntities(list: EntityNetState[]): void {
+    // Not volatile: volatile packets sent in the same tick as player:state get dropped.
+    this.net.socket.emit('entity:state', list);
+  }
+
+  deliverHit(hit: PlayerHit): void {
+    this.net.socket.emit('player:hit', hit);
   }
 
   shutdown(): void {

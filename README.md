@@ -37,6 +37,7 @@ Render에는 `render.yaml` 블루프린트로 Web Service 하나만 배포하면
 ### 테스트용 URL 플래그
 
 `?debug=1` 포인터 락 없이 조작 + 디버그 표시 · `?seed=1234` 맵 고정 · `?quality=low|medium|high|ultra` · `?autostart=single`
+`?ai=now` 단계적 공개를 압축(4초 후 시작) · `?ai=hunt` 공개 생략하고 바로 사냥 · `?ai=off` 괴물 비활성
 디버그 모드에서는 콘솔의 `window.__LS`로 게임 객체에 접근할 수 있습니다 (`__LS.debugTeleport(22, 22)` → 정전 구역).
 
 ## Prototype 0.1 체크리스트
@@ -55,6 +56,32 @@ Render에는 `render.yaml` 블루프린트로 Web Service 하나만 배포하면
 | Socket.IO 로비 연결 | ✅ | 방 코드 생성/참가, 최대 4인, 입력 검증 + 레이트 리밋 |
 | 2개 브라우저 플레이어 동기화 | ✅ | 20Hz 상태 전송 + 110ms 보간, 호스트 권한 문/아이템 동기화, 중간 참가 시 월드 스냅샷 |
 
+## The Receiver (괴물 AI)
+
+플레이어보다 큰(직립 약 2.7m) 얼굴 없는 인간형. 굽은 채로 걷고 문을 지날 때는 몸을 접어 통과한다.
+오른팔은 관절이 하나 더 있고 손가락이 바닥에 끌릴 만큼 길며, 왼팔은 팔꿈치가 비정상적으로 접혀 가슴 앞에서 경련한다.
+얼굴 자리는 움푹 꺼진 평면이고, 머리는 마지막 순간에만 세로로 갈라져 열린다. 움직일 때는 스톱모션처럼 끊기고, 멈춰 있을 때는 머리만 아주 천천히 돈다.
+
+**단계적 공개 (`horror/RevealDirector.ts`)** — 모든 등장/이동은 어떤 플레이어도 그 지점을 보고 있지 않을 때만 일어난다.
+
+1. 먼 거리(12–24m)의 검은 형체 — 보는 동안 움직이지 않고, 시선을 돌리면 사라진다.
+2. 더 가까이(7–11m), 벽 모서리 옆 — 시선을 돌렸다 돌아보면 더 가까이 와 있다. 다시 돌리면 사라진다.
+3. 바로 뒤(2.1m) — 머리 위 조명이 떨리고 숨소리가 들린다. 돌아보면 잠깐의 정적 → 비명(1.1초, 공격 불가) → 추격 시작.
+
+**AI 상태 머신 (`entities/ReceiverAI.ts`)** — Idle · Patrol · Observe · Investigate · Stalk · Chase · Attack · Search · Retreat + Hidden · Apparition · Lurk
+
+| 감지 | 규칙 |
+|---|---|
+| 시각 | 시야각 115°, 거리 24m, Rapier 레이 가림, 플레이어 위치의 밝기, 손전등(항상 노출), 웅크리기 ×0.55 → 의심도 누적 |
+| 청각 | 플레이어 소음 반경(걷기 6 / 달리기 16 / 착지 9m), 벽 너머는 55%로 감쇠, 문 소리 — 위치 오차는 거리에 비례 |
+| 시선 | 모든 플레이어의 시선 방향을 알고 있어, Stalk 중에는 아무도 보지 않을 때만 다가온다 |
+
+공정성: 순간이동 없이 Rapier 캐릭터 컨트롤러로 같은 벽·문을 통과(A* + 문 직접 열기), 추격 5.4m/s(걷기 4.2 < 추격 < 달리기 6.0),
+공격 0.5초 예비 동작, 타격 후 후퇴 → 시야 밖에서 사라졌다가 20–40초 뒤 먼 곳(보이지 않는 지점)에 다시 나타남.
+완전한 어둠에서 손전등을 끄고 웅크리면 발각되지 않지만, 손전등을 켜면 약 1초 만에 발견된다.
+
+멀티플레이: 호스트가 AI를 시뮬레이션하고 12Hz 스냅샷(신뢰 전송)으로 공유, 피격은 해당 플레이어에게만 전달. 가장 고립된 플레이어가 먼저 표적이 된다.
+
 ## 구조
 
 ```
@@ -67,6 +94,8 @@ client/src/
   player/      PlayerController · SurvivalStatus · Flashlight
   world/       World · Level0Layout · Notes
   interaction/ InteractionManager · Interactable · Door · Item
+  entities/    EntityManager · ReceiverAI · Receiver(모델·애니메이션) · NavGrid(A*)
+  horror/      RevealDirector(단계적 공개)
   audio/       AudioManager · SoundSynth
   multiplayer/ GameAuthority · LocalAuthority · HostAuthority · RemoteAuthority · NetworkManager · RemotePlayers
   ui/          MainMenu · HUD · SettingsUI
@@ -99,6 +128,6 @@ client/src/
 
 - 실제 CC0 스캔 텍스처(ambientCG / Poly Haven)와 AssetManager, `assets/manifest.json` 등록
 - 그래프 기반 모듈 생성기(설계서 4장)로 `Level0Layout`의 분할 단계 교체 + 경로 검증
-- The Receiver AI(상태 머신, 시각/청각 감지 — `SurvivalStatus.noise`가 이미 소음 반경을 계산함), Scare Director
+- Scare Director(주변 시야 · 소리 · 정전 이벤트) 및 은신 장소, 다운/구조(멀티)
 - Signal Recorder(R), 체력/사망·다운/구조, 호스트 이탈 처리 고도화
 - 번들 분할(현재 단일 ~5MB, gzip ~1.8MB — 대부분 Rapier WASM 인라인)

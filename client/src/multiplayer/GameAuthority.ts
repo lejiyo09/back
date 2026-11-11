@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PLAYER } from '@shared/Constants';
-import type { GameMode, PlayerNetState } from '@shared/GameTypes';
+import type { EntityNetState, GameMode, PlayerHit, PlayerNetState } from '@shared/GameTypes';
 import type { World } from '../world/World';
 
 /**
@@ -15,6 +15,14 @@ export interface GameAuthority {
   requestInteraction(targetId: string, requesterPos: THREE.Vector3): void;
   publishState(state: PlayerNetState): void;
   shutdown(): void;
+  /** Does this browser run the world simulation (AI, events)? */
+  readonly simulates: boolean;
+  /** World interaction performed by an AI entity (authority only). */
+  entityRequest(targetId: string, from: THREE.Vector3): void;
+  /** Broadcast entity snapshots (host only). */
+  publishEntities(list: EntityNetState[]): void;
+  /** Damage for a remote player (host only). */
+  deliverHit(hit: PlayerHit): void;
 }
 
 export interface AuthorityCallbacks {
@@ -22,6 +30,8 @@ export interface AuthorityCallbacks {
   onPeerLeft?: (playerId: string) => void;
   onPeerJoined?: (playerId: string, name: string) => void;
   onSessionEnded?: (reason: string) => void;
+  onEntityStates?: (list: EntityNetState[]) => void;
+  onHit?: (hit: PlayerHit) => void;
 }
 
 /**
@@ -29,6 +39,17 @@ export interface AuthorityCallbacks {
  * Returns the new state value, or null if the interaction is invalid.
  */
 export function resolveInteraction(world: World, targetId: string, pos: THREE.Vector3 | undefined): number | null {
+  return resolveInteractionAt(world, targetId, pos);
+}
+
+/** Entities only ever open doors. */
+export function resolveEntityInteraction(world: World, targetId: string, pos: THREE.Vector3): number | null {
+  const door = world.doors.get(targetId);
+  if (!door || door.state !== 0) return null;
+  return door.swingAwayFrom(pos);
+}
+
+function resolveInteractionAt(world: World, targetId: string, pos: THREE.Vector3 | undefined): number | null {
   const target = world.byId.get(targetId);
   if (!target || target.kind === 'note') return null;
   if (pos && target.position().distanceTo(pos) > PLAYER.INTERACT_DISTANCE + 1.6) return null; // latency slack

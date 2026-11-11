@@ -26,6 +26,8 @@ export class Lighting {
   power = 1;
   /** Accessibility: 0 disables flicker, 1 = full. */
   flickerIntensity = 1;
+  /** Something wrong nearby (the Receiver): fixtures around it stutter. */
+  disturbance: { pos: THREE.Vector3; strength: number } | null = null;
 
   constructor(level: Level0Data, private baked: BakedLighting, poolSize: number) {
     const y = WORLD.CEILING_HEIGHT;
@@ -85,6 +87,18 @@ export class Lighting {
         b = 1 - (1 - off) * this.flickerIntensity;
       } else {
         b *= 0.88;
+      }
+    }
+    const dist = this.disturbance;
+    if (dist) {
+      const r = 2.5 + dist.strength * 5;
+      const dx = f.pos.x - dist.pos.x, dz = f.pos.z - dist.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < r * r) {
+        const k = 1 - Math.sqrt(d2) / r;
+        const s = Math.sin(t * 29 + p) * Math.sin(t * 7.3 + p * 1.7) + Math.sin(t * 61 + p * 0.3) * 0.5;
+        const dip = s > 0.35 - k * 0.5 ? 1 - k * 0.92 : 1 - k * 0.25;
+        b *= 1 - (1 - dip) * this.flickerIntensity;
       }
     }
     return Math.max(0, b * this.power);

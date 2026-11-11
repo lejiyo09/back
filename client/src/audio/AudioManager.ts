@@ -3,7 +3,8 @@ import * as Synth from './SoundSynth';
 
 export type SoundKey =
   | 'hum' | 'roomTone' | 'doorOpen' | 'doorClose' | 'click' | 'paper' | 'pickup'
-  | 'step0' | 'step1' | 'step2' | 'step3' | 'distant0' | 'distant1' | 'distant2';
+  | 'step0' | 'step1' | 'step2' | 'step3' | 'distant0' | 'distant1' | 'distant2'
+  | 'rBreath' | 'rStatic' | 'rStep0' | 'rStep1' | 'rStep2' | 'rScreech' | 'hit' | 'staticBurst' | 'heartbeat';
 
 /**
  * Web Audio + three.js positional audio (design doc 10). One listener on the
@@ -34,6 +35,13 @@ export class AudioManager {
     this.buffers.set('pickup', Synth.pickup(ctx));
     for (let i = 0; i < 4; i++) this.buffers.set(`step${i}` as SoundKey, Synth.carpetStep(ctx, i));
     for (let i = 0; i < 3; i++) this.buffers.set(`distant${i}` as SoundKey, Synth.distantThud(ctx, i));
+    this.buffers.set('rBreath', Synth.receiverBreath(ctx));
+    this.buffers.set('rStatic', Synth.signalStatic(ctx));
+    for (let i = 0; i < 3; i++) this.buffers.set(`rStep${i}` as SoundKey, Synth.receiverStep(ctx, i));
+    this.buffers.set('rScreech', Synth.receiverScreech(ctx));
+    this.buffers.set('hit', Synth.hitImpact(ctx));
+    this.buffers.set('staticBurst', Synth.staticBurst(ctx));
+    this.buffers.set('heartbeat', Synth.heartbeat(ctx));
 
     for (let i = 0; i < 8; i++) this.oneShots.push(new THREE.Audio(this.listener));
     for (let i = 0; i < 6; i++) {
@@ -70,6 +78,22 @@ export class AudioManager {
     hum.play();
     this.globalHum = hum;
     this.loops.push(hum);
+  }
+
+  /** Generic looping positional source attached to an object (entities). */
+  attachLoop(obj: THREE.Object3D, key: SoundKey, volume: number, refDistance = 1.5, rolloff = 1.4): THREE.PositionalAudio {
+    const p = new THREE.PositionalAudio(this.listener);
+    p.setBuffer(this.buffers.get(key)!);
+    p.setLoop(true);
+    p.setRefDistance(refDistance);
+    p.setRolloffFactor(rolloff);
+    p.setDistanceModel('inverse');
+    p.setVolume(volume);
+    p.offset = Math.random() * 1.5;
+    obj.add(p);
+    p.play();
+    this.loops.push(p);
+    return p;
   }
 
   /** Attach a looping positional hum to a light (follows the pooled light). */

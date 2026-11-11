@@ -1,4 +1,5 @@
-import type { InteractionConfirmed, InteractionRequest, PlayerNetState, WorldSnapshot } from '../../shared/GameTypes.ts';
+import type { EntityNetState, InteractionConfirmed, InteractionRequest, PlayerHit, PlayerNetState, WorldSnapshot } from '../../shared/GameTypes.ts';
+import { AI_STATES } from '../../shared/GameTypes.ts';
 
 /** Every client message is validated for shape and size before it is relayed. */
 const isNum = (v: unknown, limit = 1e5): v is number =>
@@ -24,8 +25,8 @@ export function isPlayerState(s: unknown): s is PlayerNetState {
   return (
     Array.isArray(o.p) && o.p.length === 3 && o.p.every((n) => isNum(n, 1e4)) &&
     Array.isArray(o.r) && o.r.length === 2 && o.r.every((n) => isNum(n, 100)) &&
-    typeof o.c === 'boolean' && typeof o.f === 'boolean' &&
-    isNum(o.s, 100) && isNum(o.t, 1e15)
+    typeof o.c === 'boolean' && typeof o.f === 'boolean' && typeof o.d === 'boolean' &&
+    isNum(o.s, 100) && isNum(o.n, 100) && isNum(o.t, 1e15)
   );
 }
 
@@ -49,4 +50,22 @@ export function isWorldSnapshot(s: unknown): s is WorldSnapshot {
     Object.keys(m).length <= 512 &&
     Object.entries(m as Record<string, unknown>).every(([k, v]) => isId(k) && isNum(v, 1) && Number.isInteger(v));
   return okMap(o.doors) && okMap(o.items);
+}
+
+export function isEntityStates(list: unknown): list is EntityNetState[] {
+  if (!Array.isArray(list) || list.length > 16) return false;
+  return list.every((e) => {
+    if (!e || typeof e !== 'object') return false;
+    const o = e as Record<string, unknown>;
+    return isId(o.id) && Array.isArray(o.p) && o.p.length === 3 && o.p.every((n) => isNum(n, 1e4)) &&
+      isNum(o.yaw, 100) && isNum(o.st, AI_STATES.length) && Number.isInteger(o.st) &&
+      isNum(o.v, 100) && isNum(o.hd, 10) && isNum(o.at, 1);
+  });
+}
+
+export function isPlayerHit(h: unknown): h is PlayerHit {
+  if (!h || typeof h !== 'object') return false;
+  const o = h as Record<string, unknown>;
+  return isId(o.target) && isNum(o.damage, 200) && (o.damage as number) >= 0 &&
+    Array.isArray(o.from) && o.from.length === 2 && o.from.every((n) => isNum(n, 1e4));
 }

@@ -18,12 +18,18 @@ export class HUD {
   private pause: HTMLElement;
   private debug: HTMLElement;
   private staminaVisible = 0;
+  private hurt!: HTMLElement;
+  private hitflash!: HTMLElement;
+  private death!: HTMLElement;
   noteOpen = false;
 
   constructor() {
     this.root = document.createElement('div');
     this.root.id = 'hud';
     this.root.innerHTML = `
+      <div class="hurt"></div>
+      <div class="hitflash"></div>
+      <div class="death hidden"><div class="death-title">SIGNAL LOST</div><div class="death-sub">신호가 끊겼다…</div><div class="death-timer"></div></div>
       <div class="crosshair"></div>
       <div class="prompt"><kbd>E</kbd><span></span></div>
       <div class="meters">
@@ -61,6 +67,29 @@ export class HUD {
     this.inventory = $('.inventory', this.root);
     this.pause = $('.pause', this.root);
     this.debug = $('.debug', this.root);
+    this.hurt = $('.hurt', this.root);
+    this.hitflash = $('.hitflash', this.root);
+    this.death = $('.death', this.root);
+  }
+
+  /** health 0..100 → persistent red vignette as it drops. */
+  setHealth(health: number): void {
+    this.hurt.style.opacity = String(Math.max(0, Math.min(1, (70 - health) / 60)));
+  }
+
+  flashHit(fromAngle: number): void {
+    // fromAngle: radians, 0 = in front; tint the side the hit came from
+    const x = 50 + Math.sin(fromAngle) * 35;
+    const y = 50 - Math.cos(fromAngle) * 30;
+    this.hitflash.style.background = `radial-gradient(circle at ${x}% ${y}%, rgba(150,0,0,0.0) 10%, rgba(120,0,0,0.65) 75%)`;
+    this.hitflash.classList.remove('on');
+    void this.hitflash.offsetWidth;
+    this.hitflash.classList.add('on');
+  }
+
+  showDeath(show: boolean, secondsLeft = 0): void {
+    this.death.classList.toggle('hidden', !show);
+    if (show) $('.death-timer', this.death).textContent = secondsLeft > 0 ? `${Math.ceil(secondsLeft)}초 후 다시 깨어난다` : '';
   }
 
   onPauseAction(handler: (act: 'resume' | 'settings' | 'quit') => void): void {

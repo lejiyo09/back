@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import type { World } from '../world/World';
-import { resolveInteraction, type GameAuthority } from './GameAuthority';
+import { resolveEntityInteraction, resolveInteraction, type GameAuthority } from './GameAuthority';
 
 /** Single-player: everything runs in this browser, no network. */
 export class LocalAuthority implements GameAuthority {
@@ -21,6 +21,17 @@ export class LocalAuthority implements GameAuthority {
   }
 
   publishState(): void { /* no peers */ }
+
+  readonly simulates = true;
+
+  entityRequest(targetId: string, from: THREE.Vector3): void {
+    if (!this.world) return;
+    const v = resolveEntityInteraction(this.world, targetId, from);
+    if (v !== null) this.world.applyInteraction(targetId, v, 'receiver');
+  }
+
+  publishEntities(): void { /* no peers */ }
+  deliverHit(): void { /* only the local player exists */ }
 
   shutdown(): void {
     this.world = undefined;

@@ -26,6 +26,8 @@ export class RemoteAuthority implements GameAuthority {
     s.on('session:peer-joined', (p) => cb.onPeerJoined?.(p.id, p.name));
     s.on('session:peer-left', (id) => cb.onPeerLeft?.(id));
     s.on('session:ended', (reason) => cb.onSessionEnded?.(reason));
+    s.on('entity:state', (list) => cb.onEntityStates?.(list));
+    s.on('player:hit', (hit) => cb.onHit?.(hit));
     s.on('disconnect', () => cb.onSessionEnded?.('서버와의 연결이 끊어졌습니다.'));
   }
 
@@ -56,9 +58,14 @@ export class RemoteAuthority implements GameAuthority {
     this.net.socket.volatile.emit('player:state', state);
   }
 
+  readonly simulates = false;
+  entityRequest(): void { /* host simulates entities */ }
+  publishEntities(): void { /* host only */ }
+  deliverHit(): void { /* host only */ }
+
   shutdown(): void {
     const s = this.net.socket;
-    for (const ev of ['player:state', 'world:sync', 'interaction:confirmed', 'session:peer-joined', 'session:peer-left', 'session:ended', 'disconnect'] as const) s.off(ev);
+    for (const ev of ['player:state', 'world:sync', 'interaction:confirmed', 'session:peer-joined', 'session:peer-left', 'session:ended', 'entity:state', 'player:hit', 'disconnect'] as const) s.off(ev);
     this.world = undefined;
   }
 }

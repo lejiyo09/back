@@ -1,4 +1,6 @@
 import type {
+  EntityNetState,
+  PlayerHit,
   InteractionConfirmed,
   InteractionRequest,
   PlayerInfo,
@@ -35,6 +37,10 @@ export interface ClientToServerEvents {
   'interaction:confirmed': (msg: InteractionConfirmed) => void;
   /** host only – full world state for one player (or everyone when `to` is omitted) */
   'world:sync': (msg: { to?: string; snapshot: WorldSnapshot }) => void;
+  /** host only — entity snapshots */
+  'entity:state': (entities: EntityNetState[]) => void;
+  /** host only — damage for one player */
+  'player:hit': (hit: PlayerHit) => void;
 }
 
 export interface ServerToClientEvents {
@@ -47,4 +53,6 @@ export interface ServerToClientEvents {
   'interaction:request': (playerId: string, req: InteractionRequest) => void;
   'interaction:confirmed': (msg: InteractionConfirmed) => void;
   'world:sync': (snapshot: WorldSnapshot) => void;
+  'entity:state': (entities: EntityNetState[]) => void;
+  'player:hit': (hit: PlayerHit) => void;
 }

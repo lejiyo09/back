@@ -163,3 +163,94 @@ export function distantThud(ctx: Ctx, variant: number): AudioBuffer {
     return (boom + hits) * 0.8 + lp * 4 * Math.exp(-t * 1.5);
   }), 0.9);
 }
+
+// ── The Receiver ──────────────────────────────────────────────
+
+/** Slow, wet, rasping breath — 3.2 s loop (in, hold, long out). */
+export function receiverBreath(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(4040);
+  let bp1 = 0, bp2 = 0;
+  const b = buffer(ctx, 3.2, (t) => {
+    const n = noise();
+    // crude band-pass around a throat formant
+    bp1 += (n - bp1) * 0.25;
+    bp2 += (bp1 - bp2) * 0.25;
+    const band = bp1 - bp2;
+    const inhale = t < 0.9 ? Math.sin((t / 0.9) * Math.PI) : 0;
+    const exhale = t > 1.3 && t < 3.0 ? Math.sin(((t - 1.3) / 1.7) * Math.PI) : 0;
+    const rattle = 0.6 + 0.4 * Math.sin(t * 2 * Math.PI * 23) * Math.sin(t * 2 * Math.PI * 3.1);
+    return band * (inhale * 0.7 + exhale * rattle) * 3;
+  });
+  return normalize(b, 0.8);
+}
+
+/** Radio static with crackles and a faint buried carrier tone. Seamless 2 s loop. */
+export function signalStatic(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(777);
+  let hp = 0, prev = 0, lp = 0;
+  const b = buffer(ctx, 2, (t) => {
+    const n = noise();
+    hp = 0.6 * (hp + n - prev);
+    prev = n;
+    lp += (hp - lp) * 0.35;
+    const crackle = noise() > 0.995 ? noise() * 3 : 0;
+    const carrier = Math.sin(2 * Math.PI * 1000 * t) * 0.04 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 0.5 * t));
+    const flutter = 0.7 + 0.3 * Math.sin(2 * Math.PI * 6 * t);
+    return (lp * 0.9 * flutter) + crackle + carrier;
+  });
+  const d = b.getChannelData(0);
+  const fade = Math.floor(ctx.sampleRate * 0.1);
+  for (let i = 0; i < fade; i++) { const k = i / fade; d[i] = d[i] * k + d[d.length - fade + i] * (1 - k); }
+  return normalize(b, 0.7);
+}
+
+/** Heavy, slightly scraping step — bare and wrong on the damp carpet. */
+export function receiverStep(ctx: Ctx, variant: number): AudioBuffer {
+  const noise = rngFrom(1700 + variant * 13);
+  let lp = 0;
+  return normalize(buffer(ctx, 0.45, (t) => {
+    lp += (noise() - lp) * 0.05;
+    const thud = Math.sin(2 * Math.PI * (48 + variant * 5) * t) * Math.exp(-t * 22);
+    const drag = t > 0.08 ? lp * 3 * Math.exp(-(t - 0.08) * 9) * (variant % 2 ? 1 : 0.4) : 0;
+    const knuckle = t > 0.02 && t < 0.03 ? noise() * 0.4 : 0;
+    return thud + drag + knuckle + lp * 2 * Math.exp(-t * 35);
+  }), 0.9);
+}
+
+/** Attack wind-up: a rising, distorted, radio-like shriek (kept short, not deafening). */
+export function receiverScreech(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(31337);
+  let phase = 0;
+  return normalize(buffer(ctx, 0.75, (t, _i, sr) => {
+    const f = 380 + t * 1400 + Math.sin(t * 90) * 60;
+    phase += (2 * Math.PI * f) / sr;
+    const tone = Math.tanh(Math.sin(phase) * 4 + Math.sin(phase * 1.5) * 2) * 0.5;
+    const env = Math.min(1, t * 8) * (t > 0.55 ? Math.max(0, 1 - (t - 0.55) / 0.2) : 1);
+    return (tone + noise() * 0.35) * env;
+  }), 0.75);
+}
+
+export function hitImpact(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(66);
+  let lp = 0;
+  return normalize(buffer(ctx, 0.6, (t) => {
+    lp += (noise() - lp) * 0.15;
+    return Math.sin(2 * Math.PI * 60 * t) * Math.exp(-t * 12) + lp * 2.5 * Math.exp(-t * 18) + noise() * 0.5 * Math.exp(-t * 60);
+  }), 0.95);
+}
+
+/** Short static burst (chase start / signal lost). */
+export function staticBurst(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(2024);
+  return normalize(buffer(ctx, 0.9, (t) => {
+    const gate = Math.sin(t * 2 * Math.PI * 17) > -0.2 ? 1 : 0.3;
+    return noise() * gate * Math.min(1, t * 30) * Math.exp(-t * 3);
+  }), 0.6);
+}
+
+export function heartbeat(ctx: Ctx): AudioBuffer {
+  return normalize(buffer(ctx, 0.9, (t) => {
+    const beat = (t0: number, a: number) => (t > t0 ? Math.sin(2 * Math.PI * 52 * (t - t0)) * Math.exp(-(t - t0) * 20) * a : 0);
+    return beat(0, 1) + beat(0.22, 0.7);
+  }), 0.8);
+}

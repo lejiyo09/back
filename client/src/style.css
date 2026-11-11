@@ -95,6 +95,16 @@ kbd {
 .settings input[type=range] { padding: 0; accent-color: var(--accent); }
 
 /* ── HUD ──────────────────────────────────────────── */
+.hurt { position: absolute; inset: 0; opacity: 0; transition: opacity 0.6s;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(90, 0, 0, 0.55) 85%, rgba(40, 0, 0, 0.85) 100%); }
+.hitflash { position: absolute; inset: 0; opacity: 0; }
+.hitflash.on { animation: hitflash 0.7s ease-out; }
+@keyframes hitflash { 0% { opacity: 1 } 100% { opacity: 0 } }
+.death { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: rgba(0,0,0,0.82); animation: tin 1.2s ease-out; }
+.death-title { font-family: var(--mono); font-size: clamp(30px, 7vw, 56px); letter-spacing: 0.35em; color: #d9d2b6; text-shadow: 2px 0 rgba(255,0,0,0.5), -2px 0 rgba(0,180,255,0.4); animation: hum 1.3s infinite; }
+.death-sub { color: var(--dim); }
+.death-timer { color: rgba(239,230,200,0.5); font-size: 13px; }
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; user-select: none; }
 #hud .overlay, #hud button { pointer-events: auto; }
 .crosshair { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: rgba(255, 250, 230, 0.7); box-shadow: 0 0 2px rgba(0,0,0,0.8); }

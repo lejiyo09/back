@@ -35,7 +35,7 @@ function worldBox(cx: number, cy: number, cz: number, sx: number, sy: number, sz
 }
 
 export type WorldEvent =
-  | { type: 'door'; door: Door; state: number }
+  | { type: 'door'; door: Door; state: number; byPlayerId: string }
   | { type: 'item'; item: Item; byPlayerId: string };
 
 /**
@@ -54,6 +54,7 @@ export class World {
   readonly byId = new Map<string, Interactable>();
   private textures: PBRSet[] = [];
   onEvent?: (e: WorldEvent) => void;
+  private lastActor = '';
 
   constructor(seed: number, private physics: PhysicsWorld, quality: QualityPreset, anisotropy: number) {
     this.level = generateLevel0(seed);
@@ -170,7 +171,7 @@ export class World {
     // ── Doors ───────────────────────────────────────────────
     for (const spot of L.doors) {
       const door = new Door(spot, L, physics, doorMat, handleMat);
-      door.onStateChanged = (d, s) => this.onEvent?.({ type: 'door', door: d, state: s });
+      door.onStateChanged = (d, s) => this.onEvent?.({ type: 'door', door: d, state: s, byPlayerId: this.lastActor });
       this.doors.set(door.id, door);
       this.register(door);
       this.group.add(door.root);
@@ -236,6 +237,7 @@ export class World {
     const door = this.doors.get(targetId);
     if (door) {
       if (door.state === Math.sign(value)) return false;
+      this.lastActor = byPlayerId;
       door.setState(value);
       return true;
     }

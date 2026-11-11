@@ -1,4 +1,4 @@
-import { NOISE, SURVIVAL } from '@shared/Constants';
+import { NOISE, PLAYER_HEALTH, SURVIVAL } from '@shared/Constants';
 
 /** Health, stamina, battery and emitted noise (design doc 4.2). */
 export class SurvivalStatus {
@@ -9,6 +9,7 @@ export class SurvivalStatus {
   noise = 0;
   exhausted = false;
   private regenDelay = 0;
+  private healthRegenDelay = 0;
 
   update(dt: number, sprinting: boolean, flashlightOn: boolean): void {
     if (sprinting) {
@@ -23,6 +24,25 @@ export class SurvivalStatus {
     }
     if (flashlightOn) this.battery = Math.max(0, this.battery - SURVIVAL.BATTERY_DRAIN_PER_SEC * dt);
     this.noise = Math.max(0, this.noise - NOISE.DECAY_PER_SEC * dt);
+    if (this.health > 0 && this.health < SURVIVAL.MAX_HEALTH) {
+      if (this.healthRegenDelay > 0) this.healthRegenDelay -= dt;
+      else this.health = Math.min(SURVIVAL.MAX_HEALTH, this.health + PLAYER_HEALTH.REGEN_PER_SEC * dt);
+    }
+  }
+
+  /** Returns true if this damage killed the player. */
+  damage(amount: number): boolean {
+    if (this.health <= 0) return false;
+    this.health = Math.max(0, this.health - amount);
+    this.healthRegenDelay = PLAYER_HEALTH.REGEN_DELAY;
+    return this.health <= 0;
+  }
+
+  revive(): void {
+    this.health = SURVIVAL.MAX_HEALTH;
+    this.stamina = SURVIVAL.MAX_STAMINA;
+    this.exhausted = false;
+    this.noise = 0;
   }
 
   canSprint(): boolean {

@@ -42,6 +42,10 @@ export class Renderer {
     if (this.post) this.post.distress = v;
   }
 
+  set glitch(v: number) {
+    if (this.post) this.post.glitch = v;
+  }
+
   resize(camera?: THREE.PerspectiveCamera): void {
     const w = this.canvas.clientWidth || window.innerWidth;
     const h = this.canvas.clientHeight || window.innerHeight;

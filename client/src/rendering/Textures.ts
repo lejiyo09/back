@@ -266,3 +266,23 @@ export function paperTexture(seed: number): THREE.Texture {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
+
+/** The Receiver's skin: taut, dry, vertically creased. Normal + roughness only (albedo stays near-black). */
+export function receiverSkinTexture(size: number, seed: number): { normalMap: THREE.Texture; roughnessMap: THREE.Texture } {
+  const n = new TileNoise(new SeededRandom(seed ^ 0x5c1d));
+  const L = makeLayers(size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size, v = y / size;
+    const i = y * size + x;
+    // stretched creases: high frequency across, low along
+    const crease = Math.abs(n.fbm(u, v * 0.25, 48, 3) - 0.5) * 2;
+    const pores = n.value(u, v, 256 > size ? size : 256);
+    const blotch = n.fbm(u, v, 4, 3);
+    L.height[i] = (1 - crease) * 0.6 + pores * 0.15 + blotch * 0.25;
+    L.rough[i] = clamp01(0.62 + crease * 0.25 - blotch * 0.15);
+    L.albedo[i * 3] = L.albedo[i * 3 + 1] = L.albedo[i * 3 + 2] = 1;
+  }
+  const set = finish(L, 2.4, 4);
+  set.map.dispose();
+  return { normalMap: set.normalMap, roughnessMap: set.roughnessMap };
+}

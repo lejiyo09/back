@@ -182,7 +182,7 @@ export class PlayerController {
     this.prevFeet.copy(p);
   }
 
-  netState(flashlightOn: boolean): PlayerNetState {
+  netState(flashlightOn: boolean, dead = false): PlayerNetState {
     const e = new THREE.Euler().setFromQuaternion(this.camera.quaternion, 'YXZ');
     const r = (n: number) => Math.round(n * 1000) / 1000;
     return {
@@ -191,6 +191,8 @@ export class PlayerController {
       c: this.crouching,
       f: flashlightOn,
       s: r(this.horizontalSpeed),
+      n: r(this.status.noise),
+      d: dead,
       t: Date.now(),
     };
   }

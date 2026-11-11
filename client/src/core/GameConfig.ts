@@ -73,5 +73,7 @@ export const URL_FLAGS = (() => {
     seed: seed !== null && /^\d+$/.test(seed) ? Number(seed) >>> 0 : undefined,
     quality: (q.get('quality') as QualityLevel | null) ?? undefined,
     autostart: q.get('autostart') ?? undefined,
+    /** ai=now (spawn in 3 s) | ai=off */
+    ai: q.get('ai') ?? undefined,
   };
 })();
