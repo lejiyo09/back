@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url';
 const SERVER_PORT = Number(process.env.LS_SERVER_PORT ?? 3001);
 
 export default defineConfig({
+  base: './',
   resolve: {
     alias: { '@shared': fileURLToPath(new URL('../shared', import.meta.url)) },
   },

@@ -233,8 +233,43 @@ export class Game {
     if (this.session.mode !== 'single') this.hud.toast(`협동 세션 · ${this.session.players.size}명`);
   }
 
+  /** Embedded frames (and some browsers) refuse pointer lock: fall back to drag-to-look. */
+  private dragLook = false;
+  private enableDragLook(): void {
+    const resume = () => {
+      this.everLocked = true;
+      this.input.enabled = true;
+      this.input.flushPresses();
+      this.hud.showPause(false);
+      void this.audio.resume();
+    };
+    if (this.dragLook) { resume(); return; }
+    this.dragLook = true;
+    const canvas = this.opts.canvas;
+    const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+    canvas.style.cursor = 'grab';
+    canvas.addEventListener('mousemove', (e) => {
+      if (!(e.buttons & 1) || !this.input.enabled) return;
+      euler.setFromQuaternion(this.camera.quaternion);
+      const k = 0.0035 * this.opts.settings.mouseSensitivity;
+      euler.y -= e.movementX * k;
+      euler.x = THREE.MathUtils.clamp(euler.x - e.movementY * k, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
+      this.camera.quaternion.setFromEuler(euler);
+    });
+    canvas.addEventListener('mousedown', () => { canvas.style.cursor = 'grabbing'; });
+    window.addEventListener('mouseup', () => { canvas.style.cursor = 'grab'; });
+    resume();
+    this.hud.toast('마우스 고정을 쓸 수 없는 환경입니다 — 마우스를 누른 채 끌어서 둘러보세요', 6000);
+  }
+
   private setupPointerLock(): void {
-    const tryLock = () => { if (!this.ended) Promise.resolve(this.controls.lock()).catch(() => undefined); };
+    const tryLock = () => {
+      if (this.ended) return;
+      if (this.dragLook) { this.enableDragLook(); return; }
+      try { Promise.resolve(this.controls.lock()).catch(() => this.enableDragLook()); } catch { this.enableDragLook(); }
+      setTimeout(() => { if (!this.controls.isLocked && !this.ended && !this.dragLook) this.enableDragLook(); }, 600);
+    };
+    document.addEventListener('pointerlockerror', () => { if (!this.ended) this.enableDragLook(); });
     this.hud.root.querySelector('.pause')!.addEventListener('click', tryLock);
     this.opts.canvas.addEventListener('click', () => { if (!this.controls.isLocked) tryLock(); });
     this.controls.addEventListener('lock', () => {
@@ -437,6 +472,11 @@ export class Game {
       this.handleInteraction(dt);
     }
     if (inp.wasPressed('F3')) this.debugOn = !this.debugOn;
+    if (this.dragLook && inp.wasPressed('Escape') && !this.hud.noteOpen && this.endingSeq === -1) {
+      this.input.enabled = false;
+      this.input.clear();
+      this.hud.showPause(true, this.pauseInfo());
+    }
     const tab = inp.isDown('Tab');
     this.hud.showInventory(tab, tab ? this.inventoryLines() : []);
 
