@@ -156,6 +156,10 @@ export class ReceiverAI {
     this.setState(state);
   }
 
+  setStatePublic(s: AIState): void {
+    this.setState(s);
+  }
+
   /** Gone without a trace. */
   vanish(hiddenFor = 0): void {
     this.collider.setEnabled(false);

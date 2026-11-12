@@ -244,6 +244,20 @@ export class RevealDirector {
     }
   }
 
+  /** Skip whatever stage we are in and start hunting (power-restore escalation). */
+  forceHunt(targets: AITarget[]): void {
+    if (this.stage >= 3) return;
+    this.stage = 3;
+    this.timer = 0;
+    const st = this.ai.state;
+    if ((st === 'hidden' || st === 'apparition' || st === 'lurk') && !this.ai.observed) {
+      const p = this.farUnseenSpot(targets) ?? this.ai.pos.clone();
+      this.ai.appear(p, this.rng.range(0, Math.PI * 2), 'patrol');
+    } else if (st === 'apparition' || st === 'lurk') {
+      this.ai.setStatePublic('patrol');
+    }
+  }
+
   private huntUpdate(dt: number, targets: AITarget[]): void {
     if (this.ai.state !== 'hidden') return;
     if (this.timer > 0) { this.timer -= dt; return; }

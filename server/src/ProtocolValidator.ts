@@ -25,7 +25,7 @@ export function isPlayerState(s: unknown): s is PlayerNetState {
   return (
     Array.isArray(o.p) && o.p.length === 3 && o.p.every((n) => isNum(n, 1e4)) &&
     Array.isArray(o.r) && o.r.length === 2 && o.r.every((n) => isNum(n, 100)) &&
-    typeof o.c === 'boolean' && typeof o.f === 'boolean' && typeof o.d === 'boolean' &&
+    typeof o.c === 'boolean' && typeof o.f === 'boolean' && typeof o.d === 'boolean' && typeof o.dn === 'boolean' &&
     isNum(o.s, 100) && isNum(o.n, 100) && isNum(o.t, 1e15)
   );
 }
@@ -39,7 +39,7 @@ export function isInteractionRequest(r: unknown): r is InteractionRequest {
 export function isInteractionConfirmed(r: unknown): r is InteractionConfirmed {
   if (!isInteractionRequest(r)) return false;
   const o = r as unknown as Record<string, unknown>;
-  return isId(o.byPlayerId) && isNum(o.value, 1) && Number.isInteger(o.value);
+  return isId(o.byPlayerId) && isNum(o.value, 8) && Number.isInteger(o.value);
 }
 
 export function isWorldSnapshot(s: unknown): s is WorldSnapshot {
@@ -48,8 +48,8 @@ export function isWorldSnapshot(s: unknown): s is WorldSnapshot {
   const okMap = (m: unknown) =>
     !!m && typeof m === 'object' &&
     Object.keys(m).length <= 512 &&
-    Object.entries(m as Record<string, unknown>).every(([k, v]) => isId(k) && isNum(v, 1) && Number.isInteger(v));
-  return okMap(o.doors) && okMap(o.items);
+    Object.entries(m as Record<string, unknown>).every(([k, v]) => isId(k) && isNum(v, 8) && Number.isInteger(v));
+  return okMap(o.doors) && okMap(o.items) && okMap(o.flags);
 }
 
 export function isEntityStates(list: unknown): list is EntityNetState[] {

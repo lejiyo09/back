@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { NET, NOISE, PLAYER, PLAYER_HEALTH, RECEIVER, SURVIVAL, WORLD } from '@shared/Constants';
+import { NET, NOISE, OBJECTIVE, PLAYER, PLAYER_HEALTH, RECEIVER, SURVIVAL, WORLD } from '@shared/Constants';
 import type { GameMode, PlayerInfo } from '@shared/GameTypes';
 import { QUALITY_PRESETS, URL_FLAGS, type Settings } from './GameConfig';
 import { GameLoop } from './GameLoop';
@@ -24,6 +24,8 @@ import { RemoteAuthority } from '../multiplayer/RemoteAuthority';
 import { RemotePlayers } from '../multiplayer/RemotePlayers';
 import { EntityManager } from '../entities/EntityManager';
 import type { AITarget } from '../entities/ReceiverAI';
+import { Recorder } from '../player/Recorder';
+import { ScareDirector } from '../horror/ScareDirector';
 import type { NetworkManager } from '../multiplayer/NetworkManager';
 
 export interface GameOptions {
@@ -69,6 +71,18 @@ export class Game {
   private spawnIndex = 0;
   private hitKick = 0;
   private forceLook = 0;
+  recorder!: Recorder;
+  scares!: ScareDirector;
+  private downed = false;
+  private bleedTimer = 0;
+  private holdTarget: string | null = null;
+  private holdProgress = 0;
+  private reviveFocus: string | null = null;
+  private powerSeq = -1;
+  private endingSeq = -1;
+  private endingFreq = -1;
+  private lastRelayPos = new THREE.Vector3();
+  private deaths = 0;
 
   /** Accessibility: the flicker-intensity setting also scales screen glitching. */
   private settingsGlitch(v: number): number {
@@ -116,6 +130,7 @@ export class Game {
       onPeerLeft: (id) => { this.hud.toast(`${this.names.get(id) ?? '생존자'} 님의 신호가 끊겼습니다`); this.remotes?.remove(id); },
       onSessionEnded: (reason) => this.exit(reason),
       onEntityStates: (list) => this.entities?.applySnapshots(list),
+      getLocal: () => ({ pos: this.player.feet.clone(), downed: this.downed, dead: this.dead }),
       onHit: (hit) => this.onHit(hit.damage, new THREE.Vector3(hit.from[0], 0, hit.from[1])),
     };
     if (o.mode === 'single') this.authority = new LocalAuthority();
@@ -171,6 +186,20 @@ export class Game {
         },
       },
     });
+
+    // Signal Recorder + Scare Director (both local to this player)
+    this.recorder = new Recorder(this.audio, this.world);
+    this.recorder.onSubtitle = (text, title) => this.hud.setSubtitle(text, title ? `녹음기 · ${title}` : '');
+    this.scares = new ScareDirector({
+      camera: this.camera,
+      feet: () => this.player.feet,
+      hasRecorder: () => this.recorder.has,
+      progress: () => this.world.activeRelays / OBJECTIVE.RELAY_COUNT,
+      blocked: () => this.dead || this.downed || this.hud.noteOpen || this.endingSeq !== -1 || this.powerSeq >= 0,
+      subtitle: (t) => this.hud.setSubtitle(t, t ? '녹음기' : ''),
+      now: () => this.time,
+    }, this.audio, this.world, this.entities, this.physics, this.session.eventSeed,
+    this.authority.localPlayerId || 'local', URL_FLAGS.ai === 'now', [this.player.collider]);
 
     this.player.onFootstep = (e) => this.audio.footstep(e.gait);
     this.player.onLand = (k) => this.audio.footstep(k > 0.6 ? 'run' : 'walk');
@@ -270,6 +299,32 @@ export class Game {
       } else {
         this.hud.toast(`${this.names.get(e.byPlayerId) ?? '다른 생존자'} 님이 배터리를 주웠습니다`);
       }
+    } else if (e.type === 'relay') {
+      const p = e.panel.position();
+      this.lastRelayPos.copy(p);
+      this.audio.playAt('relay', p, 2.2, 1, this.isOccluded(p));
+      this.entities.hearNoise(p, NOISE.RELAY);   // throwing a breaker carries far
+      this.scares.hush(20);
+      const who = e.byPlayerId === this.authority.localPlayerId ? '' : `${this.names.get(e.byPlayerId) ?? '다른 생존자'} 님이 `;
+      this.hud.toast(`${who}전력 패널을 작동시켰다  ${e.activeCount}/${OBJECTIVE.RELAY_COUNT}`);
+    } else if (e.type === 'power') {
+      // blackout → power returns → the elevator wakes up, and so does everything else
+      this.powerSeq = 0;
+      this.audio.play('surge', 0.9);
+      this.scares.hush(40);
+      if (this.authority.simulates) this.entities.finalHunt(this.lastRelayPos);
+    } else if (e.type === 'elevator') {
+      const p = this.world.elevator.doorPosition;
+      this.audio.playAt('ding', p, 1.6);
+      this.audio.playAt('elevDoor', p, 1.4);
+      this.entities.hearNoise(p, NOISE.DOOR * 1.5);
+    } else if (e.type === 'ending') {
+      this.endingFreq = e.frequency;
+      this.endingSeq = 0;
+      this.audio.playAt('elevDoor', this.world.elevator.doorPosition, 1.4);
+      if (this.recorder.on) this.recorder.toggle();
+    } else if (e.type === 'custom') {
+      if (e.targetId === `revive:${this.authority.localPlayerId}` && this.downed) this.revivedByTeammate(e.byPlayerId);
     }
   }
 
@@ -281,7 +336,7 @@ export class Game {
       crouching: p.crouching,
       flashlight: this.flashlight.on && p.status.battery > 0,
       noise: p.status.noise,
-      dead: this.dead,
+      dead: this.dead || this.downed || this.endingSeq !== -1,
       speed: p.horizontalSpeed,
       eye: this.camera.position.clone(),
       viewDir: this.camera.getWorldDirection(new THREE.Vector3()),
@@ -291,14 +346,15 @@ export class Game {
 
   private fixedUpdate(dt: number): void {
     this.player.flashlightOn = this.flashlight.on;
-    if (!this.dead) this.player.fixedUpdate(dt);
+    if (!this.dead && !this.downed && this.endingSeq === -1) this.player.fixedUpdate(dt);
     this.world.fixedUpdate(dt);
     this.entities.fixedUpdate(dt, this.aiTargets());
     this.physics.step();
   }
 
   private onHit(damage: number, from: THREE.Vector3): void {
-    if (this.dead) return;
+    if (this.dead || this.downed || this.endingSeq !== -1) return;
+    this.scares.hush(25);
     const killed = this.player.status.damage(damage);
     this.audio.play('hit', 0.9);
     const toAttacker = from.clone().sub(this.camera.position).setY(0);
@@ -307,10 +363,37 @@ export class Game {
     this.hud.flashHit(-angle);
     this.hitKick = 1;
     if (this.entities.present) this.forceLook = 0.35;
-    if (killed) this.die();
+    if (killed) {
+      // co-op: go down and wait for a teammate; alone: the signal is simply lost
+      if (this.session.mode !== 'single' && this.remotes.count > 0) this.goDown();
+      else this.die();
+    }
+  }
+
+  private goDown(): void {
+    this.downed = true;
+    this.bleedTimer = OBJECTIVE.BLEED_OUT;
+    this.audio.play('staticBurst', 0.5);
+    this.hud.hideNote();
+    if (this.recorder.on) this.recorder.toggle();
+    this.hud.showDowned(true, this.bleedTimer);
+    this.entities.forget(this.authority.localPlayerId);
+  }
+
+  private revivedByTeammate(by: string): void {
+    this.downed = false;
+    this.player.status.revive();
+    this.player.status.health = 50;
+    this.hud.showDowned(false);
+    this.camera.rotation.set(0, this.camera.rotation.y, 0, 'YXZ');
+    this.hud.toast(`${this.names.get(by) ?? '동료'} 님이 일으켜 세웠다`);
   }
 
   private die(): void {
+    this.downed = false;
+    this.hud.showDowned(false);
+    this.deaths++;
+    if (this.recorder.on) this.recorder.toggle();
     this.dead = true;
     this.respawnTimer = PLAYER_HEALTH.RESPAWN_DELAY;
     this.audio.play('staticBurst', 0.8);
@@ -332,10 +415,17 @@ export class Game {
     const inp = this.input;
 
     // ── Actions ─────────────────────────────────────────────
-    if (this.dead) {
+    this.reviveFocus = null;
+    if (this.endingSeq !== -1) {
+      this.hud.setHold(null);
+    } else if (this.dead) {
       this.respawnTimer -= dt;
       this.hud.showDeath(true, this.respawnTimer);
       if (this.respawnTimer <= 0) this.respawn();
+    } else if (this.downed) {
+      this.bleedTimer -= dt;
+      this.hud.showDowned(true, this.bleedTimer);
+      if (this.bleedTimer <= 0) this.die();
     } else if (this.hud.noteOpen) {
       if (inp.wasPressed('KeyE') || inp.wasPressed('Escape')) { this.hud.hideNote(); this.audio.play('paper', 0.5); }
     } else {
@@ -343,17 +433,8 @@ export class Game {
         this.flashlight.toggle();
         this.audio.play('click', 0.5);
       }
-      if (inp.wasPressed('KeyE') && this.interaction.focus) {
-        const f = this.interaction.focus;
-        if (f.kind === 'note') {
-          const idx = this.world.level.notes.find((n) => n.id === f.id)?.noteIndex ?? 0;
-          this.notesRead.add(idx);
-          this.hud.showNote(NOTES[idx]);
-          this.audio.play('paper', 0.7);
-        } else {
-          this.authority.requestInteraction(f.id, this.camera.position.clone());
-        }
-      }
+      if (inp.wasPressed('KeyR') && this.recorder.has) this.recorder.toggle();
+      this.handleInteraction(dt);
     }
     if (inp.wasPressed('F3')) this.debugOn = !this.debugOn;
     const tab = inp.isDown('Tab');
@@ -361,9 +442,9 @@ export class Game {
 
     // ── Systems ─────────────────────────────────────────────
     this.player.updateCamera(dt, alpha);
-    if (this.dead) {
+    if (this.dead || this.downed) {
       // collapsed on the carpet
-      const k = Math.min(1, (PLAYER_HEALTH.RESPAWN_DELAY - this.respawnTimer) * 2);
+      const k = this.dead ? Math.min(1, (PLAYER_HEALTH.RESPAWN_DELAY - this.respawnTimer) * 2) : Math.min(1, (OBJECTIVE.BLEED_OUT - this.bleedTimer) * 2) * 0.8;
       this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, this.player.feet.y + 0.25, k);
       this.camera.rotation.z = THREE.MathUtils.lerp(0, 1.2, k);
     }
@@ -394,7 +475,15 @@ export class Game {
       this.camera.quaternion.copy(q0).slerp(q1, Math.min(1, dt * 18));
     }
 
-    const light = this.world.baked.sample(viewer.x, viewer.z) * this.world.lighting.power;
+    this.updatePowerSequence(dt);
+    this.updateEndingSequence(dt);
+    if (!this.dead && !this.downed && this.endingSeq === -1) {
+      const recNoise = this.recorder.update(dt, this.camera.position, this.camera.getWorldDirection(new THREE.Vector3()));
+      if (recNoise > 0) this.player.status.emitNoise(recNoise);
+    } else if (this.recorder.on) this.recorder.toggle();
+    this.scares.update(dt);
+
+    const light = this.world.baked.sample(viewer.x, viewer.z) * this.world.lighting.power * this.world.lighting.surge;
     this.audio.update(dt, light, viewer);
 
     // fog + gentle eye adaptation follow the local light level
@@ -407,7 +496,12 @@ export class Game {
 
     // ── HUD ─────────────────────────────────────────────────
     const st = this.player.status;
-    this.hud.setPrompt(this.hud.noteOpen ? null : this.interaction.focus?.prompt() ?? null);
+    const focus = this.interaction.focus;
+    const prompt = focus ? `${focus.prompt()}${focus.holdTime?.() ? ' (길게)' : ''}` : this.reviveFocus ? '동료 일으키기 (길게)' : null;
+    this.hud.setPrompt(this.hud.noteOpen || this.dead || this.downed || this.endingSeq !== -1 ? null : prompt);
+    this.hud.setRecorder(this.recorder.view, dt);
+    this.hud.setObjective(this.objectiveText());
+    this.hud.tick(dt);
     this.hud.setMeters(st.stamina, st.battery, this.flashlight.on, st.noise, dt);
     this.hud.setHealth(st.health);
     if (this.debugOn) {
@@ -426,7 +520,7 @@ export class Game {
     this.publishTimer -= dt;
     if (this.publishTimer <= 0) {
       this.publishTimer = 1 / NET.PLAYER_STATE_HZ;
-      this.authority.publishState(this.player.netState(this.flashlight.on, this.dead));
+      this.authority.publishState(this.player.netState(this.flashlight.on, this.dead, this.downed));
     }
     if (this.session.mode === 'host') {
       this.entityPublishTimer -= dt;
@@ -440,14 +534,122 @@ export class Game {
     this.renderer.render(this.scene, this.camera, this.time);
   }
 
+  /** Instant and hold-to-use interactions (design doc 4.4), plus reviving teammates. */
+  private handleInteraction(dt: number): void {
+    const inp = this.input;
+    const f = this.interaction.focus;
+    if (!f && this.session.mode !== 'single') {
+      this.reviveFocus = this.remotes.downedNear(this.camera.position, this.camera.getWorldDirection(new THREE.Vector3()), OBJECTIVE.REVIVE_DISTANCE);
+    }
+    const focusId = f?.id ?? (this.reviveFocus ? `revive:${this.reviveFocus}` : null);
+    const hold = f?.holdTime?.() ?? (this.reviveFocus ? OBJECTIVE.REVIVE_HOLD : 0);
+
+    if (focusId && hold > 0) {
+      inp.wasPressed('KeyE');
+      if (inp.isDown('KeyE')) {
+        if (this.holdTarget !== focusId) { this.holdTarget = focusId; this.holdProgress = 0; }
+        this.holdProgress += dt;
+        if (this.holdProgress >= hold) {
+          this.authority.requestInteraction(focusId, this.camera.position.clone());
+          this.holdTarget = null;
+          this.holdProgress = 0;
+        }
+      } else {
+        this.holdTarget = null;
+        this.holdProgress = 0;
+      }
+      this.hud.setHold(this.holdTarget ? this.holdProgress / hold : null);
+      return;
+    }
+    this.holdTarget = null;
+    this.hud.setHold(null);
+    if (!inp.wasPressed('KeyE') || !f) return;
+    if (f.kind === 'note') {
+      const idx = this.world.level.notes.find((n) => n.id === f.id)?.noteIndex ?? 0;
+      this.notesRead.add(idx);
+      this.hud.showNote(NOTES[idx]);
+      this.audio.play('paper', 0.7);
+    } else if (f.kind === 'tool') {
+      // the recorder is personal: everyone finds their own
+      this.world.recorder.setCollected(true);
+      this.recorder.pickUp();
+      this.audio.play('pickup', 0.8);
+      this.hud.toast('녹음기를 주웠다 — R 로 켜기');
+    } else if (f.id === 'elevator-call' && !this.world.elevator.powered) {
+      this.audio.play('click', 0.4, 0.6);
+      this.hud.toast('아무 반응이 없다. 전원이 들어오지 않는다.');
+    } else if (f.id.startsWith('freq-') && this.session.mode !== 'single' &&
+      this.remotes.targets().some((t) => !t.dead && !this.world.elevator.contains(t.feet.clone().setY(1)))) {
+      this.hud.toast('모든 생존자가 엘리베이터 안에 있어야 한다');
+    } else {
+      this.authority.requestInteraction(f.id, this.camera.position.clone());
+    }
+  }
+
+  private objectiveText(): string {
+    const el = this.world.elevator;
+    const n = this.world.activeRelays;
+    if (el.ending) return '…';
+    if (el.open) return this.session.mode === 'single' ? '엘리베이터에 타서 주파수를 선택하라' : '모든 생존자가 탑승한 뒤 주파수를 선택하라';
+    if (el.powered) return '엘리베이터를 찾아 호출하라';
+    if (!this.recorder.has) return n ? `전력 패널을 찾아 작동시켜라 (${n}/${OBJECTIVE.RELAY_COUNT})` : '주변을 조사하라';
+    return `녹음기(R)로 신호를 따라가 전력 패널을 작동시켜라 (${n}/${OBJECTIVE.RELAY_COUNT})`;
+  }
+
+  /** Blackout → power returns. */
+  private updatePowerSequence(dt: number): void {
+    if (this.powerSeq < 0) return;
+    this.powerSeq += dt;
+    const t = this.powerSeq;
+    let s: number;
+    if (t < 0.5) s = Math.random() > 0.5 ? 1 : 0.1;
+    else if (t < 3.2) s = 0;
+    else if (t < 4.4) s = Math.random() > 0.35 ? (t - 3.2) / 1.2 : 0.05;
+    else { s = 1; this.powerSeq = -1; this.audio.playAt('ding', this.world.elevator.doorPosition, 1.8); this.hud.toast('어딘가에서 엘리베이터가 깨어났다'); }
+    this.world.lighting.surge = s;
+  }
+
+  private updateEndingSequence(dt: number): void {
+    if (this.endingSeq < 0 || this.ended) return;
+    this.endingSeq += dt;
+    if (this.endingSeq < 3) return;
+    this.endingSeq = -2; // done: freeze
+    const escaped = this.endingFreq === this.world.level.correctFrequency;
+    const secs = Math.floor(this.time);
+    const stats = [
+      `시간 ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`,
+      `사망 ${this.deaths}`,
+      `녹음 ${this.recorder.heard.size}/${this.recorder.logs.length}`,
+      `문서 ${this.notesRead.size}/${NOTES.length}`,
+      `주파수 ${OBJECTIVE.FREQUENCIES[this.endingFreq]} MHz`,
+      `Seed ${this.session.mapSeed}`,
+    ];
+    this.input.enabled = false;
+    if (this.controls.isLocked) this.controls.unlock();
+    this.hud.showPause(false);
+    this.hud.showEnding(escaped ? {
+      kicker: 'ENDING A',
+      title: 'ESCAPE',
+      body: '문이 닫히고, 형광등 소리가 멈췄다.\n\n긴 하강. 그리고 정적.\n\n문이 열리자 차가운 공기가 들어왔다. 아스팔트 냄새, 멀리서 들리는 차 소리. 가로등 아래, 평범한 밤이다.\n\n주머니 속에서 녹음기가 혼자 켜진다.\n지직거리는 잡음 사이로, 네 목소리가 말한다.\n\n“…녹음 중인가?”',
+      stats,
+    } : {
+      kicker: 'ENDING B',
+      title: 'WRONG FREQUENCY',
+      body: '문이 닫히고, 형광등 소리가 멈췄다.\n\n하강은 끝나지 않았다. 몇 분인지, 몇 시간인지.\n\n문이 열린다. 콘크리트 바닥과 콘크리트 벽. 천장의 배관에서 물이 떨어지고, 짙은 습기가 통로를 채우고 있다. 형광등이 깜빡인다. 창고 같은 통로가 끝없이 이어진다.\n\nLevel 1.\n\n녹음기가 켜진다.\n“이걸 듣고 있다면, 넌 다른 쪽을 눌렀어.”',
+      stats,
+    }, () => this.exit());
+  }
+
   private inventoryLines(): string[] {
     const st = this.player.status;
     return [
       `손전등 — 배터리 ${Math.ceil(st.battery)}%${this.flashlight.on ? ' (켜짐)' : ''}`,
       `찾은 배터리 — ${this.batteriesFound}개`,
+      this.recorder.has ? `신호 녹음기 — 녹음 ${this.recorder.heard.size}/${this.recorder.logs.length}` : '',
       `문서 — ${this.notesRead.size} / ${NOTES.length}`,
-      `<span class="dim">신호 녹음기 — 아직 찾지 못했다</span>`,
-    ];
+      this.recorder.has ? '' : `<span class="dim">신호 녹음기 — 아직 찾지 못했다</span>`,
+      `<span class="dim">목표 — ${this.objectiveText()}</span>`,
+    ].filter(Boolean);
   }
 
   /** Teleport helper for testing (window.__LS.debugTeleport(cx, cy)). */
@@ -474,6 +676,7 @@ export class Game {
     this.audio?.dispose();
     this.remotes?.dispose();
     this.entities?.dispose();
+    this.recorder?.dispose();
     this.world?.dispose();
     this.physics?.dispose();
     this.renderer.dispose();

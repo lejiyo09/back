@@ -28,6 +28,10 @@ export class Lighting {
   flickerIntensity = 1;
   /** Something wrong nearby (the Receiver): fixtures around it stutter. */
   disturbance: { pos: THREE.Vector3; strength: number } | null = null;
+  /** Local-only outage (Scare Director): fixtures around a point die for a while. */
+  localOutage: { pos: THREE.Vector3; radius: number; start: number; until: number } | null = null;
+  /** Global surge/blackout curve driven by the power-restore sequence (multiplies power). */
+  surge = 1;
 
   constructor(level: Level0Data, private baked: BakedLighting, poolSize: number) {
     const y = WORLD.CEILING_HEIGHT;
@@ -89,6 +93,18 @@ export class Lighting {
         b *= 0.88;
       }
     }
+    const out = this.localOutage;
+    if (out) {
+      if (t > out.until) this.localOutage = null;
+      else {
+        const dx = f.pos.x - out.pos.x, dz = f.pos.z - out.pos.z;
+        if (dx * dx + dz * dz < out.radius * out.radius) {
+          // stutter out, stay dead, stutter back
+          const edge = Math.min(t - out.start, out.until - t);
+          b *= edge < 0.35 ? (Math.sin(t * 60 + p) > 0 ? 0.6 : 0.02) : 0.0;
+        }
+      }
+    }
     const dist = this.disturbance;
     if (dist) {
       const r = 2.5 + dist.strength * 5;
@@ -101,7 +117,7 @@ export class Lighting {
         b *= 1 - (1 - dip) * this.flickerIntensity;
       }
     }
-    return Math.max(0, b * this.power);
+    return Math.max(0, b * this.power * this.surge);
   }
 
   update(dt: number, t: number, viewer: THREE.Vector3): void {
@@ -139,6 +155,13 @@ export class Lighting {
       pl.intensity = f ? f.level * 3.2 : 0;
     });
 
-    this.baked.uniforms.uBakeIntensity.value = this.power;
+    // an outage around the player also darkens the baked ambient there (approximation: global dip by proximity)
+    let ambient = this.power * this.surge;
+    const out = this.localOutage;
+    if (out) {
+      const d = Math.hypot(viewer.x - out.pos.x, viewer.z - out.pos.z);
+      if (d < out.radius) ambient *= THREE.MathUtils.lerp(0.05, 1, Math.max(0, (d - out.radius * 0.5) / (out.radius * 0.5)));
+    }
+    this.baked.uniforms.uBakeIntensity.value = ambient;
   }
 }

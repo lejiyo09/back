@@ -40,6 +40,10 @@ export const NOISE = {
   RUN: 16,
   JUMP_LAND: 9,
   DOOR: 10,
+  RECORDER_SCAN: 5,     // the recorder hisses while it listens
+  RECORDER_PLAY: 13,    // playing a recording is loud
+  RELAY: 18,            // throwing a breaker carries far
+  POWER_SURGE: 999,     // the whole floor hears the power come back
   DECAY_PER_SEC: 12,
 } as const;
 
@@ -104,6 +108,17 @@ export const REVEAL = {
   APPARITION_TIMEOUT: 35,
   LURK_TIMEOUT: 9,
   LURK_REACTION: 0.7,
+} as const;
+
+/** Level 0 objective chain (design doc 3, ACT 2–5, compressed for the prototype). */
+export const OBJECTIVE = {
+  RELAY_COUNT: 3,
+  RELAY_HOLD: 2.5,       // seconds holding E to throw a breaker
+  REVIVE_HOLD: 3,
+  REVIVE_DISTANCE: 2.2,
+  BLEED_OUT: 30,         // downed → respawn if nobody helps
+  LOG_RADIUS: 4,         // recorder picks up a voice within this distance
+  FREQUENCIES: ['88.1', '104.6'] as const,
 } as const;
 
 export const PLAYER_HEALTH = {

@@ -1,5 +1,6 @@
 import { SURVIVAL } from '@shared/Constants';
 import type { NoteText } from '../world/Notes';
+import type { RecorderView } from '../player/Recorder';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector(sel) as T;
 
@@ -22,6 +23,15 @@ export class HUD {
   private hitflash!: HTMLElement;
   private death!: HTMLElement;
   noteOpen = false;
+  private holdRing!: SVGCircleElement;
+  private objective!: HTMLElement;
+  private objectiveTimer = 0;
+  private subtitle!: HTMLElement;
+  private recorder!: HTMLElement;
+  private scope!: CanvasRenderingContext2D;
+  private downed!: HTMLElement;
+  private ending!: HTMLElement;
+  private scopePhase = 0;
 
   constructor() {
     this.root = document.createElement('div');
@@ -31,6 +41,12 @@ export class HUD {
       <div class="hitflash"></div>
       <div class="death hidden"><div class="death-title">SIGNAL LOST</div><div class="death-sub">신호가 끊겼다…</div><div class="death-timer"></div></div>
       <div class="crosshair"></div>
+      <svg class="hold" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" /></svg>
+      <div class="objective"><span class="label">목표</span><span class="text"></span></div>
+      <div class="subtitle"><span class="who"></span><span class="line"></span></div>
+      <div class="recorder hidden"><canvas width="220" height="70"></canvas><div class="rec-row"><span class="rec-state">SCAN</span><span class="rec-bars"></span></div></div>
+      <div class="downed hidden"><div class="death-title">DOWN</div><div class="death-sub">동료가 일으켜 줄 때까지 버텨라</div><div class="death-timer"></div></div>
+      <div class="ending overlay hidden"><div class="ending-inner"><div class="ending-kicker"></div><h1></h1><div class="ending-body"></div><ul class="ending-stats"></ul><button class="primary" data-act="menu">메인 메뉴로</button></div></div>
       <div class="prompt"><kbd>E</kbd><span></span></div>
       <div class="meters">
         <div class="battery" title="손전등 배터리"><div class="cell"><div class="fill"></div></div><span>100%</span></div>
@@ -70,6 +86,96 @@ export class HUD {
     this.hurt = $('.hurt', this.root);
     this.hitflash = $('.hitflash', this.root);
     this.death = $('.death', this.root);
+    this.holdRing = this.root.querySelector('.hold circle') as SVGCircleElement;
+    this.objective = $('.objective', this.root);
+    this.subtitle = $('.subtitle', this.root);
+    this.recorder = $('.recorder', this.root);
+    this.scope = ($('canvas', this.recorder) as HTMLCanvasElement).getContext('2d')!;
+    this.downed = $('.downed', this.root);
+    this.ending = $('.ending', this.root);
+  }
+
+  /** 0..1 progress of a held interaction; null hides the ring. */
+  setHold(p: number | null): void {
+    const c = 2 * Math.PI * 18;
+    this.holdRing.parentElement!.classList.toggle('show', p !== null);
+    this.holdRing.style.strokeDasharray = `${c}`;
+    this.holdRing.style.strokeDashoffset = `${c * (1 - (p ?? 0))}`;
+  }
+
+  /** Objective line; flashes for a few seconds when it changes, otherwise stays faint. */
+  setObjective(text: string): void {
+    const el = $('.text', this.objective);
+    if (el.textContent === text) return;
+    el.textContent = text;
+    this.objectiveTimer = 7;
+    this.objective.classList.add('fresh');
+  }
+
+  tick(dt: number): void {
+    if (this.objectiveTimer > 0) {
+      this.objectiveTimer -= dt;
+      if (this.objectiveTimer <= 0) this.objective.classList.remove('fresh');
+    }
+  }
+
+  setSubtitle(text: string | null, who = ''): void {
+    this.subtitle.classList.toggle('show', !!text);
+    if (text) {
+      $('.who', this.subtitle).textContent = who;
+      $('.line', this.subtitle).textContent = text;
+    }
+  }
+
+  setRecorder(v: RecorderView, dt: number): void {
+    this.recorder.classList.toggle('hidden', !v.has);
+    this.recorder.classList.toggle('on', v.on);
+    if (!v.has) return;
+    const g = this.scope;
+    const W = 220, Hh = 70;
+    g.fillStyle = 'rgba(6,10,6,0.85)';
+    g.fillRect(0, 0, W, Hh);
+    if (v.on) {
+      this.scopePhase += dt * (4 + v.strength * 10);
+      g.strokeStyle = v.playing ? '#ffb43a' : '#7dff8a';
+      g.lineWidth = 1.5;
+      g.beginPath();
+      for (let x = 0; x < W; x++) {
+        const clean = Math.sin(x * 0.12 + this.scopePhase) * v.strength * 22;
+        const noise = (Math.random() - 0.5) * (1 - v.strength) * 30;
+        const voice = v.playing ? Math.sin(x * 0.5 + this.scopePhase * 3) * Math.sin(x * 0.05 + this.scopePhase) * 18 : 0;
+        const y = Hh / 2 + clean + noise + voice;
+        if (x) g.lineTo(x, y); else g.moveTo(x, y);
+      }
+      g.stroke();
+    }
+    const bars = Math.round(v.strength * 5);
+    $('.rec-bars', this.recorder).textContent = v.on ? '▮'.repeat(bars) + '▯'.repeat(5 - bars) : '';
+    $('.rec-state', this.recorder).textContent = !v.on ? 'OFF · R' : v.playing ? `▶ ${v.playing}` : v.voiceNear ? 'VOICE DETECTED' : 'SCAN';
+  }
+
+  showDowned(show: boolean, secondsLeft = 0, reviving = false): void {
+    this.downed.classList.toggle('hidden', !show);
+    if (show) $('.death-timer', this.downed).textContent = reviving ? '일으켜 세우는 중…' : `${Math.ceil(secondsLeft)}초`;
+  }
+
+  showEnding(e: { kicker: string; title: string; body: string; stats: string[] }, onMenu: () => void): void {
+    $('.ending-kicker', this.ending).textContent = e.kicker;
+    $('h1', this.ending).textContent = e.title;
+    const body = $('.ending-body', this.ending);
+    body.textContent = '';
+    $('.ending-stats', this.ending).innerHTML = e.stats.map((s) => `<li>${s}</li>`).join('');
+    this.ending.classList.remove('hidden');
+    // type the text out slowly
+    let i = 0;
+    const type = () => {
+      if (i > e.body.length || this.ending.classList.contains('hidden')) return;
+      body.textContent = e.body.slice(0, i++);
+      setTimeout(type, e.body[i - 2] === '\n' ? 380 : 32);
+    };
+    type();
+    const btn = $('[data-act="menu"]', this.ending) as HTMLButtonElement;
+    btn.onclick = (ev) => { ev.stopPropagation(); onMenu(); };
   }
 
   /** health 0..100 → persistent red vignette as it drops. */

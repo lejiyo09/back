@@ -61,6 +61,10 @@ export class EntityManager {
   glitch = 0;
   /** set for one frame when the big reveal lands (Game adds camera shake) */
   revealHit = false;
+  /** Scare Director hallucination — same body, never real */
+  private phantom: { model: ReceiverModel; until: number; pos: THREE.Vector3; yaw: number } | null = null;
+  private phantomModel: ReceiverModel | null = null;
+  private clock = 0;
 
   constructor(private o: EntityManagerOptions) {
     const skinTex = receiverSkinTexture(256, o.seed);
@@ -94,7 +98,17 @@ export class EntityManager {
 
   // ── Authority side ─────────────────────────────────────────
 
+  private lastTargets: AITarget[] = [];
+
+  /** Power is back: the reveal is over, and it heard exactly where. */
+  finalHunt(noiseAt: THREE.Vector3): void {
+    if (!this.ai || !this.director) return;
+    this.director.forceHunt(this.lastTargets);
+    this.ai.hearNoise(noiseAt, 999);
+  }
+
   fixedUpdate(dt: number, targets: AITarget[]): void {
+    this.lastTargets = targets;
     if (!this.ai || !this.director) return;
     this.director.update(dt, targets);
     this.ai.fixedUpdate(dt, targets);
@@ -148,6 +162,35 @@ export class EntityManager {
     this.pose.attack = c.s.at;
   }
 
+  // ── Hallucinations (local only) ────────────────────────────
+
+  spawnPhantom(pos: THREE.Vector3, yaw: number, seconds: number): void {
+    if (!this.phantomModel) {
+      this.phantomModel = new ReceiverModel({ skin: this.skin, flesh: this.flesh, teeth: this.teeth });
+      this.o.scene.add(this.phantomModel.root);
+    }
+    this.phantomModel.root.visible = true;
+    this.phantom = { model: this.phantomModel, until: this.clock + seconds, pos: pos.clone(), yaw };
+  }
+
+  private updatePhantom(dt: number, viewer: THREE.Vector3): void {
+    const ph = this.phantom;
+    if (!ph) return;
+    const toIt = ph.pos.clone().setY(1.8).sub(viewer).normalize();
+    const looked = this.viewDir.dot(toIt) > 0.9;
+    if (looked || this.clock > ph.until) {
+      // gone the instant you look straight at it
+      ph.model.root.visible = false;
+      this.phantom = null;
+      return;
+    }
+    ph.model.animate(dt, 'apparition', 0, 0, 0, ph.pos, ph.yaw, viewer, false);
+  }
+
+  get phantomVisible(): boolean {
+    return !!this.phantom;
+  }
+
   // ── Both sides: presentation ───────────────────────────────
 
   headPosition(): THREE.Vector3 {
@@ -166,6 +209,8 @@ export class EntityManager {
   /** Per render frame. Returns proximity threat 0..1 for screen effects. */
   update(dt: number, alpha: number, viewer: THREE.Vector3, occluded: (p: THREE.Vector3) => boolean): number {
     this.revealHit = false;
+    this.clock += dt;
+    this.updatePhantom(dt, viewer);
     if (this.ai) {
       this.pose.p.lerpVectors(this.ai.prevPos, this.ai.pos, alpha);
       if (this.ai.prevPos.distanceTo(this.ai.pos) > 3) this.pose.p.copy(this.ai.pos);
@@ -271,6 +316,8 @@ export class EntityManager {
     this.ai?.dispose();
     this.model.root.removeFromParent();
     this.model.dispose();
+    this.phantomModel?.root.removeFromParent();
+    this.phantomModel?.dispose();
     this.skin.normalMap?.dispose();
     this.skin.roughnessMap?.dispose();
     this.skin.dispose();

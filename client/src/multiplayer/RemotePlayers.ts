@@ -4,7 +4,7 @@ import type { PlayerNetState } from '@shared/GameTypes';
 import type { AudioManager } from '../audio/AudioManager';
 import type { AITarget } from '../entities/ReceiverAI';
 
-interface Snapshot { t: number; p: THREE.Vector3; yaw: number; pitch: number; c: boolean; f: boolean; s: number; n: number; d: boolean }
+interface Snapshot { t: number; p: THREE.Vector3; yaw: number; pitch: number; c: boolean; f: boolean; s: number; n: number; d: boolean; dn: boolean }
 
 class RemoteAvatar {
   readonly root = new THREE.Group();
@@ -36,7 +36,7 @@ class RemoteAvatar {
 
   push(st: PlayerNetState, now: number): void {
     this.lastSeen = now;
-    this.buffer.push({ t: now, p: new THREE.Vector3(...st.p), yaw: st.r[0], pitch: st.r[1], c: st.c, f: st.f, s: st.s, n: st.n, d: st.d });
+    this.buffer.push({ t: now, p: new THREE.Vector3(...st.p), yaw: st.r[0], pitch: st.r[1], c: st.c, f: st.f, s: st.s, n: st.n, d: st.d, dn: st.dn });
     this.latest = st;
     if (this.buffer.length > 30) this.buffer.shift();
   }
@@ -68,6 +68,9 @@ class RemoteAvatar {
     this.target.position.set(0.18, this.light.position.y + Math.sin(pitch) * 5, -Math.cos(pitch) * 5);
     this.light.intensity = c.f && !c.d ? 16 : 0;
     this.root.visible = !c.d;
+    // downed: lying on the carpet
+    this.root.rotation.x = c.dn ? -Math.PI / 2 + 0.15 : 0;
+    if (c.dn) this.root.position.y = this.pos.y + 0.28;
     this.speed = c.s;
 
     // footsteps from replicated speed (stride ≈ 0.75 m walking, 1 m running)
@@ -157,9 +160,21 @@ export class RemotePlayers {
       // camera convention: yaw/pitch in YXZ order, looking down -Z at yaw 0
       const viewDir = new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
       const eye = feet.clone().setY(feet.y + (s.c ? PLAYER.CROUCH_EYE_HEIGHT : PLAYER.EYE_HEIGHT));
-      out.push({ id, feet, crouching: s.c, flashlight: s.f, noise: s.n, dead: s.d, speed: s.s, eye, viewDir });
+      out.push({ id, feet, crouching: s.c, flashlight: s.f, noise: s.n, dead: s.d || s.dn, speed: s.s, eye, viewDir });
     }
     return out;
+  }
+
+  /** A downed teammate within reach that the camera is roughly facing. */
+  downedNear(eye: THREE.Vector3, dir: THREE.Vector3, reach: number): string | null {
+    for (const [id, a] of this.avatars) {
+      if (!a.latest?.dn) continue;
+      const p = new THREE.Vector3(...a.latest.p).setY(a.latest.p[1] + 0.3);
+      const to = p.clone().sub(eye);
+      if (to.length() > reach + 0.8) continue;
+      if (dir.dot(to.normalize()) > 0.55) return id;
+    }
+    return null;
   }
 
   get count(): number {

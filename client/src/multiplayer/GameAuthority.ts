@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER } from '@shared/Constants';
+import { OBJECTIVE, PLAYER } from '@shared/Constants';
 import type { EntityNetState, GameMode, PlayerHit, PlayerNetState } from '@shared/GameTypes';
 import type { World } from '../world/World';
 
@@ -32,14 +32,43 @@ export interface AuthorityCallbacks {
   onSessionEnded?: (reason: string) => void;
   onEntityStates?: (list: EntityNetState[]) => void;
   onHit?: (hit: PlayerHit) => void;
+  /** The host needs its own player's state to validate revives and the elevator. */
+  getLocal?: () => { pos: THREE.Vector3; downed: boolean; dead: boolean };
 }
+
+export interface PlayerSnapshot { pos: THREE.Vector3; downed: boolean; dead: boolean }
 
 /**
  * Shared game rule: what does interacting with `targetId` from `pos` produce?
  * Returns the new state value, or null if the interaction is invalid.
  */
-export function resolveInteraction(world: World, targetId: string, pos: THREE.Vector3 | undefined): number | null {
+/**
+ * @param everyone positions of all living players — the frequency can only be
+ *                 chosen once every survivor is inside the elevator.
+ */
+export function resolveInteraction(world: World, targetId: string, pos: THREE.Vector3 | undefined, everyone: THREE.Vector3[] = []): number | null {
+  if (targetId.startsWith('freq-')) {
+    const el = world.elevator;
+    if (!el.open || el.ending || !pos || !el.contains(pos)) return null;
+    if (everyone.some((p) => !el.contains(p))) return null;
+    return Number(targetId.slice(5)) + 1;
+  }
+  if (targetId === 'elevator-call') {
+    const el = world.elevator;
+    if (!el.powered || el.open || (pos && el.doorPosition.distanceTo(pos) > PLAYER.INTERACT_DISTANCE + 2)) return null;
+    return 1;
+  }
+  const relay = world.relays.get(targetId);
+  if (relay) return relay.active || (pos && relay.position().distanceTo(pos) > PLAYER.INTERACT_DISTANCE + 1.6) ? null : 1;
   return resolveInteractionAt(world, targetId, pos);
+}
+
+/** Revive: the requester must be next to a downed teammate. */
+export function resolveRevive(targetId: string, requester: PlayerSnapshot | undefined, players: Map<string, PlayerSnapshot>): number | null {
+  const id = targetId.slice('revive:'.length);
+  const t = players.get(id);
+  if (!t || !t.downed || t.dead || !requester || requester.downed || requester.dead) return null;
+  return requester.pos.distanceTo(t.pos) <= OBJECTIVE.REVIVE_DISTANCE + 1 ? 1 : null;
 }
 
 /** Entities only ever open doors. */
@@ -51,7 +80,7 @@ export function resolveEntityInteraction(world: World, targetId: string, pos: TH
 
 function resolveInteractionAt(world: World, targetId: string, pos: THREE.Vector3 | undefined): number | null {
   const target = world.byId.get(targetId);
-  if (!target || target.kind === 'note') return null;
+  if (!target || target.kind === 'note' || target.kind === 'tool') return null;
   if (pos && target.position().distanceTo(pos) > PLAYER.INTERACT_DISTANCE + 1.6) return null; // latency slack
   const door = world.doors.get(targetId);
   if (door) return door.state === 0 ? door.swingAwayFrom(pos ?? target.position()) : 0;

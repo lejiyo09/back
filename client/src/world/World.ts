@@ -7,9 +7,11 @@ import { BakedLighting } from '../rendering/BakedLighting';
 import { Lighting } from '../rendering/Lighting';
 import { carpetTexture, ceilingTexture, doorTexture, paperTexture, wallpaperTexture, type PBRSet } from '../rendering/Textures';
 import { Door } from '../interaction/Door';
-import { Item, makeBatteryMesh, makeNoteMesh } from '../interaction/Item';
+import { Item, makeBatteryMesh, makeNoteMesh, makeRecorderMesh } from '../interaction/Item';
+import { RelayPanel } from '../interaction/RelayPanel';
+import { Elevator, ELEVATOR_HEIGHT, ELEVATOR_OPENING } from '../interaction/Elevator';
 import type { Interactable } from '../interaction/Interactable';
-import { EDGE_DOOR, EDGE_WALL, cellCenter, generateLevel0, gridPoint, type Level0Data } from './Level0Layout';
+import { EDGE_DOOR, EDGE_EXIT, EDGE_WALL, cellCenter, generateLevel0, gridPoint, type Level0Data } from './Level0Layout';
 import type { QualityPreset } from '../core/GameConfig';
 
 const H = WORLD.CEILING_HEIGHT;
@@ -36,7 +38,12 @@ function worldBox(cx: number, cy: number, cz: number, sx: number, sy: number, sz
 
 export type WorldEvent =
   | { type: 'door'; door: Door; state: number; byPlayerId: string }
-  | { type: 'item'; item: Item; byPlayerId: string };
+  | { type: 'item'; item: Item; byPlayerId: string }
+  | { type: 'relay'; panel: RelayPanel; byPlayerId: string; activeCount: number }
+  | { type: 'power' }
+  | { type: 'elevator'; byPlayerId: string }
+  | { type: 'ending'; frequency: number; byPlayerId: string }
+  | { type: 'custom'; targetId: string; value: number; byPlayerId: string };
 
 /**
  * World: builds Level 0 from its layout data (rendering + physics) and owns the
@@ -52,6 +59,9 @@ export class World {
   readonly items = new Map<string, Item>();
   readonly interactables = new Map<number, Interactable>(); // collider handle -> interactable
   readonly byId = new Map<string, Interactable>();
+  readonly relays = new Map<string, RelayPanel>();
+  elevator!: Elevator;
+  recorder!: Item;
   private textures: PBRSet[] = [];
   onEvent?: (e: WorldEvent) => void;
   private lastActor = '';
@@ -132,10 +142,11 @@ export class World {
             if (start < 0) { start = b; startDark = d; }
           } else {
             flush(b);
-            if (e === EDGE_DOOR) {
+            if (e === EDGE_DOOR || e === EDGE_EXIT) {
               const p0 = dir === 'h' ? gridPoint(L, b, a) : gridPoint(L, a, b);
               const p1 = dir === 'h' ? gridPoint(L, b + 1, a) : gridPoint(L, a, b + 1);
-              this.buildDoorwayWalls(p0, p1, d, addWall, frames, dir);
+              if (e === EDGE_DOOR) this.buildDoorwayWalls(p0, p1, d, addWall, frames, dir);
+              else this.buildDoorwayWalls(p0, p1, d, addWall, null, dir, ELEVATOR_OPENING, ELEVATOR_HEIGHT);
             }
           }
         }
@@ -177,6 +188,8 @@ export class World {
       this.group.add(door.root);
     }
 
+    this.buildObjectives(physics, seed);
+
     // ── Items & notes ───────────────────────────────────────
     for (const b of L.batteries) {
       const c = cellCenter(L, b.cx, b.cy);
@@ -199,17 +212,20 @@ export class World {
     p1: { x: number; z: number },
     dark: boolean,
     addWall: (x0: number, z0: number, x1: number, z1: number, y0: number, y1: number, dark: boolean, extend?: boolean) => void,
-    frames: THREE.BufferGeometry[],
+    frames: THREE.BufferGeometry[] | null,
     dir: 'h' | 'v',
+    width: number = WORLD.DOOR_WIDTH,
+    height: number = WORLD.DOOR_HEIGHT,
   ): void {
-    const half = WORLD.DOOR_WIDTH / 2;
+    const half = width / 2;
     const mx = (p0.x + p1.x) / 2, mz = (p0.z + p1.z) / 2;
     const ux = dir === 'h' ? 1 : 0, uz = dir === 'h' ? 0 : 1;
-    const top = WORLD.DOOR_HEIGHT + 0.02;
+    const top = height + 0.02;
     // side pieces (extend outward by T/2 at the outer end only)
     addWall(p0.x - ux * T / 2, p0.z - uz * T / 2, mx - ux * half, mz - uz * half, 0, H, dark, false);
     addWall(mx + ux * half, mz + uz * half, p1.x + ux * T / 2, p1.z + uz * T / 2, 0, H, dark, false);
     addWall(mx - ux * half, mz - uz * half, mx + ux * half, mz + uz * half, top, H, dark, false);
+    if (!frames) return;
     // painted wooden frame (visual only, sits in the opening's reveal)
     const fw = 0.05, fd = T + 0.03;
     for (const s of [-1, 1]) {
@@ -218,6 +234,43 @@ export class World {
       frames.push(worldBox(cx, top / 2, cz, dir === 'h' ? fw : fd, top, dir === 'h' ? fd : fw, 1));
     }
     frames.push(worldBox(mx, top + fw / 2 - 0.01, mz, dir === 'h' ? WORLD.DOOR_WIDTH + 0.03 : fd, fw, dir === 'h' ? fd : WORLD.DOOR_WIDTH + 0.03, 1));
+  }
+
+  private buildObjectives(physics: PhysicsWorld, seed: number): void {
+    const L = this.level;
+    const metal = this.baked.apply(new THREE.MeshStandardMaterial({ color: 0x5f6560, roughness: 0.55, metalness: 0.35 }));
+    for (const spot of L.relays) {
+      const r = new RelayPanel(spot.id, spot, L, physics, metal, (m) => this.baked.apply(m));
+      this.relays.set(r.id, r);
+      this.register(r);
+      this.group.add(r.root);
+    }
+    const steel = new THREE.MeshStandardMaterial({ color: 0x8b8e8f, roughness: 0.38, metalness: 0.55 });
+    const trim = new THREE.MeshStandardMaterial({ color: 0x4a4c4d, roughness: 0.5, metalness: 0.5 });
+    const floor = new THREE.MeshStandardMaterial({ color: 0x2b2a28, roughness: 0.85 });
+    this.elevator = new Elevator(L, physics, { steel, trim, floor });
+    for (const b of this.elevator.buttons) this.register(b);
+    this.group.add(this.elevator.root);
+
+    const rc = cellCenter(L, L.recorder.cx, L.recorder.cy);
+    this.recorder = new Item('recorder', 'tool', '녹음기 줍기', new THREE.Vector3(rc.x + L.recorder.ox, 0, rc.z + L.recorder.oy), L.recorder.rot, makeRecorderMesh(), physics);
+    this.register(this.recorder);
+    this.group.add(this.recorder.root);
+    void seed;
+  }
+
+  get activeRelays(): number {
+    let n = 0;
+    this.relays.forEach((r) => { if (r.active) n++; });
+    return n;
+  }
+
+  private refreshPower(silent: boolean): void {
+    const powered = this.activeRelays >= this.relays.size;
+    if (powered && !this.elevator.powered) {
+      this.elevator.setPowered(true);
+      if (!silent) this.onEvent?.({ type: 'power' });
+    }
   }
 
   private register(i: Interactable): void {
@@ -247,6 +300,27 @@ export class World {
       this.onEvent?.({ type: 'item', item, byPlayerId });
       return true;
     }
+    const relay = this.relays.get(targetId);
+    if (relay && !relay.active && value) {
+      relay.setActive(true);
+      this.onEvent?.({ type: 'relay', panel: relay, byPlayerId, activeCount: this.activeRelays });
+      this.refreshPower(false);
+      return true;
+    }
+    if (targetId === 'elevator-call' && this.elevator.powered && !this.elevator.open && value) {
+      this.elevator.open = true;
+      this.onEvent?.({ type: 'elevator', byPlayerId });
+      return true;
+    }
+    if (targetId.startsWith('freq-') && this.elevator.open && !this.elevator.ending && value) {
+      this.elevator.ending = value;
+      this.onEvent?.({ type: 'ending', frequency: value - 1, byPlayerId });
+      return true;
+    }
+    if (targetId.startsWith('revive:')) {
+      this.onEvent?.({ type: 'custom', targetId, value, byPlayerId });
+      return true;
+    }
     return false;
   }
 
@@ -255,12 +329,18 @@ export class World {
     const items: Record<string, number> = {};
     this.doors.forEach((d, id) => { doors[id] = d.state; });
     this.items.forEach((it, id) => { items[id] = it.collected ? 1 : 0; });
-    return { doors, items };
+    const flags: Record<string, number> = { elevator: this.elevator.open ? 1 : 0, ending: this.elevator.ending };
+    this.relays.forEach((r, id) => { flags[id] = r.active ? 1 : 0; });
+    return { doors, items, flags };
   }
 
   applySnapshot(s: WorldSnapshot): void {
     for (const [id, v] of Object.entries(s.doors)) this.doors.get(id)?.setState(v, true);
     for (const [id, v] of Object.entries(s.items)) this.items.get(id)?.setCollected(!!v);
+    for (const [id, v] of Object.entries(s.flags ?? {})) this.relays.get(id)?.setActive(!!v);
+    this.refreshPower(true);
+    if (s.flags?.elevator) this.elevator.open = true;
+    if (s.flags?.ending) this.elevator.ending = s.flags.ending;
   }
 
   fixedUpdate(dt: number): void {
@@ -269,6 +349,8 @@ export class World {
 
   update(dt: number, t: number, viewer: THREE.Vector3): void {
     this.lighting.update(dt, t, viewer);
+    this.relays.forEach((r) => r.update(dt, t));
+    this.elevator.update(dt, t);
   }
 
   dispose(): void {

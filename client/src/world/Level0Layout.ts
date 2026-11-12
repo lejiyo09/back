@@ -19,6 +19,8 @@ import { WORLD } from '@shared/Constants';
 export const EDGE_OPEN = 0;
 export const EDGE_WALL = 1;
 export const EDGE_DOOR = 2;
+/** outer-wall opening for the service elevator */
+export const EDGE_EXIT = 3;
 
 export interface LightFixture {
   cx: number;
@@ -51,6 +53,14 @@ export interface DoorSpot {
   hingeFlip: boolean;
 }
 
+/** Wall-mounted device: on the wall edge `side` of cell (cx, cy). */
+export interface WallSpot {
+  id: string;
+  cx: number;
+  cy: number;
+  side: 'n' | 's' | 'e' | 'w';
+}
+
 export interface Level0Data {
   seed: number;
   w: number;
@@ -66,6 +76,14 @@ export interface Level0Data {
   batteries: Spot[];
   notes: NoteSpot[];
   spawn: { cx: number; cy: number };
+  recorder: Spot;
+  relays: WallSpot[];
+  /** places where the recorder picks up a voice */
+  logSpots: { id: string; cx: number; cy: number; logIndex: number }[];
+  /** elevator in the south border wall of cell (cx, h-1) */
+  exit: { cx: number; cy: number };
+  /** which frequency (0/1) actually leads out — the third recording says it */
+  correctFrequency: number;
 }
 
 export function generateLevel0(seed: number): Level0Data {
@@ -255,7 +273,83 @@ export function generateLevel0(seed: number): Level0Data {
     { ...mkSpot('note-2', darkCells[5] ?? darkCells[0]), noteIndex: 2 },
   ];
 
-  return { seed, w: W, h: H, hEdges, vEdges, pillars, lights, dark, doors, batteries, notes, spawn };
+  // ── Objectives (own stream so the rest of the map stays identical per seed) ──
+  const objRng = rng.fork('objectives');
+  const stepsFromSpawn = (() => {
+    const d = Array.from({ length: H }, () => new Array<number>(W).fill(-1));
+    const q: [number, number][] = [[spawn.cx, spawn.cy]];
+    d[spawn.cy][spawn.cx] = 0;
+    for (let i = 0; i < q.length; i++) {
+      const [x, y] = q[i];
+      const nb: [number, number, 'h' | 'v', number, number][] = [
+        [x, y - 1, 'h', x, y], [x, y + 1, 'h', x, y + 1], [x - 1, y, 'v', x, y], [x + 1, y, 'v', x + 1, y]];
+      for (const [nx, ny, dd, ex, ey] of nb) {
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || d[ny][nx] >= 0) continue;
+        if (!passable(dd, ex, ey)) continue;
+        d[ny][nx] = d[y][x] + 1;
+        q.push([nx, ny]);
+      }
+    }
+    return d;
+  })();
+
+  // exit: deepest reachable cell on the south border inside the dark section
+  let exit = { cx: W - 2, cy: H - 1 };
+  let best = -1;
+  for (let x = dz0x + 1; x < W - 1; x++) {
+    const s = stepsFromSpawn[H - 1][x];
+    if (s > best) { best = s; exit = { cx: x, cy: H - 1 }; }
+  }
+  hEdges[H][exit.cx] = EDGE_EXIT;
+
+  // recorder: on the floor 3–6 steps from the start room, in the light
+  const recCells = freeCells.filter(([x, y]) => !dark[y][x] && stepsFromSpawn[y][x] >= 3 && stepsFromSpawn[y][x] <= 6);
+  const recorder = mkSpotFrom(objRng, 'recorder', objRng.pick(recCells.length ? recCells : litCells));
+
+  // relays: wall-mounted, spread out — one near, one far in the light, one in the dark
+  const wallSides = (x: number, y: number): WallSpot['side'][] => {
+    const out: WallSpot['side'][] = [];
+    if (hEdges[y][x] === EDGE_WALL) out.push('n');
+    if (hEdges[y + 1][x] === EDGE_WALL) out.push('s');
+    if (vEdges[y][x] === EDGE_WALL) out.push('w');
+    if (vEdges[y][x + 1] === EDGE_WALL) out.push('e');
+    return out;
+  };
+  const used = new Set<string>();
+  const pickRelay = (filter: (x: number, y: number, s: number) => boolean, id: string): WallSpot => {
+    const cands: [number, number][] = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (inStart(x, y) || used.has(`${x},${y}`) || !wallSides(x, y).length) continue;
+      if (x === exit.cx && y === exit.cy) continue;
+      if (filter(x, y, stepsFromSpawn[y][x])) cands.push([x, y]);
+    }
+    const [cx, cy] = cands.length ? objRng.pick(cands) : [1, 1];
+    used.add(`${cx},${cy}`);
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) used.add(`${cx + dx},${cy + dy}`);
+    return { id, cx, cy, side: objRng.pick(wallSides(cx, cy).length ? wallSides(cx, cy) : ['n']) };
+  };
+  const relays: WallSpot[] = [
+    pickRelay((x, y, s) => !dark[y][x] && s >= 6 && s <= 12, 'relay-0'),
+    pickRelay((x, y, s) => !dark[y][x] && s >= 14, 'relay-1'),
+    pickRelay((x, y) => dark[y][x] && Math.abs(x - exit.cx) + Math.abs(y - exit.cy) >= 3, 'relay-2'),
+  ];
+
+  // voices on the recorder: one in the light (mid-way), one deep in the dark near the exit
+  const logA = litCells.find(([x, y]) => stepsFromSpawn[y][x] >= 8 && stepsFromSpawn[y][x] <= 14 && !used.has(`${x},${y}`)) ?? litCells[0];
+  const logB = darkCells.find(([x, y]) => Math.abs(x - exit.cx) + Math.abs(y - exit.cy) <= 3 && !(x === exit.cx && y === exit.cy)) ?? darkCells[0];
+  const logSpots = [
+    { id: 'log-1', cx: logA[0], cy: logA[1], logIndex: 1 },
+    { id: 'log-2', cx: logB[0], cy: logB[1], logIndex: 2 },
+  ];
+
+  return {
+    seed, w: W, h: H, hEdges, vEdges, pillars, lights, dark, doors, batteries, notes, spawn,
+    recorder, relays, logSpots, exit, correctFrequency: objRng.int(0, 1),
+  };
+}
+
+function mkSpotFrom(rng: SeededRandom, id: string, [cx, cy]: [number, number]): Spot {
+  return { id, cx, cy, ox: rng.range(-0.5, 0.5), oy: rng.range(-0.5, 0.5), rot: rng.range(0, Math.PI * 2) };
 }
 
 /** World-space centre of a cell (level is centred on the origin). */

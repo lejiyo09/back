@@ -11,7 +11,7 @@ export class Item implements Interactable {
 
   constructor(
     readonly id: string,
-    readonly kind: Extract<InteractableKind, 'item' | 'note'>,
+    readonly kind: Extract<InteractableKind, 'item' | 'note' | 'tool'>,
     private readonly label: string,
     pos: THREE.Vector3,
     rot: number,
@@ -73,4 +73,22 @@ export function makeNoteMesh(texture: THREE.Texture): THREE.Object3D {
   m.position.y = 0.004;
   m.receiveShadow = true;
   return m;
+}
+
+/** The Signal Recorder: a battered handheld field recorder with a whip antenna. */
+export function makeRecorderMesh(): THREE.Object3D {
+  const g = new THREE.Group();
+  const shell = new THREE.MeshStandardMaterial({ color: 0x2a2b2d, roughness: 0.55, metalness: 0.2 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.025, 0.12), shell);
+  body.position.y = 0.0125;
+  const grille = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.002, 16), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }));
+  grille.position.set(0, 0.026, 0.025);
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.0035, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff2a1a }));
+  led.position.set(0.022, 0.026, -0.04);
+  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.0015, 0.002, 0.16, 6), new THREE.MeshStandardMaterial({ color: 0x9a9a9a, metalness: 0.9, roughness: 0.3 }));
+  antenna.rotation.x = Math.PI / 2 - 0.15;
+  antenna.position.set(-0.024, 0.02, -0.13);
+  g.add(body, grille, led, antenna);
+  g.traverse((o) => { if (o instanceof THREE.Mesh) o.castShadow = true; });
+  return g;
 }

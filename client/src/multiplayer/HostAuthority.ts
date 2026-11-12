@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { EntityNetState, PlayerHit, PlayerNetState } from '@shared/GameTypes';
 import type { World } from '../world/World';
 import type { NetworkManager } from './NetworkManager';
-import { EventDedup, newEventId, resolveEntityInteraction, resolveInteraction, type AuthorityCallbacks, type GameAuthority } from './GameAuthority';
+import { EventDedup, newEventId, resolveEntityInteraction, resolveInteraction, resolveRevive, type AuthorityCallbacks, type GameAuthority, type PlayerSnapshot } from './GameAuthority';
 
 /** Host browser: authoritative over world state; validates and confirms peer requests. */
 export class HostAuthority implements GameAuthority {
@@ -10,17 +10,37 @@ export class HostAuthority implements GameAuthority {
   private world?: World;
   private dedup = new EventDedup();
   private lastPos = new Map<string, THREE.Vector3>();
+  private remote = new Map<string, PlayerSnapshot>();
+
+  private cb: AuthorityCallbacks;
+
+  private everyone(): Map<string, PlayerSnapshot> {
+    const all = new Map(this.remote);
+    const me = this.cb.getLocal?.();
+    if (me) all.set(this.localPlayerId, me);
+    return all;
+  }
+
+  private resolve(targetId: string, requesterId: string, pos: THREE.Vector3 | undefined): number | null {
+    if (!this.world) return null;
+    const all = this.everyone();
+    if (targetId.startsWith('revive:')) return resolveRevive(targetId, all.get(requesterId), all);
+    const living = [...all.values()].filter((p) => !p.dead).map((p) => p.pos.clone().setY(p.pos.y + 1));
+    return resolveInteraction(this.world, targetId, pos, living);
+  }
 
   constructor(private net: NetworkManager, cb: AuthorityCallbacks) {
+    this.cb = cb;
     const s = net.socket;
     s.on('player:state', (id, st) => {
       this.lastPos.set(id, new THREE.Vector3(st.p[0], st.p[1] + 1, st.p[2]));
+      this.remote.set(id, { pos: new THREE.Vector3(st.p[0], st.p[1], st.p[2]), downed: st.dn, dead: st.d });
       cb.onRemoteState?.(id, st);
     });
     s.on('interaction:request', (id, req) => {
       if (!this.world || this.dedup.has(req.eventId)) return;
       this.dedup.add(req.eventId);
-      const value = resolveInteraction(this.world, req.targetId, this.lastPos.get(id));
+      const value = this.resolve(req.targetId, id, this.lastPos.get(id));
       if (value === null) return;
       this.confirm(req.eventId, req.targetId, id, value);
     });
@@ -28,7 +48,7 @@ export class HostAuthority implements GameAuthority {
       cb.onPeerJoined?.(p.id, p.name);
       if (this.world) s.emit('world:sync', { to: p.id, snapshot: this.world.snapshot() });
     });
-    s.on('session:peer-left', (id) => { this.lastPos.delete(id); cb.onPeerLeft?.(id); });
+    s.on('session:peer-left', (id) => { this.lastPos.delete(id); this.remote.delete(id); cb.onPeerLeft?.(id); });
     s.on('disconnect', () => cb.onSessionEnded?.('서버와의 연결이 끊어졌습니다.'));
   }
 
@@ -51,7 +71,7 @@ export class HostAuthority implements GameAuthority {
 
   requestInteraction(targetId: string, pos: THREE.Vector3): void {
     if (!this.world) return;
-    const value = resolveInteraction(this.world, targetId, pos);
+    const value = this.resolve(targetId, this.localPlayerId, pos);
     if (value !== null) this.confirm(newEventId(this.localPlayerId), targetId, this.localPlayerId, value);
   }
 

@@ -254,3 +254,127 @@ export function heartbeat(ctx: Ctx): AudioBuffer {
     return beat(0, 1) + beat(0.22, 0.7);
   }), 0.8);
 }
+
+// ── Signal Recorder & objectives ──────────────────────────────
+
+/** Direct-form biquad band-pass (RBJ cookbook). */
+function bandpass(f: number, q: number, sr: number) {
+  const w = (2 * Math.PI * f) / sr;
+  const alpha = Math.sin(w) / (2 * q);
+  const a0 = 1 + alpha;
+  const b0 = alpha / a0, b2 = -alpha / a0, a1 = (-2 * Math.cos(w)) / a0, a2 = (1 - alpha) / a0;
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  return (x: number) => {
+    const y = b0 * x + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1; x1 = x; y2 = y1; y1 = y;
+    return y;
+  };
+}
+
+const VOWELS: [number, number][] = [[730, 1090], [530, 1840], [270, 2290], [570, 840], [300, 870], [660, 1700]];
+
+/**
+ * A voice on a bad radio: formant-synthesised babble (no real words — the
+ * subtitles carry the text) pushed through a band-limited, clipped, static-laden
+ * channel with dropouts. `pitch` ~ 0.9–1.1 shifts the speaker.
+ */
+export function radioVoice(ctx: Ctx, seconds: number, seed: number, pitch = 1, whisper = false): AudioBuffer {
+  const sr = ctx.sampleRate;
+  const noise = rngFrom(seed * 7 + 1);
+  const pick = rngFrom(seed * 13 + 5);
+  const len = Math.floor(seconds * sr);
+  const b = ctx.createBuffer(1, len, sr);
+  const d = b.getChannelData(0);
+  let phase = 0;
+  let sylEnd = 0, sylStart = 0, f1 = bandpass(700, 6, sr), f2 = bandpass(1200, 8, sr);
+  let pause = false;
+  let hp = 0, prevIn = 0, lp = 0;
+  for (let i = 0; i < len; i++) {
+    const t = i / sr;
+    if (i >= sylEnd) {
+      // next syllable (or a short pause between "words")
+      pause = Math.abs(pick()) < 0.18;
+      sylStart = i;
+      sylEnd = i + Math.floor(sr * (pause ? 0.08 + Math.abs(pick()) * 0.18 : 0.1 + Math.abs(pick()) * 0.14));
+      const v = VOWELS[Math.floor(Math.abs(pick()) * VOWELS.length) % VOWELS.length];
+      f1 = bandpass(v[0] * pitch, 5, sr);
+      f2 = bandpass(v[1] * pitch, 7, sr);
+    }
+    const sp = (i - sylStart) / Math.max(1, sylEnd - sylStart);
+    const env = pause ? 0 : Math.sin(Math.PI * Math.min(1, sp * 1.15)) ** 0.6;
+    // glottal source: falling sawtooth with drifting pitch; whispers use noise
+    const f0 = (108 + Math.sin(t * 2.3) * 9 + Math.sin(t * 11) * 3) * pitch;
+    phase = (phase + f0 / sr) % 1;
+    const src = whisper ? noise() * 0.6 : (1 - 2 * phase) * 0.7 + noise() * 0.05;
+    const consonant = sp < 0.12 && !pause ? noise() * (0.12 - sp) * 4 : 0;
+    let s = (f1(src) * 1.0 + f2(src) * 0.6) * env + consonant * 0.3;
+    // radio channel: band-limit, clip, static, dropouts
+    hp = 0.95 * (hp + s - prevIn); prevIn = s;
+    lp += (hp - lp) * 0.45;
+    s = Math.tanh(lp * 3) * 0.8;
+    const drop = Math.sin(t * 1.7 + seed) > 0.93 ? 0.15 : 1;
+    d[i] = s * drop + noise() * (whisper ? 0.05 : 0.07) + (noise() > 0.996 ? noise() * 0.5 : 0);
+  }
+  return normalize(b, whisper ? 0.5 : 0.8);
+}
+
+export function beep(ctx: Ctx): AudioBuffer {
+  return normalize(buffer(ctx, 0.06, (t) => Math.sin(2 * Math.PI * 1320 * t) * Math.exp(-t * 40) * (t < 0.05 ? 1 : 0)), 0.5);
+}
+
+export function relayClunk(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(5150);
+  let lp = 0;
+  return normalize(buffer(ctx, 1.4, (t) => {
+    lp += (noise() - lp) * 0.2;
+    const clunk = Math.sin(2 * Math.PI * 70 * t) * Math.exp(-t * 14) + lp * 2 * Math.exp(-t * 25);
+    const arc = t > 0.05 && t < 0.4 ? noise() * 0.3 * Math.exp(-(t - 0.05) * 8) * (Math.sin(t * 900) > 0 ? 1 : 0.3) : 0;
+    const hum = t > 0.2 ? Math.sin(2 * Math.PI * 120 * t) * 0.2 * Math.min(1, (t - 0.2) * 2) * Math.exp(-(t - 0.2) * 1.2) : 0;
+    return clunk + arc + hum;
+  }), 0.9);
+}
+
+/** Power returning to the whole floor: a deep thump and a rising, building hum. */
+export function powerSurge(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(60);
+  let phase = 0;
+  return normalize(buffer(ctx, 4, (t, _i, sr) => {
+    const f = 40 + t * 30;
+    phase += (2 * Math.PI * f) / sr;
+    const thump = Math.sin(2 * Math.PI * 38 * t) * Math.exp(-t * 3) * 1.2;
+    const rise = (Math.sin(phase) + Math.sin(phase * 2) * 0.4) * Math.min(1, t / 3) * 0.5 * (t > 3.6 ? (4 - t) / 0.4 : 1);
+    return thump + rise + noise() * 0.04;
+  }), 0.9);
+}
+
+export function elevatorDing(ctx: Ctx): AudioBuffer {
+  return normalize(buffer(ctx, 2, (t) => {
+    const a = Math.sin(2 * Math.PI * 1046 * t) * Math.exp(-t * 2.5);
+    const b = t > 0.35 ? Math.sin(2 * Math.PI * 784 * (t - 0.35)) * Math.exp(-(t - 0.35) * 2.2) : 0;
+    return (a + b) * 0.6;
+  }), 0.7);
+}
+
+export function elevatorDoor(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(808);
+  let lp = 0;
+  return normalize(buffer(ctx, 1.8, (t) => {
+    lp += (noise() - lp) * 0.04;
+    const motor = Math.sin(2 * Math.PI * 95 * t + Math.sin(t * 40) * 0.4) * 0.3;
+    const env = Math.min(1, t * 4) * Math.min(1, (1.8 - t) * 3);
+    const stop = t > 1.55 ? Math.sin(2 * Math.PI * 60 * t) * Math.exp(-(t - 1.55) * 20) : 0;
+    return (motor + lp * 3) * env + stop;
+  }), 0.8);
+}
+
+export function knock(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(4321);
+  let lp = 0;
+  const hits = [0, 0.32, 0.6];
+  return normalize(buffer(ctx, 1.2, (t) => {
+    lp += (noise() - lp) * 0.3;
+    let s = 0;
+    for (const h of hits) if (t >= h) s += (Math.sin(2 * Math.PI * 140 * (t - h)) + lp) * Math.exp(-(t - h) * 35);
+    return s;
+  }), 0.8);
+}

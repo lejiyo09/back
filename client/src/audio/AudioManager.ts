@@ -4,7 +4,8 @@ import * as Synth from './SoundSynth';
 export type SoundKey =
   | 'hum' | 'roomTone' | 'doorOpen' | 'doorClose' | 'click' | 'paper' | 'pickup'
   | 'step0' | 'step1' | 'step2' | 'step3' | 'distant0' | 'distant1' | 'distant2'
-  | 'rBreath' | 'rStatic' | 'rStep0' | 'rStep1' | 'rStep2' | 'rScreech' | 'hit' | 'staticBurst' | 'heartbeat';
+  | 'rBreath' | 'rStatic' | 'rStep0' | 'rStep1' | 'rStep2' | 'rScreech' | 'hit' | 'staticBurst' | 'heartbeat'
+  | 'beep' | 'relay' | 'surge' | 'ding' | 'elevDoor' | 'knock' | 'whisper0' | 'whisper1';
 
 /**
  * Web Audio + three.js positional audio (design doc 10). One listener on the
@@ -42,6 +43,14 @@ export class AudioManager {
     this.buffers.set('hit', Synth.hitImpact(ctx));
     this.buffers.set('staticBurst', Synth.staticBurst(ctx));
     this.buffers.set('heartbeat', Synth.heartbeat(ctx));
+    this.buffers.set('beep', Synth.beep(ctx));
+    this.buffers.set('relay', Synth.relayClunk(ctx));
+    this.buffers.set('surge', Synth.powerSurge(ctx));
+    this.buffers.set('ding', Synth.elevatorDing(ctx));
+    this.buffers.set('elevDoor', Synth.elevatorDoor(ctx));
+    this.buffers.set('knock', Synth.knock(ctx));
+    this.buffers.set('whisper0', Synth.radioVoice(ctx, 1.6, 91, 0.95, true));
+    this.buffers.set('whisper1', Synth.radioVoice(ctx, 2.2, 92, 1.05, true));
 
     for (let i = 0; i < 8; i++) this.oneShots.push(new THREE.Audio(this.listener));
     for (let i = 0; i < 6; i++) {
@@ -112,6 +121,15 @@ export class AudioManager {
     p.play();
     this.loops.push(p);
     return p;
+  }
+
+  /** Play an ad-hoc buffer (e.g. a generated recorder voice); returns the source for stopping. */
+  playBuffer(buf: AudioBuffer, volume = 1): THREE.Audio {
+    const a = new THREE.Audio(this.listener);
+    a.setBuffer(buf);
+    a.setVolume(volume);
+    a.play();
+    return a;
   }
 
   play(key: SoundKey, volume = 1, rate = 1): void {

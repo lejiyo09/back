@@ -33,6 +33,7 @@ Render에는 `render.yaml` 블루프린트로 Web Service 하나만 배포하면
 | Shift | 달리기 (스태미나 소모) | Tab (누르고 있기) | 소지품 |
 | Ctrl / C | 웅크리기 | Esc | 일시정지 메뉴 |
 | Space | 점프 | F3 | 디버그 정보 |
+| R | 신호 녹음기 켜기/끄기 | E (길게) | 전력 패널 · 동료 구조 |
 
 ### 테스트용 URL 플래그
 
@@ -55,6 +56,24 @@ Render에는 `render.yaml` 블루프린트로 Web Service 하나만 배포하면
 | 기본 메인 메뉴 | ✅ | 메뉴 · 대기실 · 설정(품질/밝기/감도/음량/깜빡임 강도/헤드밥) · 일시정지 |
 | Socket.IO 로비 연결 | ✅ | 방 코드 생성/참가, 최대 4인, 입력 검증 + 레이트 리밋 |
 | 2개 브라우저 플레이어 동기화 | ✅ | 20Hz 상태 전송 + 110ms 보간, 호스트 권한 문/아이템 동기화, 중간 참가 시 월드 스냅샷 |
+
+## 캠페인 (Level 0)
+
+| 단계 | 내용 |
+|---|---|
+| 탐색 | 시작 방 근처 바닥에서 **신호 녹음기**를 찾는다 (각 플레이어가 자기 녹음기를 줍는다) |
+| 추적 | **R**로 녹음기를 켜면 다음 목표 쪽으로 신호가 강해진다(비프 간격·잡음 필터·화면 막대). 켜져 있는 동안 소음 5m, 녹음 재생 중 13m |
+| 녹음 | 특정 지점에서 녹음기가 **플레이어 자신의 목소리**로 된 녹음을 수신한다(자막 표시). 녹음 03이 올바른 주파수를 알려준다 |
+| 전력 | 벽에 달린 **전력 패널 3개**를 E를 길게 눌러 작동 — 레버 소리는 멀리까지 들린다(18m) |
+| 복구 | 세 번째 패널: 정전 → 전력 복구, 괴물은 단계적 공개를 건너뛰고 마지막 패널 위치로 향한다 |
+| 탈출 | 정전 구역 끝 외벽의 **화물 엘리베이터** 호출 → 탑승(멀티는 전원 탑승 필수) → 주파수 선택 |
+| 엔딩 | **A — ESCAPE** (올바른 주파수) / **B — WRONG FREQUENCY** (Level 1: 콘크리트 창고, 습기, 깜빡이는 형광등) |
+
+**Scare Director (`horror/ScareDirector.ts`)** — 플레이어별 로컬 연출(공유 월드는 바꾸지 않음): 뒤에서 다가오는 발소리, 벽 너머 노크,
+주변 조명 국소 정전, 녹음기 속삭임, **시야 가장자리의 형체(바라보면 사라짐)**, 보이지 않는 곳의 문 닫힘.
+같은 이벤트 연속 금지 · 추격 중이거나 괴물이 가까우면 중단 · 진행도에 따라 간격 단축 · 시드 기반.
+
+**멀티플레이 다운/구조** — 치명상 시 쓰러짐(30초), 동료가 다가가 E를 3초간 누르면 체력 50으로 일으킴. 시간이 지나면 시작 지점에서 재시작.
 
 ## The Receiver (괴물 AI)
 
@@ -91,11 +110,11 @@ client/src/
   core/        Game(조립 루트) · GameLoop(60Hz 고정 스텝) · GameSession · GameConfig · Input
   rendering/   Renderer · PostProcessing · Lighting · BakedLighting · Textures
   physics/     PhysicsWorld
-  player/      PlayerController · SurvivalStatus · Flashlight
+  player/      PlayerController · SurvivalStatus · Flashlight · Recorder(신호 녹음기)
   world/       World · Level0Layout · Notes
-  interaction/ InteractionManager · Interactable · Door · Item
+  interaction/ InteractionManager · Interactable · Door · Item · RelayPanel · Elevator
   entities/    EntityManager · ReceiverAI · Receiver(모델·애니메이션) · NavGrid(A*)
-  horror/      RevealDirector(단계적 공개)
+  horror/      RevealDirector(단계적 공개) · ScareDirector(동적 공포 연출)
   audio/       AudioManager · SoundSynth
   multiplayer/ GameAuthority · LocalAuthority · HostAuthority · RemoteAuthority · NetworkManager · RemotePlayers
   ui/          MainMenu · HUD · SettingsUI
@@ -128,6 +147,7 @@ client/src/
 
 - 실제 CC0 스캔 텍스처(ambientCG / Poly Haven)와 AssetManager, `assets/manifest.json` 등록
 - 그래프 기반 모듈 생성기(설계서 4장)로 `Level0Layout`의 분할 단계 교체 + 경로 검증
-- Scare Director(주변 시야 · 소리 · 정전 이벤트) 및 은신 장소, 다운/구조(멀티)
+- Level 1 / Level 2, 저장 시스템, 공간 변형(Room Mutation) 이벤트
+- 괴물 외형을 Blender 조각 모델(glTF)로 교체
 - Signal Recorder(R), 체력/사망·다운/구조, 호스트 이탈 처리 고도화
 - 번들 분할(현재 단일 ~5MB, gzip ~1.8MB — 대부분 Rapier WASM 인라인)

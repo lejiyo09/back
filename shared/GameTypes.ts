@@ -18,6 +18,8 @@ export interface PlayerNetState {
   n: number;
   /** dead / waiting to respawn */
   d: boolean;
+  /** downed — waiting for a teammate to revive (multiplayer) */
+  dn: boolean;
   /** client timestamp ms */
   t: number;
 }
@@ -33,6 +35,8 @@ export interface WorldSnapshot {
   doors: Record<string, number>;
   /** item id -> collected */
   items: Record<string, number>;
+  /** campaign flags: relay-N (activated), elevator (open), ending (1/2) */
+  flags: Record<string, number>;
 }
 
 export type InteractionKind = 'door' | 'item' | 'note';
