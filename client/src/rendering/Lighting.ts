@@ -133,6 +133,17 @@ export class Lighting {
     return Math.max(0, b * this.power * this.surge);
   }
 
+  /** Room Mutation: a fixture dies (0), comes back (1) or starts failing (2). */
+  setFixtureState(i: number, v: number): void {
+    const f = this.fixtures[i];
+    if (!f) return;
+    f.data = { ...f.data, state: v === 0 ? 'dead' : v === 2 ? 'faulty' : 'on' };
+    f.level = v === 0 ? 0 : 1;
+    this.panel.setColorAt(i, this.tmpColor.setScalar(v === 0 ? 0.05 : 1));
+    if (this.panel.instanceColor) this.panel.instanceColor.needsUpdate = true;
+    this.poolTimer = 0;
+  }
+
   update(dt: number, t: number, viewer: THREE.Vector3): void {
     // Update emissive levels only for fixtures that change (faulty / power changes).
     let dirty = false;

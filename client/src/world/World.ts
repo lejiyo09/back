@@ -82,6 +82,32 @@ export class World {
   blackout = false;
   private waterCells = new Set<string>();
   readonly supplyContent = new Map<string, string>();
+  /** Level 1 Pallet Maws (disguised crate stacks) and Level 2 crawl vents, for core/Lurkers */
+  readonly mawSpots: THREE.Vector3[] = [];
+  readonly ventSpots: { pos: THREE.Vector3; out: THREE.Vector3 }[] = [];
+
+  /** Room Mutation state (host-driven, replicated, part of the snapshot) */
+  private plugs = new Map<string, { mesh: THREE.Mesh; col: import('@dimforge/rapier3d-compat').Collider; dir: 'h' | 'v'; x: number; y: number }>();
+  readonly sealed = new Set<string>();
+  readonly lightStates = new Map<number, number>();
+
+  isSealed(doorId: string): boolean { return this.sealed.has(doorId); }
+
+  private setSealed(doorId: string, on: boolean): boolean {
+    const plug = this.plugs.get(doorId);
+    const door = this.doors.get(doorId);
+    if (!plug || !door || this.sealed.has(doorId) === on) return false;
+    if (on) this.sealed.add(doorId); else this.sealed.delete(doorId);
+    plug.mesh.visible = on;
+    plug.col.setEnabled(on);
+    door.root.visible = !on;
+    for (const c of door.colliders) c.setEnabled(!on);
+    // the AI's navigation reads the edge grid live
+    const edges = plug.dir === 'h' ? this.level.hEdges : this.level.vEdges;
+    edges[plug.y][plug.x] = on ? EDGE_WALL : EDGE_DOOR;
+    return true;
+  }
+
   /** Levels 3+: key name → its pickup */
   readonly keyItems = new Map<string, Item>();
   hasKey(key: string): boolean {
@@ -253,6 +279,22 @@ export class World {
       this.group.add(door.root);
     }
 
+    // Room Mutation: every doorway can be bricked up (a wall plug that is hidden until then)
+    for (const door of this.doors.values()) {
+      const spot = L.doors.find((d) => d.id === door.id)!;
+      const a = gridPoint(L, spot.x, spot.y);
+      const b = spot.dir === 'h' ? gridPoint(L, spot.x + 1, spot.y) : gridPoint(L, spot.x, spot.y + 1);
+      const cx = (a.x + b.x) / 2, cz = (a.z + b.z) / 2;
+      const sx = spot.dir === 'h' ? WORLD.CELL_SIZE : T, sz = spot.dir === 'h' ? T : WORLD.CELL_SIZE;
+      const mesh = new THREE.Mesh(worldBox(cx, H / 2, cz, sx, H, sz, 1), wallMat);
+      mesh.visible = false;
+      mesh.receiveShadow = true;
+      const col = physics.addStaticBox(cx, H / 2, cz, sx / 2, H / 2, sz / 2);
+      col.setEnabled(false);
+      this.group.add(mesh);
+      this.plugs.set(door.id, { mesh, col, dir: spot.dir, x: spot.x, y: spot.y });
+    }
+
     this.buildObjectives(physics, seed);
 
     // ── Items & notes ───────────────────────────────────────
@@ -326,9 +368,15 @@ export class World {
     const crates: THREE.BufferGeometry[] = [];
     const slats: THREE.BufferGeometry[] = [];
     const S = 1.05;
-    for (const c of L.crates) {
+    L.crates.forEach((c, ci) => {
       const cc = cellCenter(L, c.cx, c.cy);
       const x = cc.x + c.ox, z = cc.z + c.oy;
+      // Level 1: a few "crate stacks" are Pallet Maws — built by Lurkers, not merged here
+      if (L.index === 1 && ci % 9 === 4) {
+        this.mawSpots.push(new THREE.Vector3(x, 0, z));
+        physics.addStaticBox(x, 0.7, z, S / 2 + 0.03, 0.7, S / 2 + 0.03);
+        return;
+      }
       for (let k = 0; k < c.height; k++) {
         const y = S / 2 + k * S;
         const off = (k % 2 ? 0.06 : -0.04);
@@ -337,7 +385,7 @@ export class World {
         slats.push(worldBox(x + off, y, z - off, S + 0.02, 0.08, S + 0.02, 1));
       }
       physics.addStaticBox(x, (c.height * S) / 2, z, S / 2 + 0.03, (c.height * S) / 2, S / 2 + 0.03);
-    }
+    });
     if (crates.length) {
       const m = new THREE.Mesh(mergeGeometries(crates), crateMat);
       const s = new THREE.Mesh(mergeGeometries(slats), slatMat);
@@ -445,6 +493,7 @@ export class World {
         streak.position.copy(vp).add(new THREE.Vector3(0, -0.85, 0)).addScaledVector(out, 0.035);
         streak.rotation.y = Math.atan2(out.x, out.z);
         this.group.add(vent, streak);
+        this.ventSpots.push({ pos: vp.clone(), out: out.clone() });
       }
     });
     // supplies: same crates as Level 1
@@ -613,6 +662,12 @@ export class World {
       this.onEvent?.({ type: 'blackout', on: this.blackout });
       return true;
     }
+    if (targetId.startsWith('mut:')) {
+      const [, kind, id] = targetId.split(':');
+      if (kind === 'seal') return this.setSealed(id, !!value);
+      if (kind === 'light') { this.lighting.setFixtureState(Number(id), value); this.lightStates.set(Number(id), value); return true; }
+      return false;
+    }
     if (targetId.startsWith('revive:') || targetId.startsWith('mech:')) {
       this.onEvent?.({ type: 'custom', targetId, value, byPlayerId });
       return true;
@@ -627,13 +682,19 @@ export class World {
     this.items.forEach((it, id) => { items[id] = it.collected ? 1 : 0; });
     const flags: Record<string, number> = { elevator: this.elevator.open ? 1 : 0, ending: this.elevator.ending, blackout: this.blackout ? 1 : 0 };
     this.relays.forEach((r, id) => { flags[id] = r.active ? 1 : 0; });
+    this.sealed.forEach((id) => { flags[`mut:seal:${id}`] = 1; });
+    this.lightStates.forEach((v, i) => { flags[`mut:light:${i}`] = v; });
     return { doors, items, flags };
   }
 
   applySnapshot(s: WorldSnapshot): void {
     for (const [id, v] of Object.entries(s.doors)) this.doors.get(id)?.setState(v, true);
     for (const [id, v] of Object.entries(s.items)) this.items.get(id)?.setCollected(!!v);
-    for (const [id, v] of Object.entries(s.flags ?? {})) this.relays.get(id)?.setActive(!!v);
+    for (const [id, v] of Object.entries(s.flags ?? {})) {
+      if (id.startsWith('mut:')) { this.applyInteraction(id, v, 'world'); continue; }
+      this.relays.get(id)?.setActive(!!v);
+    }
+    for (const id of [...this.sealed]) if (!s.flags?.[`mut:seal:${id}`]) this.setSealed(id, false);
     this.refreshPower(true);
     if (s.flags?.elevator) this.elevator.open = true;
     if (s.flags?.ending) this.elevator.ending = s.flags.ending;

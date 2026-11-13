@@ -35,6 +35,8 @@ import { AssetManager } from './AssetManager';
 import { dressingGroups } from '../world/Dressing';
 import { THEMES } from '../world/levels/Themes';
 import { LevelMechanics } from './LevelMechanics';
+import { RoomMutation } from './RoomMutation';
+import { Lurkers } from './Lurkers';
 
 export interface GameOptions {
   canvas: HTMLCanvasElement;
@@ -113,6 +115,10 @@ export class Game {
   private levelIndex = 0;
   /** Levels 3+: this level's mechanic (keys, devices, lures, trains, CCTV…) */
   mech: LevelMechanics | null = null;
+  /** Level 0: the floor plan changes where nobody is looking */
+  mutation: RoomMutation | null = null;
+  /** Levels 1–2: Pallet Maws / Pipe Crawlers */
+  lurkers: Lurkers | null = null;
   // Level 2
   private heatWarned = false;
   private heatK = 0;
@@ -284,6 +290,18 @@ export class Game {
       this.blackoutTimer = 40 + Math.random() * 20;
     }
     if (this.levelIndex === 2) this.steamTimers = this.world.steamVents.map(() => 3 + Math.random() * 8);
+    if (this.levelIndex === 1 || this.levelIndex === 2) {
+      this.lurkers = new Lurkers({
+        level: this.levelIndex, world: this.world, authority: () => this.authority, scene: this.scene, audio: this.audio, camera: this.camera,
+        feet: () => this.player.feet, crouching: () => this.player.crouching, speed: () => this.player.horizontalSpeed,
+        noise: () => this.player.status.noise, alive: () => !this.dead && !this.downed && this.endingSeq === -1 && !this.chapterDone,
+        hit: (dmg, from) => this.onHit(dmg, from), toast: (t) => this.hud.toast(t),
+      });
+    }
+    if (this.levelIndex === 0) {
+      this.mutation = new RoomMutation(this.world, () => this.authority, this.physics,
+        () => [this.camera.position.clone(), ...this.remotes.targets().map((t) => t.eye)], this.session.mapSeed);
+    }
     if (theme) {
       if (carry?.choice) this.l2Choice = carry.choice;
       // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -598,7 +616,7 @@ export class Game {
       this.renderer.renderer.compile(this.scene, this.camera);
     } else if (e.type === 'custom') {
       if (e.targetId === `revive:${this.authority.localPlayerId}` && this.downed) this.revivedByTeammate(e.byPlayerId);
-      if (e.targetId.startsWith('mech:')) this.mech?.onCustom(e.targetId, e.byPlayerId);
+      if (e.targetId.startsWith('mech:')) { this.mech?.onCustom(e.targetId, e.byPlayerId); this.lurkers?.onCustom(e.targetId); }
     }
   }
 
@@ -769,6 +787,8 @@ export class Game {
 
     this.updatePowerSequence(dt);
     this.mech?.update(dt);
+    if (this.endingSeq === -1) this.mutation?.update(dt);
+    this.lurkers?.update(dt);
     this.updateLevel1(dt);
     this.updateLevel2(dt);
     this.updateFinalSequence(dt);
@@ -1414,6 +1434,7 @@ export class Game {
     this.recorder?.dispose();
     this.endingScene?.dispose();
     this.mech?.dispose();
+    this.lurkers?.dispose();
     this.world?.dispose();
     this.assets?.dispose();
     this.physics?.dispose();
