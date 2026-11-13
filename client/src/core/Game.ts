@@ -328,6 +328,11 @@ export class Game {
     if (URL_FLAGS.debug) {
       this.input.enabled = true;
       this.hud.showPause(false);
+    } else if (this.levelIndex > 0) {
+      // arriving from the previous level: no title page, play on immediately (click re-captures the mouse)
+      this.input.enabled = true;
+      this.hud.showPause(false);
+      this.hud.toast('화면을 클릭하면 마우스 시점이 고정됩니다', 4000);
     } else {
       this.input.enabled = false;
       this.hud.showPause(true, '<p class="big">화면을 클릭하여 시작</p><p>노란 벽지, 젖은 카펫, 끊이지 않는 형광등 소리.<br>당신은 Level 0에 noclip 되었다.</p>');
@@ -382,7 +387,7 @@ export class Game {
       void this.audio.resume();
     });
     this.controls.addEventListener('unlock', () => {
-      if (this.ended) return;
+      if (this.ended || this.advancing) return;
       this.input.enabled = URL_FLAGS.debug;
       this.input.clear();
       this.hud.hideNote();
@@ -969,6 +974,8 @@ export class Game {
     this.epilogueWalk = false;
     this.endingLoops.forEach((l) => { if (l.isPlaying) l.stop(); });
     const escaped = this.endingFreq === this.world.level.correctFrequency;
+    // Ending B is not a stop: the campaign runs straight on into Level 1, no screen in between
+    if (!escaped && this.levelIndex === 0 && this.autoAdvance()) return;
     const secs = Math.floor(this.time);
     const stats = [
       `시간 ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`,
@@ -994,6 +1001,18 @@ export class Game {
       ...(this.levelIndex === 0 && !escaped ? this.continueOption() : {}),
     }, () => this.exit());
     this.hud.fade(0, 1.5);
+  }
+
+  /** Seamless level change: the screen stays black and the next level loads directly.
+   *  Single player / host trigger it; clients just wait for the host's game:level. */
+  private advancing = false;
+  private autoAdvance(): boolean {
+    if (!this.opts.onContinue) return false;
+    this.advancing = true;
+    this.input.enabled = false;
+    this.hud.showPause(false);
+    if (this.session.mode !== 'client') setTimeout(() => { if (!this.ended) this.opts.onContinue?.(); }, 400);
+    return true;
   }
 
   /** Ending B leads on into Level 1 — chosen by the single player or the host. */
@@ -1210,6 +1229,7 @@ export class Game {
     if (this.session.mode === 'single') SaveGame.save({ chapter: 1, seed: this.session.mapSeed, carry, completed: true });
     setTimeout(() => {
       if (this.ended) return;
+      if (this.autoAdvance()) return; // straight down into Level 2
       const secs = Math.floor(carry.time);
       this.input.enabled = false;
       if (this.controls.isLocked) this.controls.unlock();

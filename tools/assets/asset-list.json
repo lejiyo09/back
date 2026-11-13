@@ -1,0 +1,14 @@
+{
+  "shared": ["cardboard_box_01", "metal_trash_can", "WetFloorSign_01", "fire_alarm", "korean_fire_extinguisher_01", "security_camera_01", "caged_hanging_light", "modular_airduct_rectangular_01"],
+  "level-00": ["metal_office_desk", "SchoolChair_01", "drawer_cabinet", "office_notepads", "clipboard", "wall_clock", "Television_01", "projector_screen", "classic_laptop"],
+  "level-01": ["steel_frame_shelves_01", "steel_frame_shelves_02", "wooden_crate_01", "hand_truck", "industrial_storage_cart", "Barrel_01", "plastic_crate_03", "overhead_crane", "ladder_sectioned_01", "metal_tool_chest"],
+  "level-02": ["modular_industrial_pipes_01", "old_military_compressor", "portable_generator", "power_box_01", "retro_multimeter", "pipe_wrench", "propane_tank", "industrial_pipe_lamp"],
+  "level-03": ["wooden_bookshelf_worn", "vintage_cabinet_01", "vintage_wooden_drawer_01", "binder_notebook", "book_encyclopedia_set_01", "cassette_player", "desk_lamp_arm_01", "vintage_stapler", "filmstrip_projector_8mm", "stationery_supplies"],
+  "level-04": ["GothicBed_01", "ClassicNightstand_01", "ArmChair_01", "ornate_mirror_01", "Chandelier_01", "ClassicConsole_01", "vintage_grandfather_clock_01", "CashRegister_01", "Sofa_01"],
+  "level-05": ["old_bed_frame", "medical_box", "industrial_microscope", "metal_stool_01", "chemistry_set", "BarberShopChair_01", "bleach_bottle", "tool_cart"],
+  "level-06": ["lifebuoy", "metal_jerrycan", "flood_lights", "security_light", "metal_toolbox", "Barrel_02"],
+  "level-07": ["modular_street_seating", "Megaphone_01", "concrete_road_barrier", "street_lamp_01", "vintage_radio_transceiver"],
+  "level-08": ["plastic_monobloc_chair_01", "painted_wooden_bench", "plastic_crate_01"],
+  "level-09": ["television_02", "circuit_board", "exterior_aircon_unit", "vintage_video_camera", "security_camera_02"],
+  "level-10": ["vintage_spacecraft_instrument", "portable_searchlight", "signal_flashlight"]
+}

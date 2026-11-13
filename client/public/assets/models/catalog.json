@@ -1,0 +1,1269 @@
+{
+ "metal_office_desk": {
+  "group": "level-00",
+  "name": "Metal Office Desk",
+  "authors": [
+   "Ulan Cabanilla"
+  ],
+  "source": "https://polyhaven.com/a/metal_office_desk",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 6898,
+  "tris": 6898,
+  "bytes": {
+   "512": 123228,
+   "1k": 207296
+  }
+ },
+ "SchoolChair_01": {
+  "group": "level-00",
+  "name": "School Chair 01",
+  "authors": [
+   "Ethan Place"
+  ],
+  "source": "https://polyhaven.com/a/SchoolChair_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 5072,
+  "tris": 5072,
+  "bytes": {
+   "512": 101640,
+   "1k": 224592
+  }
+ },
+ "drawer_cabinet": {
+  "group": "level-00",
+  "name": "Drawer Cabinet",
+  "authors": [
+   "Ulan Cabanilla"
+  ],
+  "source": "https://polyhaven.com/a/drawer_cabinet",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 26406,
+  "tris": 11997,
+  "bytes": {
+   "512": 186056,
+   "1k": 276384
+  }
+ },
+ "office_notepads": {
+  "group": "level-00",
+  "name": "Office Notepads",
+  "authors": [
+   "Ulan Cabanilla"
+  ],
+  "source": "https://polyhaven.com/a/office_notepads",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 666,
+  "tris": 666,
+  "bytes": {
+   "512": 35400,
+   "1k": 85556
+  }
+ },
+ "clipboard": {
+  "group": "level-00",
+  "name": "Clipboard",
+  "authors": [
+   "ProgrammerOnCoffee"
+  ],
+  "source": "https://polyhaven.com/a/clipboard",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 6176,
+  "tris": 6176,
+  "bytes": {
+   "512": 106960,
+   "1k": 191224
+  }
+ },
+ "wall_clock": {
+  "group": "level-00",
+  "name": "Wall Clock",
+  "authors": [
+   "PierreB3D"
+  ],
+  "source": "https://polyhaven.com/a/wall_clock",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 3658,
+  "tris": 3658,
+  "bytes": {
+   "512": 107412,
+   "1k": 187656
+  }
+ },
+ "Television_01": {
+  "group": "level-00",
+  "name": "Television 01",
+  "authors": [
+   "Gabriel Radić"
+  ],
+  "source": "https://polyhaven.com/a/Television_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 1918,
+  "tris": 1918,
+  "bytes": {
+   "512": 93384,
+   "1k": 222072
+  }
+ },
+ "projector_screen": {
+  "group": "level-00",
+  "name": "Projector Screen",
+  "authors": [
+   "PeterM"
+  ],
+  "source": "https://polyhaven.com/a/projector_screen",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 8727,
+  "tris": 8727,
+  "bytes": {
+   "512": 183724,
+   "1k": 334240
+  }
+ },
+ "classic_laptop": {
+  "group": "level-00",
+  "name": "Classic Laptop",
+  "authors": [
+   "Arrangemonk"
+  ],
+  "source": "https://polyhaven.com/a/classic_laptop",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 14450,
+  "tris": 11995,
+  "bytes": {
+   "512": 245100,
+   "1k": 370272
+  }
+ },
+ "cardboard_box_01": {
+  "group": "shared",
+  "name": "Cardboard Box 01",
+  "authors": [
+   "Rahul Chaudhary"
+  ],
+  "source": "https://polyhaven.com/a/cardboard_box_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 16952,
+  "tris": 12000,
+  "bytes": {
+   "512": 171816,
+   "1k": 322252
+  }
+ },
+ "metal_trash_can": {
+  "group": "shared",
+  "name": "Metal Trash Can",
+  "authors": [
+   "GurJas Studios"
+  ],
+  "source": "https://polyhaven.com/a/metal_trash_can",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 13960,
+  "tris": 12214,
+  "bytes": {
+   "512": 373912,
+   "1k": 887956
+  }
+ },
+ "WetFloorSign_01": {
+  "group": "shared",
+  "name": "Wet Floor Sign 01",
+  "authors": [
+   "Fran Calvente"
+  ],
+  "source": "https://polyhaven.com/a/WetFloorSign_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 228,
+  "tris": 228,
+  "bytes": {
+   "512": 47380,
+   "1k": 106488
+  }
+ },
+ "fire_alarm": {
+  "group": "shared",
+  "name": "Fire Alarm",
+  "authors": [
+   "Slinc"
+  ],
+  "source": "https://polyhaven.com/a/fire_alarm",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 2705,
+  "tris": 2705,
+  "bytes": {
+   "512": 115480,
+   "1k": 256076
+  }
+ },
+ "korean_fire_extinguisher_01": {
+  "group": "shared",
+  "name": "Korean Fire Extinguisher 01",
+  "authors": [
+   "UM JOORIN"
+  ],
+  "source": "https://polyhaven.com/a/korean_fire_extinguisher_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 9913,
+  "tris": 9913,
+  "bytes": {
+   "512": 266904,
+   "1k": 748384
+  }
+ },
+ "security_camera_01": {
+  "group": "shared",
+  "name": "Security Camera 01",
+  "authors": [
+   "Alexander Otterbeck",
+   "Yann Kervran"
+  ],
+  "source": "https://polyhaven.com/a/security_camera_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 13571,
+  "tris": 11999,
+  "bytes": {
+   "512": 180232,
+   "1k": 281216
+  }
+ },
+ "caged_hanging_light": {
+  "group": "shared",
+  "name": "Caged Hanging Light",
+  "authors": [
+   "Ulan Cabanilla"
+  ],
+  "source": "https://polyhaven.com/a/caged_hanging_light",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 22893,
+  "tris": 11999,
+  "bytes": {
+   "512": 266932,
+   "1k": 504616
+  }
+ },
+ "modular_airduct_rectangular_01": {
+  "group": "shared",
+  "name": "Modular Airduct Rectangular 01",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "source": "https://polyhaven.com/a/modular_airduct_rectangular_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 45090,
+  "tris": 18305,
+  "bytes": {
+   "512": 461488,
+   "1k": 694104
+  }
+ },
+ "steel_frame_shelves_01": {
+  "group": "level-01",
+  "name": "Steel Frame Shelves 01",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "source": "https://polyhaven.com/a/steel_frame_shelves_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 4348,
+  "tris": 4348,
+  "bytes": {
+   "512": 96016,
+   "1k": 194984
+  }
+ },
+ "steel_frame_shelves_02": {
+  "group": "level-01",
+  "name": "Steel Frame Shelves 02",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "source": "https://polyhaven.com/a/steel_frame_shelves_02",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 4348,
+  "tris": 4348,
+  "bytes": {
+   "512": 101036,
+   "1k": 204368
+  }
+ },
+ "wooden_crate_01": {
+  "group": "level-01",
+  "name": "Wooden Crate 01",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "source": "https://polyhaven.com/a/wooden_crate_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 6576,
+  "tris": 6576,
+  "bytes": {
+   "512": 159588,
+   "1k": 345468
+  }
+ },
+ "hand_truck": {
+  "group": "level-01",
+  "name": "Hand Truck",
+  "authors": [
+   "Mutanzom3D"
+  ],
+  "source": "https://polyhaven.com/a/hand_truck",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 13220,
+  "tris": 12000,
+  "bytes": {
+   "512": 297728,
+   "1k": 656140
+  }
+ },
+ "industrial_storage_cart": {
+  "group": "level-01",
+  "name": "Industrial Storage Cart",
+  "authors": [
+   "Jule Bielitz"
+  ],
+  "source": "https://polyhaven.com/a/industrial_storage_cart",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 18902,
+  "tris": 11991,
+  "bytes": {
+   "512": 226552,
+   "1k": 377652
+  }
+ },
+ "Barrel_01": {
+  "group": "level-01",
+  "name": "Barrel_01",
+  "authors": [
+   "Jorge Camacho"
+  ],
+  "source": "https://polyhaven.com/a/Barrel_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 2682,
+  "tris": 2682,
+  "bytes": {
+   "512": 132940,
+   "1k": 357872
+  }
+ },
+ "plastic_crate_03": {
+  "group": "level-01",
+  "name": "Plastic Crate 03",
+  "authors": [
+   "Pacific Penguin"
+  ],
+  "source": "https://polyhaven.com/a/plastic_crate_03",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 21740,
+  "tris": 12718,
+  "bytes": {
+   "512": 316528,
+   "1k": 571604
+  }
+ },
+ "overhead_crane": {
+  "group": "level-01",
+  "name": "Overhead Crane",
+  "authors": [
+   "Timothy3D"
+  ],
+  "source": "https://polyhaven.com/a/overhead_crane",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 89964,
+  "tris": 21316,
+  "bytes": {
+   "512": 563168,
+   "1k": 1043972
+  }
+ },
+ "ladder_sectioned_01": {
+  "group": "level-01",
+  "name": "Ladder Sectioned 01",
+  "authors": [
+   "MP"
+  ],
+  "source": "https://polyhaven.com/a/ladder_sectioned_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 29140,
+  "tris": 12049,
+  "bytes": {
+   "512": 215780,
+   "1k": 338828
+  }
+ },
+ "metal_tool_chest": {
+  "group": "level-01",
+  "name": "Metal Tool Chest",
+  "authors": [
+   "Yann Kervran",
+   "John Hutcheson"
+  ],
+  "source": "https://polyhaven.com/a/metal_tool_chest",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 13360,
+  "tris": 11994,
+  "bytes": {
+   "512": 213192,
+   "1k": 366268
+  }
+ },
+ "modular_industrial_pipes_01": {
+  "group": "level-02",
+  "name": "Modular Industrial Pipes 01",
+  "authors": [
+   "Jorge Camacho"
+  ],
+  "source": "https://polyhaven.com/a/modular_industrial_pipes_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 12340,
+  "tris": 11994,
+  "bytes": {
+   "512": 360936,
+   "1k": 751692
+  }
+ },
+ "old_military_compressor": {
+  "group": "level-02",
+  "name": "Old Military Compressor",
+  "authors": [
+   "Brian Speight"
+  ],
+  "source": "https://polyhaven.com/a/old_military_compressor",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 79042,
+  "tris": 12191,
+  "bytes": {
+   "512": 313008,
+   "1k": 532748
+  }
+ },
+ "portable_generator": {
+  "group": "level-02",
+  "name": "Portable Generator",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "source": "https://polyhaven.com/a/portable_generator",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 26419,
+  "tris": 13873,
+  "bytes": {
+   "512": 347608,
+   "1k": 601832
+  }
+ },
+ "power_box_01": {
+  "group": "level-02",
+  "name": "Power Box 01",
+  "authors": [
+   "Rico Cilliers",
+   "Yann Kervran"
+  ],
+  "source": "https://polyhaven.com/a/power_box_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 21272,
+  "tris": 11998,
+  "bytes": {
+   "512": 240800,
+   "1k": 375728
+  }
+ },
+ "retro_multimeter": {
+  "group": "level-02",
+  "name": "Retro Multimeter",
+  "authors": [
+   "elli moeller"
+  ],
+  "source": "https://polyhaven.com/a/retro_multimeter",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 8948,
+  "tris": 8948,
+  "bytes": {
+   "512": 156836,
+   "1k": 218728
+  }
+ },
+ "pipe_wrench": {
+  "group": "level-02",
+  "name": "Pipe Wrench",
+  "authors": [
+   "Will Evarts"
+  ],
+  "source": "https://polyhaven.com/a/pipe_wrench",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 10746,
+  "tris": 10746,
+  "bytes": {
+   "512": 252176,
+   "1k": 643460
+  }
+ },
+ "propane_tank": {
+  "group": "level-02",
+  "name": "Propane Tank",
+  "authors": [
+   "Slinc"
+  ],
+  "source": "https://polyhaven.com/a/propane_tank",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 5238,
+  "tris": 5238,
+  "bytes": {
+   "512": 132176,
+   "1k": 286292
+  }
+ },
+ "industrial_pipe_lamp": {
+  "group": "level-02",
+  "name": "Industrial Pipe Lamp",
+  "authors": [
+   "Mateusz Sadek"
+  ],
+  "source": "https://polyhaven.com/a/industrial_pipe_lamp",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 8626,
+  "tris": 8626,
+  "bytes": {
+   "512": 177712,
+   "1k": 380380
+  }
+ },
+ "wooden_bookshelf_worn": {
+  "group": "level-03",
+  "name": "Wooden Bookshelf Worn",
+  "authors": [
+   "Ulan Cabanilla"
+  ],
+  "source": "https://polyhaven.com/a/wooden_bookshelf_worn",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 10106,
+  "tris": 10106,
+  "bytes": {
+   "512": 208260,
+   "1k": 605616
+  }
+ },
+ "vintage_cabinet_01": {
+  "group": "level-03",
+  "name": "Vintage Cabinet 01",
+  "authors": [
+   "Rico Cilliers"
+  ],
+  "source": "https://polyhaven.com/a/vintage_cabinet_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 61096,
+  "tris": 12000,
+  "bytes": {
+   "512": 295388,
+   "1k": 509328
+  }
+ },
+ "vintage_wooden_drawer_01": {
+  "group": "level-03",
+  "name": "Vintage Wooden Drawer 01",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "source": "https://polyhaven.com/a/vintage_wooden_drawer_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 5184,
+  "tris": 5184,
+  "bytes": {
+   "512": 153848,
+   "1k": 308044
+  }
+ },
+ "binder_notebook": {
+  "group": "level-03",
+  "name": "Binder Notebook",
+  "authors": [
+   "DaDrood"
+  ],
+  "source": "https://polyhaven.com/a/binder_notebook",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 18077,
+  "tris": 11999,
+  "bytes": {
+   "512": 185040,
+   "1k": 276140
+  }
+ },
+ "book_encyclopedia_set_01": {
+  "group": "level-03",
+  "name": "Book Encyclopedia Set 01",
+  "authors": [
+   "John Malcolm"
+  ],
+  "source": "https://polyhaven.com/a/book_encyclopedia_set_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 67306,
+  "tris": 28308,
+  "bytes": {
+   "512": 510060,
+   "1k": 634396
+  }
+ },
+ "cassette_player": {
+  "group": "level-03",
+  "name": "Cassette Player",
+  "authors": [
+   "Oday Abuzaeed"
+  ],
+  "source": "https://polyhaven.com/a/cassette_player",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 4830,
+  "tris": 4830,
+  "bytes": {
+   "512": 179864,
+   "1k": 380228
+  }
+ },
+ "desk_lamp_arm_01": {
+  "group": "level-03",
+  "name": "Desk Lamp Arm 01",
+  "authors": [
+   "Yann Kervran",
+   "Kuutti Siitonen"
+  ],
+  "source": "https://polyhaven.com/a/desk_lamp_arm_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 24102,
+  "tris": 12410,
+  "bytes": {
+   "512": 258096,
+   "1k": 490284
+  }
+ },
+ "vintage_stapler": {
+  "group": "level-03",
+  "name": "Vintage Stapler",
+  "authors": [
+   "Mateusz Sadek"
+  ],
+  "source": "https://polyhaven.com/a/vintage_stapler",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 4370,
+  "tris": 4370,
+  "bytes": {
+   "512": 148724,
+   "1k": 343648
+  }
+ },
+ "filmstrip_projector_8mm": {
+  "group": "level-03",
+  "name": "Filmstrip Projector 8mm",
+  "authors": [
+   "PeterM"
+  ],
+  "source": "https://polyhaven.com/a/filmstrip_projector_8mm",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 32697,
+  "tris": 14644,
+  "bytes": {
+   "512": 344376,
+   "1k": 522504
+  }
+ },
+ "stationery_supplies": {
+  "group": "level-03",
+  "name": "Stationery Supplies",
+  "authors": [
+   "Mateusz Sadek"
+  ],
+  "source": "https://polyhaven.com/a/stationery_supplies",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 4412,
+  "tris": 4412,
+  "bytes": {
+   "512": 129192,
+   "1k": 280056
+  }
+ },
+ "GothicBed_01": {
+  "group": "level-04",
+  "name": "Gothic Bed 01",
+  "authors": [
+   "Kirill Sannikov"
+  ],
+  "source": "https://polyhaven.com/a/GothicBed_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 18745,
+  "tris": 11999,
+  "bytes": {
+   "512": 243096,
+   "1k": 389972
+  }
+ },
+ "ClassicNightstand_01": {
+  "group": "level-04",
+  "name": "Classic Nightstand 01",
+  "authors": [
+   "Kirill Sannikov"
+  ],
+  "source": "https://polyhaven.com/a/ClassicNightstand_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 2002,
+  "tris": 2002,
+  "bytes": {
+   "512": 75668,
+   "1k": 167840
+  }
+ },
+ "ArmChair_01": {
+  "group": "level-04",
+  "name": "Arm Chair 01",
+  "authors": [
+   "Kirill Sannikov"
+  ],
+  "source": "https://polyhaven.com/a/ArmChair_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 5626,
+  "tris": 5626,
+  "bytes": {
+   "512": 157780,
+   "1k": 440624
+  }
+ },
+ "ornate_mirror_01": {
+  "group": "level-04",
+  "name": "Ornate Mirror 01",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "source": "https://polyhaven.com/a/ornate_mirror_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 14246,
+  "tris": 11999,
+  "bytes": {
+   "512": 156212,
+   "1k": 245824
+  }
+ },
+ "Chandelier_01": {
+  "group": "level-04",
+  "name": "Chandelier 01",
+  "authors": [
+   "Kirill Sannikov"
+  ],
+  "source": "https://polyhaven.com/a/Chandelier_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 26860,
+  "tris": 13139,
+  "bytes": {
+   "512": 252152,
+   "1k": 372152
+  }
+ },
+ "ClassicConsole_01": {
+  "group": "level-04",
+  "name": "Classic Console 01",
+  "authors": [
+   "Kirill Sannikov"
+  ],
+  "source": "https://polyhaven.com/a/ClassicConsole_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 7566,
+  "tris": 7566,
+  "bytes": {
+   "512": 189600,
+   "1k": 363500
+  }
+ },
+ "vintage_grandfather_clock_01": {
+  "group": "level-04",
+  "name": "Vintage Grandfather Clock 01",
+  "authors": [
+   "Yann Kervran",
+   "James Ray Cock"
+  ],
+  "source": "https://polyhaven.com/a/vintage_grandfather_clock_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 8582,
+  "tris": 8582,
+  "bytes": {
+   "512": 218580,
+   "1k": 393432
+  }
+ },
+ "CashRegister_01": {
+  "group": "level-04",
+  "name": "Cash Register 01",
+  "authors": [
+   "Joe Seabuhr"
+  ],
+  "source": "https://polyhaven.com/a/CashRegister_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 9927,
+  "tris": 9927,
+  "bytes": {
+   "512": 250444,
+   "1k": 405552
+  }
+ },
+ "Sofa_01": {
+  "group": "level-04",
+  "name": "Sofa 01",
+  "authors": [
+   "Kirill Sannikov"
+  ],
+  "source": "https://polyhaven.com/a/Sofa_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 4101,
+  "tris": 4101,
+  "bytes": {
+   "512": 104756,
+   "1k": 218004
+  }
+ },
+ "old_bed_frame": {
+  "group": "level-05",
+  "name": "Old Bed Frame",
+  "authors": [
+   "Luca B"
+  ],
+  "source": "https://polyhaven.com/a/old_bed_frame",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 49990,
+  "tris": 11905,
+  "bytes": {
+   "512": 239284,
+   "1k": 459032
+  }
+ },
+ "medical_box": {
+  "group": "level-05",
+  "name": "Medical Box",
+  "authors": [
+   "Ulan Cabanilla"
+  ],
+  "source": "https://polyhaven.com/a/medical_box",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 3718,
+  "tris": 3718,
+  "bytes": {
+   "512": 132644,
+   "1k": 295124
+  }
+ },
+ "industrial_microscope": {
+  "group": "level-05",
+  "name": "Industrial Microscope",
+  "authors": [
+   "Lukas Walzer"
+  ],
+  "source": "https://polyhaven.com/a/industrial_microscope",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 16598,
+  "tris": 12239,
+  "bytes": {
+   "512": 271848,
+   "1k": 434092
+  }
+ },
+ "metal_stool_01": {
+  "group": "level-05",
+  "name": "Metal Stool 01",
+  "authors": [
+   "Ulan Cabanilla"
+  ],
+  "source": "https://polyhaven.com/a/metal_stool_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 8334,
+  "tris": 8334,
+  "bytes": {
+   "512": 162124,
+   "1k": 368064
+  }
+ },
+ "chemistry_set": {
+  "group": "level-05",
+  "name": "Chemistry Set",
+  "authors": [
+   "Jiří Ptáček"
+  ],
+  "source": "https://polyhaven.com/a/chemistry_set",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 41958,
+  "tris": 23008,
+  "bytes": {
+   "512": 393556,
+   "1k": 585616
+  }
+ },
+ "BarberShopChair_01": {
+  "group": "level-05",
+  "name": "Barber Shop Chair 01",
+  "authors": [
+   "Fernando Quinn"
+  ],
+  "source": "https://polyhaven.com/a/BarberShopChair_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 4280,
+  "tris": 4280,
+  "bytes": {
+   "512": 237528,
+   "1k": 450812
+  }
+ },
+ "bleach_bottle": {
+  "group": "level-05",
+  "name": "Bleach Bottle",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "source": "https://polyhaven.com/a/bleach_bottle",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 4052,
+  "tris": 4052,
+  "bytes": {
+   "512": 74896,
+   "1k": 132764
+  }
+ },
+ "tool_cart": {
+  "group": "level-05",
+  "name": "Tool Cart",
+  "authors": [
+   "Savva Zakharov"
+  ],
+  "source": "https://polyhaven.com/a/tool_cart",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 29394,
+  "tris": 12000,
+  "bytes": {
+   "512": 238356,
+   "1k": 475160
+  }
+ },
+ "lifebuoy": {
+  "group": "level-06",
+  "name": "Lifebuoy",
+  "authors": [
+   "Hank Kaamura"
+  ],
+  "source": "https://polyhaven.com/a/lifebuoy",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 10728,
+  "tris": 10728,
+  "bytes": {
+   "512": 208580,
+   "1k": 529016
+  }
+ },
+ "metal_jerrycan": {
+  "group": "level-06",
+  "name": "Metal Jerrycan",
+  "authors": [
+   "Sean Buckley"
+  ],
+  "source": "https://polyhaven.com/a/metal_jerrycan",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 20022,
+  "tris": 11999,
+  "bytes": {
+   "512": 225940,
+   "1k": 532672
+  }
+ },
+ "flood_lights": {
+  "group": "level-06",
+  "name": "Flood Lights",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "source": "https://polyhaven.com/a/flood_lights",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 76868,
+  "tris": 26560,
+  "bytes": {
+   "512": 609728,
+   "1k": 1008296
+  }
+ },
+ "security_light": {
+  "group": "level-06",
+  "name": "Security Light",
+  "authors": [
+   "Maximilian Schuster"
+  ],
+  "source": "https://polyhaven.com/a/security_light",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 4668,
+  "tris": 4668,
+  "bytes": {
+   "512": 169932,
+   "1k": 444720
+  }
+ },
+ "metal_toolbox": {
+  "group": "level-06",
+  "name": "Metal Toolbox",
+  "authors": [
+   "Mateusz Sadek"
+  ],
+  "source": "https://polyhaven.com/a/metal_toolbox",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 14228,
+  "tris": 12003,
+  "bytes": {
+   "512": 230672,
+   "1k": 485556
+  }
+ },
+ "Barrel_02": {
+  "group": "level-06",
+  "name": "Barrel 02",
+  "authors": [
+   "Jorge Camacho"
+  ],
+  "source": "https://polyhaven.com/a/Barrel_02",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 2688,
+  "tris": 2688,
+  "bytes": {
+   "512": 84280,
+   "1k": 174992
+  }
+ },
+ "modular_street_seating": {
+  "group": "level-07",
+  "name": "Modular Street Seating",
+  "authors": [
+   "Stuart Attenborrow"
+  ],
+  "source": "https://polyhaven.com/a/modular_street_seating",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 25156,
+  "tris": 15065,
+  "bytes": {
+   "512": 487680,
+   "1k": 958164
+  }
+ },
+ "Megaphone_01": {
+  "group": "level-07",
+  "name": "Megaphone 01",
+  "authors": [
+   "Ethan Simon-Law"
+  ],
+  "source": "https://polyhaven.com/a/Megaphone_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 15814,
+  "tris": 11999,
+  "bytes": {
+   "512": 190624,
+   "1k": 273068
+  }
+ },
+ "concrete_road_barrier": {
+  "group": "level-07",
+  "name": "Concrete Road Barrier",
+  "authors": [
+   "Amal Kumar"
+  ],
+  "source": "https://polyhaven.com/a/concrete_road_barrier",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 60928,
+  "tris": 12000,
+  "bytes": {
+   "512": 197380,
+   "1k": 498404
+  }
+ },
+ "street_lamp_01": {
+  "group": "level-07",
+  "name": "Street Lamp 01",
+  "authors": [
+   "Josh Dean"
+  ],
+  "source": "https://polyhaven.com/a/street_lamp_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 30610,
+  "tris": 12133,
+  "bytes": {
+   "512": 163572,
+   "1k": 268948
+  }
+ },
+ "vintage_radio_transceiver": {
+  "group": "level-07",
+  "name": "Vintage Radio Transceiver",
+  "authors": [
+   "Mateusz Sadek"
+  ],
+  "source": "https://polyhaven.com/a/vintage_radio_transceiver",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 42350,
+  "tris": 23676,
+  "bytes": {
+   "512": 614760,
+   "1k": 1131232
+  }
+ },
+ "plastic_monobloc_chair_01": {
+  "group": "level-08",
+  "name": "Plastic Monobloc Chair 01",
+  "authors": [
+   "Kuutti Siitonen"
+  ],
+  "source": "https://polyhaven.com/a/plastic_monobloc_chair_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 3356,
+  "tris": 3356,
+  "bytes": {
+   "512": 142400,
+   "1k": 281172
+  }
+ },
+ "painted_wooden_bench": {
+  "group": "level-08",
+  "name": "Painted Wooden Bench",
+  "authors": [
+   "Kirill Sannikov"
+  ],
+  "source": "https://polyhaven.com/a/painted_wooden_bench",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 630,
+  "tris": 630,
+  "bytes": {
+   "512": 67268,
+   "1k": 260204
+  }
+ },
+ "plastic_crate_01": {
+  "group": "level-08",
+  "name": "Plastic Crate 01",
+  "authors": [
+   "PierreB3D"
+  ],
+  "source": "https://polyhaven.com/a/plastic_crate_01",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 18320,
+  "tris": 12000,
+  "bytes": {
+   "512": 308968,
+   "1k": 574580
+  }
+ },
+ "television_02": {
+  "group": "level-09",
+  "name": "Television 02",
+  "authors": [
+   "Benny Weimer"
+  ],
+  "source": "https://polyhaven.com/a/television_02",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 2310,
+  "tris": 2310,
+  "bytes": {
+   "512": 76592,
+   "1k": 156028
+  }
+ },
+ "circuit_board": {
+  "group": "level-09",
+  "name": "Circuit Board",
+  "authors": [
+   "Benny Weimer"
+  ],
+  "source": "https://polyhaven.com/a/circuit_board",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 14430,
+  "tris": 12109,
+  "bytes": {
+   "512": 330756,
+   "1k": 708272
+  }
+ },
+ "exterior_aircon_unit": {
+  "group": "level-09",
+  "name": "Exterior Aircon Unit",
+  "authors": [
+   "Monsta3D"
+  ],
+  "source": "https://polyhaven.com/a/exterior_aircon_unit",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 18986,
+  "tris": 12036,
+  "bytes": {
+   "512": 453332,
+   "1k": 1276252
+  }
+ },
+ "vintage_video_camera": {
+  "group": "level-09",
+  "name": "Vintage Video Camera",
+  "authors": [
+   "James Ray Cock",
+   "Jenelle van Heerden"
+  ],
+  "source": "https://polyhaven.com/a/vintage_video_camera",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 18682,
+  "tris": 11998,
+  "bytes": {
+   "512": 265508,
+   "1k": 433184
+  }
+ },
+ "security_camera_02": {
+  "group": "level-09",
+  "name": "Security Camera 02",
+  "authors": [
+   "Garrison Gager",
+   "Yann Kervran"
+  ],
+  "source": "https://polyhaven.com/a/security_camera_02",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 12477,
+  "tris": 11997,
+  "bytes": {
+   "512": 183528,
+   "1k": 258188
+  }
+ },
+ "vintage_spacecraft_instrument": {
+  "group": "level-10",
+  "name": "Vintage Spacecraft Instrument",
+  "authors": [
+   "Michał Wiśniewski"
+  ],
+  "source": "https://polyhaven.com/a/vintage_spacecraft_instrument",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 13279,
+  "tris": 11998,
+  "bytes": {
+   "512": 255660,
+   "1k": 433680
+  }
+ },
+ "portable_searchlight": {
+  "group": "level-10",
+  "name": "Portable Searchlight",
+  "authors": [
+   "Elijah Cragg"
+  ],
+  "source": "https://polyhaven.com/a/portable_searchlight",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 18802,
+  "tris": 11999,
+  "bytes": {
+   "512": 180872,
+   "1k": 277812
+  }
+ },
+ "signal_flashlight": {
+  "group": "level-10",
+  "name": "Signal Flashlight",
+  "authors": [
+   "Jiří Ptáček"
+  ],
+  "source": "https://polyhaven.com/a/signal_flashlight",
+  "license": "CC0 1.0 (Poly Haven)",
+  "trisOriginal": 9730,
+  "tris": 9730,
+  "bytes": {
+   "512": 182616,
+   "1k": 360120
+  }
+ }
+}
