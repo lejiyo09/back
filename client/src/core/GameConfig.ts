@@ -79,5 +79,7 @@ export const URL_FLAGS = (() => {
     autostart: q.get('autostart') ?? undefined,
     /** ai=now (spawn in 3 s) | ai=off */
     ai: q.get('ai') ?? undefined,
+    /** props=0 → skip real-model set dressing (performance baseline) */
+    props: q.get('props') !== '0',
   };
 })();

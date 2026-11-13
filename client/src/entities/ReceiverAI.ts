@@ -35,7 +35,9 @@ const EYE_HEIGHT = 2.3;
 /** cos of the half-angle within which a player *could* have it on screen (generous on purpose) */
 const WATCH_COS = 0.45;
 const THINK_HZ = 10;
-const cosHalfFov = Math.cos(THREE.MathUtils.degToRad(RECEIVER.VISION_FOV_DEG / 2));
+
+/** Per-monster tuning (expansion §8): any RECEIVER constant can be overridden per level. */
+export type MonsterTuning = { -readonly [K in keyof typeof RECEIVER]: number };
 
 /**
  * THE RECEIVER — AI (design doc 5 / 6.2–6.4). Runs only where the simulation is
@@ -47,6 +49,9 @@ const cosHalfFov = Math.cos(THREE.MathUtils.degToRad(RECEIVER.VISION_FOV_DEG / 2
  * walls); when it loses you it goes where you *were*, plus a short prediction.
  */
 export class ReceiverAI {
+  /** this monster's tuning (RECEIVER defaults + level profile) */
+  readonly P: MonsterTuning;
+  private readonly cosHalfFov: number;
   readonly id = 'receiver-0';
   readonly body: RAPIER.RigidBody;
   readonly collider: RAPIER.Collider;
@@ -111,14 +116,17 @@ export class ReceiverAI {
     seed: number,
     private hooks: AIHooks,
     ignoreColliders: RAPIER.Collider[] = [],
+    tuning: Partial<MonsterTuning> = {},
   ) {
+    this.P = { ...RECEIVER, ...tuning };
+    this.cosHalfFov = Math.cos(THREE.MathUtils.degToRad(this.P.VISION_FOV_DEG / 2));
     const R = physics.R;
     this.nav = new NavGrid(world.level);
     this.rng = new SeededRandom(seed);
-    const half = (RECEIVER.HEIGHT - 2 * RECEIVER.RADIUS) / 2;
+    const half = (this.P.HEIGHT - 2 * this.P.RADIUS) / 2;
     this.body = physics.world.createRigidBody(
-      R.RigidBodyDesc.kinematicPositionBased().setTranslation(spawn.x, half + RECEIVER.RADIUS + 0.02, spawn.z));
-    this.collider = physics.world.createCollider(R.ColliderDesc.capsule(half, RECEIVER.RADIUS), this.body);
+      R.RigidBodyDesc.kinematicPositionBased().setTranslation(spawn.x, half + this.P.RADIUS + 0.02, spawn.z));
+    this.collider = physics.world.createCollider(R.ColliderDesc.capsule(half, this.P.RADIUS), this.body);
     this.kcc = physics.world.createCharacterController(0.02);
     this.kcc.setSlideEnabled(true);
     this.kcc.enableSnapToGround(0.3);
@@ -155,9 +163,9 @@ export class ReceiverAI {
 
   /** Appear somewhere (only ever called while nobody can see that spot). */
   appear(pos: THREE.Vector3, yaw: number, state: AIState): void {
-    const half = (RECEIVER.HEIGHT - 2 * RECEIVER.RADIUS) / 2;
-    this.body.setTranslation({ x: pos.x, y: half + RECEIVER.RADIUS + 0.02, z: pos.z }, true);
-    this.body.setNextKinematicTranslation({ x: pos.x, y: half + RECEIVER.RADIUS + 0.02, z: pos.z });
+    const half = (this.P.HEIGHT - 2 * this.P.RADIUS) / 2;
+    this.body.setTranslation({ x: pos.x, y: half + this.P.RADIUS + 0.02, z: pos.z }, true);
+    this.body.setNextKinematicTranslation({ x: pos.x, y: half + this.P.RADIUS + 0.02, z: pos.z });
     this.collider.setEnabled(true);
     this.pos.set(pos.x, 0, pos.z);
     this.prevPos.copy(this.pos);
@@ -210,12 +218,12 @@ export class ReceiverAI {
     const chest = t.feet.clone().setY(t.feet.y + (t.crouching ? 0.75 : 1.2));
     const toT = chest.clone().sub(eye);
     const d = toT.length();
-    if (d > RECEIVER.VISION_RANGE) return 0;
+    if (d > this.P.VISION_RANGE) return 0;
     const fwd = new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw));
     const flat = toT.clone().setY(0).normalize();
     const headTracks = this.state === 'observe' || this.state === 'stalk';
-    const inCone = headTracks || fwd.dot(flat) >= cosHalfFov;
-    if (!inCone && d > RECEIVER.PERIPHERAL_RANGE) return 0;
+    const inCone = headTracks || fwd.dot(flat) >= this.cosHalfFov;
+    if (!inCone && d > this.P.PERIPHERAL_RANGE) return 0;
     const head = t.feet.clone().setY(t.feet.y + (t.crouching ? 1.05 : 1.6));
     if (!this.lineOfSight(eye, chest) && !this.lineOfSight(eye, head)) return 0;
 
@@ -227,7 +235,7 @@ export class ReceiverAI {
     if (t.speed > 5) exposure *= 1.25;
     // Within arm's reach it senses you even in total darkness.
     if (d < 2.5) exposure = Math.max(exposure, 0.6 * (1 - d / 2.5) + 0.1);
-    const distK = 1 - Math.pow(d / RECEIVER.VISION_RANGE, 1.4);
+    const distK = 1 - Math.pow(d / this.P.VISION_RANGE, 1.4);
     const coneK = inCone ? 1 : 0.6;
     return THREE.MathUtils.clamp(exposure * distK * coneK, 0, 1);
   }
@@ -349,8 +357,8 @@ export class ReceiverAI {
     // global escalation rules
     const alertStates: AIState[] = ['idle', 'patrol', 'investigate', 'search', 'observe', 'stalk']; // not 'ambush': it holds still
     if (alertStates.includes(this.state)) {
-      if (this.suspicion >= RECEIVER.SUSPICION_TO_CHASE && this.seenNow) { this.setState('chase'); return; }
-      if (this.seenNow && this.suspicion >= RECEIVER.SUSPICION_TO_OBSERVE && (this.state === 'idle' || this.state === 'patrol' || this.state === 'investigate')) {
+      if (this.suspicion >= this.P.SUSPICION_TO_CHASE && this.seenNow) { this.setState('chase'); return; }
+      if (this.seenNow && this.suspicion >= this.P.SUSPICION_TO_OBSERVE && (this.state === 'idle' || this.state === 'patrol' || this.state === 'investigate')) {
         this.setState('observe');
         return;
       }
@@ -380,16 +388,16 @@ export class ReceiverAI {
       case 'chase':
         if (!tgt) { this.setState('search'); break; }
         if (tgt.dead) { this.setState('retreat'); break; }
-        if (this.timeSinceSeen > RECEIVER.LOSE_TARGET_AFTER) { this.setState('search'); break; }
-        if (distToTarget < RECEIVER.ATTACK_RANGE && this.seenNow && this.attackLockout <= 0) this.setState('attack');
+        if (this.timeSinceSeen > this.P.LOSE_TARGET_AFTER) { this.setState('search'); break; }
+        if (distToTarget < this.P.ATTACK_RANGE && this.seenNow && this.attackLockout <= 0) this.setState('attack');
         break;
       case 'search':
-        if (this.stateTime > RECEIVER.SEARCH_DURATION) { this.suspicion *= 0.5; this.setState('patrol'); }
+        if (this.stateTime > this.P.SEARCH_DURATION) { this.suspicion *= 0.5; this.setState('patrol'); }
         break;
       case 'retreat':
         // once nobody is watching, it is simply gone
-        if (this.stateTime > 2 && !this.observed) this.vanish(this.rng.range(RECEIVER.VANISH_MIN, RECEIVER.VANISH_MAX));
-        else if (this.stateTime > RECEIVER.RETREAT_DURATION * 2) this.setState('patrol');
+        if (this.stateTime > 2 && !this.observed) this.vanish(this.rng.range(this.P.VANISH_MIN, this.P.VANISH_MAX));
+        else if (this.stateTime > this.P.RETREAT_DURATION * 2) this.setState('patrol');
         break;
       case 'attack':
         break;
@@ -489,7 +497,7 @@ export class ReceiverAI {
     const d = dir.length();
     if (d < 0.1) return true;
     dir.divideScalar(d);
-    const side = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(RECEIVER.RADIUS * 0.95);
+    const side = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(this.P.RADIUS * 0.95);
     for (const off of [0, 1, -1]) {
       const o = from.clone().addScaledVector(side, off);
       if (this.physics.castRaySolid(o, dir, d, this.ignore) !== null) return false;
@@ -499,10 +507,10 @@ export class ReceiverAI {
 
   private desiredSpeed(): number {
     switch (this.state) {
-      case 'patrol': return RECEIVER.PATROL_SPEED;
-      case 'stalk': return RECEIVER.STALK_SPEED;
+      case 'patrol': return this.P.PATROL_SPEED;
+      case 'stalk': return this.P.STALK_SPEED;
       case 'investigate':
-      case 'search': return RECEIVER.INVESTIGATE_SPEED;
+      case 'search': return this.P.INVESTIGATE_SPEED;
       case 'chase': return this.burstTimer > 0 ? 7.0 : 4.9; // lunges; averages ≈ 5.2 m/s
       case 'ambush': return this.ambushArrived ? 0 : 3.4;
       case 'retreat': return 3.6;
@@ -579,7 +587,7 @@ export class ReceiverAI {
           if (next.doorId) {
             const door = this.world.doors.get(next.doorId);
             const dp = door?.root.position;
-            if (door && dp && door.state === 0 && this.pos.distanceTo(dp.clone().setY(0)) < RECEIVER.DOOR_OPEN_DISTANCE + 0.5) {
+            if (door && dp && door.state === 0 && this.pos.distanceTo(dp.clone().setY(0)) < this.P.DOOR_OPEN_DISTANCE + 0.5) {
               this.hooks.openDoor(next.doorId, this.pos.clone().setY(1));
               this.doorWait = 0.45;
             }
@@ -610,7 +618,7 @@ export class ReceiverAI {
       const want = Math.atan2(face.x - this.pos.x, face.z - this.pos.z);
       let diff = want - this.yaw;
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      const turn = RECEIVER.TURN_SPEED * (this.state === 'chase' ? 1.4 : 1) * dt;
+      const turn = this.P.TURN_SPEED * (this.state === 'chase' ? 1.4 : 1) * dt;
       this.yaw += THREE.MathUtils.clamp(diff, -turn, turn);
       // don't strafe: slow down hard while facing away from the move direction
       if (move.lengthSq() > 0) move.multiplyScalar(THREE.MathUtils.clamp(Math.cos(diff) * 1.2, 0.15, 1));
@@ -620,14 +628,14 @@ export class ReceiverAI {
 
   private updateAttack(dt: number, targets: AITarget[]): void {
     const tgt = this.target(targets);
-    const total = RECEIVER.ATTACK_WINDUP + 0.3;
+    const total = this.P.ATTACK_WINDUP + 0.3;
     this.attackPhase = Math.min(1, this.stateTime / total);
-    if (!this.attackHitDone && this.stateTime >= RECEIVER.ATTACK_WINDUP + 0.12) {
+    if (!this.attackHitDone && this.stateTime >= this.P.ATTACK_WINDUP + 0.12) {
       this.attackHitDone = true;
       const eye = this.pos.clone().setY(1.4);
-      if (tgt && !tgt.dead && tgt.feet.distanceTo(this.pos) < RECEIVER.ATTACK_HIT_RANGE &&
+      if (tgt && !tgt.dead && tgt.feet.distanceTo(this.pos) < this.P.ATTACK_HIT_RANGE &&
         this.lineOfSight(eye, tgt.feet.clone().setY(tgt.feet.y + 1.0))) {
-        this.hooks.hit(tgt.id, RECEIVER.ATTACK_DAMAGE, this.pos.clone());
+        this.hooks.hit(tgt.id, this.P.ATTACK_DAMAGE, this.pos.clone());
         this.hitConnected = true;
       }
     }

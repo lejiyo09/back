@@ -10,7 +10,7 @@ let md = `# ASSET_MANIFEST
 
 ## 요약
 - 외부 3D 모델: **${Object.keys(cat).length}개** — 전부 [Poly Haven](https://polyhaven.com) **CC0 1.0** (상업적 사용 가능, 표기 의무 없음 — 그래도 아래에 제작자 표기)
-- 최적화: gltf-transform (dedup · prune · weld · simplify ≤12k tris · WebP 텍스처 512/1024 · quantize · meshopt)
+- 최적화: gltf-transform (dedup · prune · weld · simplify: 저사양 ≤3k / 고사양 ≤8k tris · WebP 텍스처 512/1024 · quantize · meshopt)
 - 저사양(quality=low/medium) → \`_512.glb\`, 고사양(high) → \`_1k.glb\`
 - 괴물 모델: 외부 모델 **미사용** — 원본 절차적 모델(코드로 생성, 프로젝트 자체 제작)
 
@@ -28,9 +28,9 @@ let md = `# ASSET_MANIFEST
 
 `;
 for (const g of Object.keys(groups).sort()) {
-  md += `## ${g}\n| 모델 | 제작자 | 출처 | 라이선스 | 폴리곤(원본→적용) | 512 / 1K |\n|---|---|---|---|---|---|\n`;
+  md += `## ${g}\n| 모델 | 제작자 | 출처 | 라이선스 | 폴리곤(원본 → 512 / 1K) | 512 / 1K |\n|---|---|---|---|---|---|\n`;
   for (const [id, e] of groups[g].sort()) {
-    md += `| ${e.name} (\`${id}\`) | ${e.authors.join(', ')} | [link](${e.source}) | ${e.license} | ${e.trisOriginal ?? '?'} → ${e.tris} | ${kb(e.bytes['512'])} / ${kb(e.bytes['1k'])} |\n`;
+    md += `| ${e.name} (\`${id}\`) | ${e.authors.join(', ')} | [link](${e.source}) | ${e.license} | ${e.trisOriginal ?? '?'} → ${typeof e.tris === 'object' ? `${e.tris['512']} / ${e.tris['1k']}` : e.tris} | ${kb(e.bytes['512'])} / ${kb(e.bytes['1k'])} |\n`;
   }
   md += '\n';
 }

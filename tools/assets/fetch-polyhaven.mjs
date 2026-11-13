@@ -16,7 +16,8 @@ const cache = path.join(root, '.asset-cache', 'polyhaven');
 const out = path.join(root, 'client/public/assets/models');
 const list = JSON.parse(await fs.readFile(path.join(root, 'tools/assets/asset-list.json'), 'utf8'));
 const only = process.argv[2];
-const MAX_TRIS = 12000; // simplify anything heavier for the web
+// triangle budget per tier: the 512 tier is the low-spec LOD, the 1k tier the high-spec one
+const MAX_TRIS = { '512': 3000, '1k': 8000 };
 
 async function get(url, dest) {
   try { await fs.access(dest); return; } catch { /* download */ }
@@ -56,15 +57,16 @@ for (const [group, ids] of Object.entries(list)) {
       await get(g.url, gltfPath);
       for (const [rel, inc] of Object.entries(g.include)) await get(inc.url, path.join(dir, rel));
       const sizes = {};
-      let tris0 = 0, tris = 0;
+      let tris0 = 0;
+      const tris = {};
       for (const [label, px] of [['512', 512], ['1k', 1024]]) {
         const doc = await io.read(gltfPath);
         tris0 = triCount(doc);
         const ops = [dedup(), prune(), weld()];
-        if (tris0 > MAX_TRIS) ops.push(simplify({ simplifier: MeshoptSimplifier, ratio: MAX_TRIS / tris0, error: 0.002 }));
+        if (tris0 > MAX_TRIS[label]) ops.push(simplify({ simplifier: MeshoptSimplifier, ratio: MAX_TRIS[label] / tris0, error: 0.01 }));
         ops.push(resample(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [px, px], quality: 80 }), quantize(), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
         await doc.transform(...ops);
-        tris = triCount(doc);
+        tris[label] = triCount(doc);
         const file = path.join(out, group, `${id}_${label}.glb`);
         await fs.mkdir(path.dirname(file), { recursive: true });
         await io.write(file, doc);
@@ -75,7 +77,7 @@ for (const [group, ids] of Object.entries(list)) {
         source: `https://polyhaven.com/a/${id}`, license: 'CC0 1.0 (Poly Haven)',
         trisOriginal: tris0, tris, bytes: sizes,
       };
-      console.log(`${group}/${id}: ${tris0}→${tris} tris, 512=${(sizes['512'] / 1024).toFixed(0)}KB 1k=${(sizes['1k'] / 1024).toFixed(0)}KB`);
+      console.log(`${group}/${id}: ${tris0}→${tris['512']}/${tris['1k']} tris, 512=${(sizes['512'] / 1024).toFixed(0)}KB 1k=${(sizes['1k'] / 1024).toFixed(0)}KB`);
     } catch (e) {
       console.warn(`FAILED ${id}: ${e.message}`);
     }

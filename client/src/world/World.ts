@@ -17,6 +17,8 @@ import { Elevator, ELEVATOR_HEIGHT, ELEVATOR_OPENING } from '../interaction/Elev
 import type { Interactable } from '../interaction/Interactable';
 import { EDGE_DOOR, EDGE_EXIT, EDGE_WALL, cellCenter, generateLevel0, gridPoint, worldToCell, type Level0Data } from './Level0Layout';
 import type { QualityPreset } from '../core/GameConfig';
+import type { AssetManager } from '../core/AssetManager';
+import { Dressing } from './Dressing';
 
 /** ceiling height of the level being built (set per World) */
 let H: number = WORLD.CEILING_HEIGHT;
@@ -245,6 +247,23 @@ export class World {
       this.register(item);
       this.group.add(item.root);
     }
+  }
+
+  /** Real-model set dressing (after the level is built, once its asset groups are loaded). */
+  dressing: Dressing | null = null;
+  dress(assets: AssetManager): void {
+    const L = this.level;
+    const blocked = new Set<string>();
+    const near = (cx: number, cy: number, r: number) => {
+      for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) blocked.add(`${x},${y}`);
+    };
+    near(L.spawn.cx, L.spawn.cy, 1);
+    near(L.exit.cx, L.exit.cy, 1);
+    for (const s of [...L.batteries, ...L.notes, ...L.supplies, ...(L.recorder ? [L.recorder] : [])]) blocked.add(`${s.cx},${s.cy}`);
+    for (const r of L.relays) near(r.cx, r.cy, 0);
+    for (const c of [...L.crates, ...L.machines, ...L.steam, ...L.water]) blocked.add(`${c.cx},${c.cy}`);
+    this.dressing = new Dressing(L, assets, this.physics, blocked, H);
+    this.group.add(this.dressing.group);
   }
 
   private buildDoorwayWalls(
@@ -580,6 +599,7 @@ export class World {
 
   update(dt: number, t: number, viewer: THREE.Vector3): void {
     this.lighting.update(dt, t, viewer);
+    this.dressing?.cull(viewer);
     this.relays.forEach((r) => r.update(dt, t));
     this.elevator.update(dt, t);
   }

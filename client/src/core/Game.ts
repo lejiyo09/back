@@ -31,6 +31,8 @@ import { ScareDirector } from '../horror/ScareDirector';
 import { EndingScene } from '../world/EndingScenes';
 import { radioVoice } from '../audio/SoundSynth';
 import type { NetworkManager } from '../multiplayer/NetworkManager';
+import { AssetManager } from './AssetManager';
+import { dressingGroups } from '../world/Dressing';
 
 export interface GameOptions {
   canvas: HTMLCanvasElement;
@@ -75,6 +77,7 @@ export class Game {
   remotes!: RemotePlayers;
   authority!: GameAuthority;
   entities!: EntityManager;
+  assets!: AssetManager;
   private dead = false;
   private respawnTimer = 0;
   private entityPublishTimer = 0;
@@ -196,6 +199,13 @@ export class Game {
     this.world = new World(this.session.mapSeed, this.physics, preset, this.renderer.maxAnisotropy, this.levelIndex);
     if (this.levelIndex === 1) this.fogLit = new THREE.Color(0x585b55); // Level 1: grey, low fog
     if (this.levelIndex === 2) this.fogLit = new THREE.Color(0x2b2520); // Level 2: hot, dark, rust-brown
+    // real models (CC0) for this level: low/medium → 512px textures, high/ultra → 1K
+    o.onProgress('모델 불러오는 중', 0.45);
+    this.assets = new AssetManager('assets/models/', preset.textureSize >= 1024 ? '1k' : '512');
+    this.assets.setMaterialHook((m) => this.world.baked.apply(m as THREE.MeshStandardMaterial));
+    if (URL_FLAGS.props) await this.assets.loadCatalog();
+    await this.assets.loadGroups(dressingGroups(this.levelIndex), (p) => o.onProgress('모델 불러오는 중', 0.45 + p * 0.25));
+    this.world.dress(this.assets);
     this.scene.add(this.world.group);
     this.scene.fog = new THREE.FogExp2(this.fogLit.getHex(), 0.042);
     this.scene.background = new THREE.Color(0x000000);
@@ -1291,6 +1301,7 @@ export class Game {
     this.recorder?.dispose();
     this.endingScene?.dispose();
     this.world?.dispose();
+    this.assets?.dispose();
     this.physics?.dispose();
     this.renderer.dispose();
     this.hud.dispose();

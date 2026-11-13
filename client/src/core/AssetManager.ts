@@ -146,7 +146,9 @@ export class AssetManager {
         const im = new THREE.InstancedMesh(part.geometry, part.material, mats.length);
         mats.forEach((m, i) => im.setMatrixAt(i, tmp.multiplyMatrices(m, part.matrix)));
         im.instanceMatrix.needsUpdate = true;
-        im.castShadow = im.receiveShadow = true;
+        // only big pieces throw flashlight shadows; small clutter is not worth a second pass
+        im.castShadow = t.box.max.y - t.box.min.y > 0.8;
+        im.receiveShadow = true;
         im.computeBoundingSphere();
         out.add(im);
       }

@@ -8,11 +8,24 @@
   "source": "https://polyhaven.com/a/metal_office_desk",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 6898,
-  "tris": 6898,
+  "tris": {
+   "512": 2996,
+   "1k": 6898
+  },
   "bytes": {
-   "512": 123228,
+   "512": 102620,
    "1k": 207296
-  }
+  },
+  "size": [
+   2,
+   0.787,
+   0.947
+  ],
+  "min": [
+   -1,
+   0,
+   -0.469
+  ]
  },
  "SchoolChair_01": {
   "group": "level-00",
@@ -23,11 +36,24 @@
   "source": "https://polyhaven.com/a/SchoolChair_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 5072,
-  "tris": 5072,
+  "tris": {
+   "512": 3000,
+   "1k": 5072
+  },
   "bytes": {
-   "512": 101640,
+   "512": 84772,
    "1k": 224592
-  }
+  },
+  "size": [
+   0.566,
+   1.006,
+   0.675
+  ],
+  "min": [
+   -0.283,
+   -0.002,
+   -0.338
+  ]
  },
  "drawer_cabinet": {
   "group": "level-00",
@@ -38,11 +64,24 @@
   "source": "https://polyhaven.com/a/drawer_cabinet",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 26406,
-  "tris": 11997,
+  "tris": {
+   "512": 4584,
+   "1k": 7993
+  },
   "bytes": {
-   "512": 186056,
-   "1k": 276384
-  }
+   "512": 116256,
+   "1k": 240624
+  },
+  "size": [
+   1.141,
+   1.876,
+   0.488
+  ],
+  "min": [
+   -0.571,
+   0,
+   -0.248
+  ]
  },
  "office_notepads": {
   "group": "level-00",
@@ -53,11 +92,24 @@
   "source": "https://polyhaven.com/a/office_notepads",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 666,
-  "tris": 666,
+  "tris": {
+   "512": 666,
+   "1k": 666
+  },
   "bytes": {
    "512": 35400,
    "1k": 85556
-  }
+  },
+  "size": [
+   1.103,
+   0.022,
+   0.66
+  ],
+  "min": [
+   -0.555,
+   0,
+   -0.331
+  ]
  },
  "clipboard": {
   "group": "level-00",
@@ -68,11 +120,24 @@
   "source": "https://polyhaven.com/a/clipboard",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 6176,
-  "tris": 6176,
+  "tris": {
+   "512": 3000,
+   "1k": 6176
+  },
   "bytes": {
-   "512": 106960,
+   "512": 86112,
    "1k": 191224
-  }
+  },
+  "size": [
+   0.228,
+   0.042,
+   0.336
+  ],
+  "min": [
+   -0.114,
+   -0.003,
+   -0.178
+  ]
  },
  "wall_clock": {
   "group": "level-00",
@@ -83,11 +148,24 @@
   "source": "https://polyhaven.com/a/wall_clock",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 3658,
-  "tris": 3658,
+  "tris": {
+   "512": 3000,
+   "1k": 3658
+  },
   "bytes": {
-   "512": 107412,
+   "512": 100848,
    "1k": 187656
-  }
+  },
+  "size": [
+   0.32,
+   0.32,
+   0.047
+  ],
+  "min": [
+   -0.16,
+   -0.16,
+   0
+  ]
  },
  "Television_01": {
   "group": "level-00",
@@ -98,11 +176,24 @@
   "source": "https://polyhaven.com/a/Television_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 1918,
-  "tris": 1918,
+  "tris": {
+   "512": 1918,
+   "1k": 1918
+  },
   "bytes": {
    "512": 93384,
    "1k": 222072
-  }
+  },
+  "size": [
+   0.6,
+   0.457,
+   0.471
+  ],
+  "min": [
+   -0.3,
+   0,
+   -0.258
+  ]
  },
  "projector_screen": {
   "group": "level-00",
@@ -113,11 +204,24 @@
   "source": "https://polyhaven.com/a/projector_screen",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 8727,
-  "tris": 8727,
+  "tris": {
+   "512": 2994,
+   "1k": 7998
+  },
   "bytes": {
-   "512": 183724,
-   "1k": 334240
-  }
+   "512": 133120,
+   "1k": 329000
+  },
+  "size": [
+   1.094,
+   1.799,
+   0.916
+  ],
+  "min": [
+   -0.547,
+   0,
+   -0.606
+  ]
  },
  "classic_laptop": {
   "group": "level-00",
@@ -128,11 +232,24 @@
   "source": "https://polyhaven.com/a/classic_laptop",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 14450,
-  "tris": 11995,
+  "tris": {
+   "512": 3604,
+   "1k": 7996
+  },
   "bytes": {
-   "512": 245100,
-   "1k": 370272
-  }
+   "512": 166832,
+   "1k": 336864
+  },
+  "size": [
+   0.652,
+   0.543,
+   0.486
+  ],
+  "min": [
+   -0.326,
+   -0.001,
+   -0.242
+  ]
  },
  "cardboard_box_01": {
   "group": "shared",
@@ -143,11 +260,24 @@
   "source": "https://polyhaven.com/a/cardboard_box_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 16952,
-  "tris": 12000,
+  "tris": {
+   "512": 3000,
+   "1k": 8000
+  },
   "bytes": {
-   "512": 171816,
-   "1k": 322252
-  }
+   "512": 103328,
+   "1k": 292988
+  },
+  "size": [
+   0.387,
+   0.342,
+   0.516
+  ],
+  "min": [
+   -0.192,
+   -0.007,
+   -0.225
+  ]
  },
  "metal_trash_can": {
   "group": "shared",
@@ -158,11 +288,24 @@
   "source": "https://polyhaven.com/a/metal_trash_can",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 13960,
-  "tris": 12214,
+  "tris": {
+   "512": 3498,
+   "1k": 7994
+  },
   "bytes": {
-   "512": 373912,
-   "1k": 887956
-  }
+   "512": 296304,
+   "1k": 853228
+  },
+  "size": [
+   1.777,
+   0.906,
+   0.553
+  ],
+  "min": [
+   -0.953,
+   0,
+   -0.277
+  ]
  },
  "WetFloorSign_01": {
   "group": "shared",
@@ -173,11 +316,24 @@
   "source": "https://polyhaven.com/a/WetFloorSign_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 228,
-  "tris": 228,
+  "tris": {
+   "512": 228,
+   "1k": 228
+  },
   "bytes": {
    "512": 47380,
    "1k": 106488
-  }
+  },
+  "size": [
+   0.3,
+   0.63,
+   0.359
+  ],
+  "min": [
+   -0.15,
+   0.002,
+   -0.193
+  ]
  },
  "fire_alarm": {
   "group": "shared",
@@ -188,11 +344,24 @@
   "source": "https://polyhaven.com/a/fire_alarm",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 2705,
-  "tris": 2705,
+  "tris": {
+   "512": 2705,
+   "1k": 2705
+  },
   "bytes": {
    "512": 115480,
    "1k": 256076
-  }
+  },
+  "size": [
+   0.099,
+   0.144,
+   0.026
+  ],
+  "min": [
+   -0.05,
+   -0.077,
+   0
+  ]
  },
  "korean_fire_extinguisher_01": {
   "group": "shared",
@@ -203,11 +372,24 @@
   "source": "https://polyhaven.com/a/korean_fire_extinguisher_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 9913,
-  "tris": 9913,
+  "tris": {
+   "512": 3079,
+   "1k": 7996
+  },
   "bytes": {
-   "512": 266904,
-   "1k": 748384
-  }
+   "512": 211180,
+   "1k": 734320
+  },
+  "size": [
+   0.279,
+   0.658,
+   0.367
+  ],
+  "min": [
+   -0.14,
+   0,
+   -0.123
+  ]
  },
  "security_camera_01": {
   "group": "shared",
@@ -219,11 +401,24 @@
   "source": "https://polyhaven.com/a/security_camera_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 13571,
-  "tris": 11999,
+  "tris": {
+   "512": 3001,
+   "1k": 8000
+  },
   "bytes": {
-   "512": 180232,
-   "1k": 281216
-  }
+   "512": 103468,
+   "1k": 251048
+  },
+  "size": [
+   0.17,
+   0.285,
+   0.554
+  ],
+  "min": [
+   -0.085,
+   -0.024,
+   -0.303
+  ]
  },
  "caged_hanging_light": {
   "group": "shared",
@@ -234,11 +429,24 @@
   "source": "https://polyhaven.com/a/caged_hanging_light",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 22893,
-  "tris": 11999,
+  "tris": {
+   "512": 2880,
+   "1k": 7992
+  },
   "bytes": {
-   "512": 266932,
-   "1k": 504616
-  }
+   "512": 175204,
+   "1k": 466572
+  },
+  "size": [
+   1.162,
+   0.75,
+   0.315
+  ],
+  "min": [
+   -0.58,
+   -0.75,
+   -0.157
+  ]
  },
  "modular_airduct_rectangular_01": {
   "group": "shared",
@@ -249,11 +457,24 @@
   "source": "https://polyhaven.com/a/modular_airduct_rectangular_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 45090,
-  "tris": 18305,
+  "tris": {
+   "512": 8900,
+   "1k": 9105
+  },
   "bytes": {
-   "512": 461488,
-   "1k": 694104
-  }
+   "512": 349716,
+   "1k": 585360
+  },
+  "size": [
+   7.662,
+   1.256,
+   2.587
+  ],
+  "min": [
+   -3.332,
+   -0.706,
+   -1.05
+  ]
  },
  "steel_frame_shelves_01": {
   "group": "level-01",
@@ -264,11 +485,24 @@
   "source": "https://polyhaven.com/a/steel_frame_shelves_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 4348,
-  "tris": 4348,
+  "tris": {
+   "512": 2999,
+   "1k": 4348
+  },
   "bytes": {
-   "512": 96016,
+   "512": 85272,
    "1k": 194984
-  }
+  },
+  "size": [
+   10.973,
+   21.405,
+   5.02
+  ],
+  "min": [
+   -5.486,
+   -0.011,
+   -2.51
+  ]
  },
  "steel_frame_shelves_02": {
   "group": "level-01",
@@ -279,11 +513,24 @@
   "source": "https://polyhaven.com/a/steel_frame_shelves_02",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 4348,
-  "tris": 4348,
+  "tris": {
+   "512": 3000,
+   "1k": 4348
+  },
   "bytes": {
-   "512": 101036,
+   "512": 90448,
    "1k": 204368
-  }
+  },
+  "size": [
+   0.593,
+   2.142,
+   0.502
+  ],
+  "min": [
+   -0.297,
+   -0.001,
+   -0.251
+  ]
  },
  "wooden_crate_01": {
   "group": "level-01",
@@ -294,11 +541,24 @@
   "source": "https://polyhaven.com/a/wooden_crate_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 6576,
-  "tris": 6576,
+  "tris": {
+   "512": 3020,
+   "1k": 6576
+  },
   "bytes": {
-   "512": 159588,
+   "512": 126756,
    "1k": 345468
-  }
+  },
+  "size": [
+   0.824,
+   0.349,
+   0.407
+  ],
+  "min": [
+   -0.412,
+   -0.008,
+   -0.196
+  ]
  },
  "hand_truck": {
   "group": "level-01",
@@ -309,11 +569,24 @@
   "source": "https://polyhaven.com/a/hand_truck",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 13220,
-  "tris": 12000,
+  "tris": {
+   "512": 5500,
+   "1k": 8000
+  },
   "bytes": {
-   "512": 297728,
-   "1k": 656140
-  }
+   "512": 240412,
+   "1k": 625328
+  },
+  "size": [
+   0.593,
+   1.402,
+   0.692
+  ],
+  "min": [
+   -0.297,
+   0,
+   -0.095
+  ]
  },
  "industrial_storage_cart": {
   "group": "level-01",
@@ -324,11 +597,24 @@
   "source": "https://polyhaven.com/a/industrial_storage_cart",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 18902,
-  "tris": 11991,
+  "tris": {
+   "512": 6363,
+   "1k": 7999
+  },
   "bytes": {
-   "512": 226552,
-   "1k": 377652
-  }
+   "512": 157080,
+   "1k": 330100
+  },
+  "size": [
+   1.58,
+   1.377,
+   1.08
+  ],
+  "min": [
+   -0.79,
+   0.002,
+   -0.54
+  ]
  },
  "Barrel_01": {
   "group": "level-01",
@@ -339,11 +625,24 @@
   "source": "https://polyhaven.com/a/Barrel_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 2682,
-  "tris": 2682,
+  "tris": {
+   "512": 2682,
+   "1k": 2682
+  },
   "bytes": {
    "512": 132940,
    "1k": 357872
-  }
+  },
+  "size": [
+   0.563,
+   0.88,
+   0.563
+  ],
+  "min": [
+   -0.282,
+   -0.007,
+   -0.282
+  ]
  },
  "plastic_crate_03": {
   "group": "level-01",
@@ -354,11 +653,24 @@
   "source": "https://polyhaven.com/a/plastic_crate_03",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 21740,
-  "tris": 12718,
+  "tris": {
+   "512": 10776,
+   "1k": 10774
+  },
   "bytes": {
-   "512": 316528,
-   "1k": 571604
-  }
+   "512": 291060,
+   "1k": 546056
+  },
+  "size": [
+   0.481,
+   0.265,
+   0.265
+  ],
+  "min": [
+   -0.241,
+   0.001,
+   -0.132
+  ]
  },
  "overhead_crane": {
   "group": "level-01",
@@ -369,11 +681,24 @@
   "source": "https://polyhaven.com/a/overhead_crane",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 89964,
-  "tris": 21316,
+  "tris": {
+   "512": 12718,
+   "1k": 13325
+  },
   "bytes": {
-   "512": 563168,
-   "1k": 1043972
-  }
+   "512": 436568,
+   "1k": 926396
+  },
+  "size": [
+   12.492,
+   5.095,
+   4
+  ],
+  "min": [
+   -6.246,
+   -3.884,
+   -0.955
+  ]
  },
  "ladder_sectioned_01": {
   "group": "level-01",
@@ -384,11 +709,24 @@
   "source": "https://polyhaven.com/a/ladder_sectioned_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 29140,
-  "tris": 12049,
+  "tris": {
+   "512": 3025,
+   "1k": 7986
+  },
   "bytes": {
-   "512": 215780,
-   "1k": 338828
-  }
+   "512": 123156,
+   "1k": 302712
+  },
+  "size": [
+   0.661,
+   2.132,
+   0.177
+  ],
+  "min": [
+   -0.301,
+   0.002,
+   -0.096
+  ]
  },
  "metal_tool_chest": {
   "group": "level-01",
@@ -400,11 +738,24 @@
   "source": "https://polyhaven.com/a/metal_tool_chest",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 13360,
-  "tris": 11994,
+  "tris": {
+   "512": 3495,
+   "1k": 7992
+  },
   "bytes": {
-   "512": 213192,
-   "1k": 366268
-  }
+   "512": 143724,
+   "1k": 337680
+  },
+  "size": [
+   0.685,
+   0.652,
+   0.407
+  ],
+  "min": [
+   -0.369,
+   0.001,
+   -0.197
+  ]
  },
  "modular_industrial_pipes_01": {
   "group": "level-02",
@@ -415,11 +766,24 @@
   "source": "https://polyhaven.com/a/modular_industrial_pipes_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 12340,
-  "tris": 11994,
+  "tris": {
+   "512": 7251,
+   "1k": 8748
+  },
   "bytes": {
-   "512": 360936,
-   "1k": 751692
-  }
+   "512": 312368,
+   "1k": 720316
+  },
+  "size": [
+   1.403,
+   1.955,
+   0.307
+  ],
+  "min": [
+   -0.704,
+   -1.002,
+   -0.128
+  ]
  },
  "old_military_compressor": {
   "group": "level-02",
@@ -430,11 +794,24 @@
   "source": "https://polyhaven.com/a/old_military_compressor",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 79042,
-  "tris": 12191,
+  "tris": {
+   "512": 6056,
+   "1k": 8200
+  },
   "bytes": {
-   "512": 313008,
-   "1k": 532748
-  }
+   "512": 235588,
+   "1k": 485020
+  },
+  "size": [
+   0.575,
+   1.162,
+   1.653
+  ],
+  "min": [
+   -0.71,
+   0,
+   -5.05
+  ]
  },
  "portable_generator": {
   "group": "level-02",
@@ -445,11 +822,24 @@
   "source": "https://polyhaven.com/a/portable_generator",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 26419,
-  "tris": 13873,
+  "tris": {
+   "512": 5845,
+   "1k": 8061
+  },
   "bytes": {
-   "512": 347608,
-   "1k": 601832
-  }
+   "512": 261460,
+   "1k": 542600
+  },
+  "size": [
+   0.815,
+   0.575,
+   0.564
+  ],
+  "min": [
+   -0.415,
+   0.002,
+   -0.282
+  ]
  },
  "power_box_01": {
   "group": "level-02",
@@ -461,11 +851,24 @@
   "source": "https://polyhaven.com/a/power_box_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 21272,
-  "tris": 11998,
+  "tris": {
+   "512": 3993,
+   "1k": 7999
+  },
   "bytes": {
-   "512": 240800,
-   "1k": 375728
-  }
+   "512": 156376,
+   "1k": 338736
+  },
+  "size": [
+   0.461,
+   0.503,
+   0.399
+  ],
+  "min": [
+   -0.286,
+   -0.252,
+   -0.047
+  ]
  },
  "retro_multimeter": {
   "group": "level-02",
@@ -476,11 +879,24 @@
   "source": "https://polyhaven.com/a/retro_multimeter",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 8948,
-  "tris": 8948,
+  "tris": {
+   "512": 3102,
+   "1k": 8005
+  },
   "bytes": {
-   "512": 156836,
-   "1k": 218728
-  }
+   "512": 97836,
+   "1k": 211880
+  },
+  "size": [
+   0.216,
+   0.278,
+   0.202
+  ],
+  "min": [
+   -0.135,
+   0,
+   -0.031
+  ]
  },
  "pipe_wrench": {
   "group": "level-02",
@@ -491,11 +907,24 @@
   "source": "https://polyhaven.com/a/pipe_wrench",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 10746,
-  "tris": 10746,
+  "tris": {
+   "512": 3000,
+   "1k": 8000
+  },
   "bytes": {
-   "512": 252176,
-   "1k": 643460
-  }
+   "512": 191808,
+   "1k": 625664
+  },
+  "size": [
+   0.084,
+   0.405,
+   0.034
+  ],
+  "min": [
+   -0.062,
+   -0.201,
+   -0.017
+  ]
  },
  "propane_tank": {
   "group": "level-02",
@@ -506,11 +935,24 @@
   "source": "https://polyhaven.com/a/propane_tank",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 5238,
-  "tris": 5238,
+  "tris": {
+   "512": 2999,
+   "1k": 5238
+  },
   "bytes": {
-   "512": 132176,
+   "512": 112404,
    "1k": 286292
-  }
+  },
+  "size": [
+   0.337,
+   0.554,
+   0.337
+  ],
+  "min": [
+   -0.169,
+   0,
+   -0.169
+  ]
  },
  "industrial_pipe_lamp": {
   "group": "level-02",
@@ -521,11 +963,24 @@
   "source": "https://polyhaven.com/a/industrial_pipe_lamp",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 8626,
-  "tris": 8626,
+  "tris": {
+   "512": 3050,
+   "1k": 7998
+  },
   "bytes": {
-   "512": 177712,
-   "1k": 380380
-  }
+   "512": 122080,
+   "1k": 375616
+  },
+  "size": [
+   0.183,
+   0.364,
+   0.262
+  ],
+  "min": [
+   -0.091,
+   0,
+   -0.127
+  ]
  },
  "wooden_bookshelf_worn": {
   "group": "level-03",
@@ -536,11 +991,24 @@
   "source": "https://polyhaven.com/a/wooden_bookshelf_worn",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 10106,
-  "tris": 10106,
+  "tris": {
+   "512": 3000,
+   "1k": 7999
+  },
   "bytes": {
-   "512": 208260,
-   "1k": 605616
-  }
+   "512": 158440,
+   "1k": 592652
+  },
+  "size": [
+   1.374,
+   2.063,
+   0.581
+  ],
+  "min": [
+   -0.687,
+   0,
+   -0.291
+  ]
  },
  "vintage_cabinet_01": {
   "group": "level-03",
@@ -551,11 +1019,24 @@
   "source": "https://polyhaven.com/a/vintage_cabinet_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 61096,
-  "tris": 12000,
+  "tris": {
+   "512": 3005,
+   "1k": 8006
+  },
   "bytes": {
-   "512": 295388,
-   "1k": 509328
-  }
+   "512": 195716,
+   "1k": 468400
+  },
+  "size": [
+   2.02,
+   2.235,
+   0.67
+  ],
+  "min": [
+   -1.01,
+   -0.001,
+   -0.278
+  ]
  },
  "vintage_wooden_drawer_01": {
   "group": "level-03",
@@ -566,11 +1047,24 @@
   "source": "https://polyhaven.com/a/vintage_wooden_drawer_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 5184,
-  "tris": 5184,
+  "tris": {
+   "512": 2992,
+   "1k": 5184
+  },
   "bytes": {
-   "512": 153848,
+   "512": 151684,
    "1k": 308044
-  }
+  },
+  "size": [
+   1.715,
+   1.091,
+   1.007
+  ],
+  "min": [
+   -0.858,
+   -0.001,
+   -0.44
+  ]
  },
  "binder_notebook": {
   "group": "level-03",
@@ -581,11 +1075,24 @@
   "source": "https://polyhaven.com/a/binder_notebook",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 18077,
-  "tris": 11999,
+  "tris": {
+   "512": 2998,
+   "1k": 7998
+  },
   "bytes": {
-   "512": 185040,
-   "1k": 276140
-  }
+   "512": 99100,
+   "1k": 240204
+  },
+  "size": [
+   0.584,
+   0.025,
+   0.2
+  ],
+  "min": [
+   -0.157,
+   -0.002,
+   -0.1
+  ]
  },
  "book_encyclopedia_set_01": {
   "group": "level-03",
@@ -596,11 +1103,24 @@
   "source": "https://polyhaven.com/a/book_encyclopedia_set_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 67306,
-  "tris": 28308,
+  "tris": {
+   "512": 21765,
+   "1k": 25126
+  },
   "bytes": {
-   "512": 510060,
-   "1k": 634396
-  }
+   "512": 448856,
+   "1k": 606412
+  },
+  "size": [
+   0.551,
+   0.237,
+   0.163
+  ],
+  "min": [
+   -0.019,
+   0,
+   -0.062
+  ]
  },
  "cassette_player": {
   "group": "level-03",
@@ -611,11 +1131,24 @@
   "source": "https://polyhaven.com/a/cassette_player",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 4830,
-  "tris": 4830,
+  "tris": {
+   "512": 2997,
+   "1k": 4830
+  },
   "bytes": {
-   "512": 179864,
+   "512": 163700,
    "1k": 380228
-  }
+  },
+  "size": [
+   0.129,
+   0.237,
+   0.049
+  ],
+  "min": [
+   -0.065,
+   -0.111,
+   0
+  ]
  },
  "desk_lamp_arm_01": {
   "group": "level-03",
@@ -627,11 +1160,24 @@
   "source": "https://polyhaven.com/a/desk_lamp_arm_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 24102,
-  "tris": 12410,
+  "tris": {
+   "512": 3148,
+   "1k": 7998
+  },
   "bytes": {
-   "512": 258096,
-   "1k": 490284
-  }
+   "512": 162672,
+   "1k": 449912
+  },
+  "size": [
+   0.202,
+   0.893,
+   0.613
+  ],
+  "min": [
+   -0.118,
+   -0.088,
+   -0.296
+  ]
  },
  "vintage_stapler": {
   "group": "level-03",
@@ -642,11 +1188,24 @@
   "source": "https://polyhaven.com/a/vintage_stapler",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 4370,
-  "tris": 4370,
+  "tris": {
+   "512": 3015,
+   "1k": 4370
+  },
   "bytes": {
-   "512": 148724,
+   "512": 137268,
    "1k": 343648
-  }
+  },
+  "size": [
+   0.208,
+   0.095,
+   0.047
+  ],
+  "min": [
+   -0.098,
+   -0.013,
+   -0.024
+  ]
  },
  "filmstrip_projector_8mm": {
   "group": "level-03",
@@ -657,11 +1216,24 @@
   "source": "https://polyhaven.com/a/filmstrip_projector_8mm",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 32697,
-  "tris": 14644,
+  "tris": {
+   "512": 6485,
+   "1k": 8528
+  },
   "bytes": {
-   "512": 344376,
-   "1k": 522504
-  }
+   "512": 255532,
+   "1k": 459108
+  },
+  "size": [
+   0.254,
+   0.345,
+   0.601
+  ],
+  "min": [
+   -0.154,
+   0,
+   -0.279
+  ]
  },
  "stationery_supplies": {
   "group": "level-03",
@@ -672,11 +1244,24 @@
   "source": "https://polyhaven.com/a/stationery_supplies",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 4412,
-  "tris": 4412,
+  "tris": {
+   "512": 2992,
+   "1k": 4412
+  },
   "bytes": {
-   "512": 129192,
+   "512": 118008,
    "1k": 280056
-  }
+  },
+  "size": [
+   0.302,
+   0.164,
+   0.084
+  ],
+  "min": [
+   -0.163,
+   -0.074,
+   -0.042
+  ]
  },
  "GothicBed_01": {
   "group": "level-04",
@@ -687,11 +1272,24 @@
   "source": "https://polyhaven.com/a/GothicBed_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 18745,
-  "tris": 11999,
+  "tris": {
+   "512": 2992,
+   "1k": 8000
+  },
   "bytes": {
-   "512": 243096,
-   "1k": 389972
-  }
+   "512": 143052,
+   "1k": 347744
+  },
+  "size": [
+   1.491,
+   1.534,
+   2.04
+  ],
+  "min": [
+   -0.71,
+   0,
+   -1.053
+  ]
  },
  "ClassicNightstand_01": {
   "group": "level-04",
@@ -702,11 +1300,24 @@
   "source": "https://polyhaven.com/a/ClassicNightstand_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 2002,
-  "tris": 2002,
+  "tris": {
+   "512": 2002,
+   "1k": 2002
+  },
   "bytes": {
    "512": 75668,
    "1k": 167840
-  }
+  },
+  "size": [
+   0.568,
+   0.7,
+   0.424
+  ],
+  "min": [
+   -0.284,
+   0,
+   -0.212
+  ]
  },
  "ArmChair_01": {
   "group": "level-04",
@@ -717,11 +1328,24 @@
   "source": "https://polyhaven.com/a/ArmChair_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 5626,
-  "tris": 5626,
+  "tris": {
+   "512": 3000,
+   "1k": 5626
+  },
   "bytes": {
-   "512": 157780,
+   "512": 129764,
    "1k": 440624
-  }
+  },
+  "size": [
+   0.848,
+   1.065,
+   0.766
+  ],
+  "min": [
+   -0.424,
+   0,
+   -0.417
+  ]
  },
  "ornate_mirror_01": {
   "group": "level-04",
@@ -732,11 +1356,24 @@
   "source": "https://polyhaven.com/a/ornate_mirror_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 14246,
-  "tris": 11999,
+  "tris": {
+   "512": 3000,
+   "1k": 7999
+  },
   "bytes": {
-   "512": 156212,
-   "1k": 245824
-  }
+   "512": 84196,
+   "1k": 215496
+  },
+  "size": [
+   0.486,
+   0.744,
+   0.026
+  ],
+  "min": [
+   -0.243,
+   -0.41,
+   0
+  ]
  },
  "Chandelier_01": {
   "group": "level-04",
@@ -747,11 +1384,24 @@
   "source": "https://polyhaven.com/a/Chandelier_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 26860,
-  "tris": 13139,
+  "tris": {
+   "512": 5362,
+   "1k": 7974
+  },
   "bytes": {
-   "512": 252152,
-   "1k": 372152
-  }
+   "512": 173512,
+   "1k": 322736
+  },
+  "size": [
+   0.741,
+   0.798,
+   0.808
+  ],
+  "min": [
+   -0.37,
+   -0.798,
+   -0.398
+  ]
  },
  "ClassicConsole_01": {
   "group": "level-04",
@@ -762,11 +1412,24 @@
   "source": "https://polyhaven.com/a/ClassicConsole_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 7566,
-  "tris": 7566,
+  "tris": {
+   "512": 2997,
+   "1k": 7566
+  },
   "bytes": {
-   "512": 189600,
+   "512": 136732,
    "1k": 363500
-  }
+  },
+  "size": [
+   1.539,
+   0.949,
+   0.586
+  ],
+  "min": [
+   -0.771,
+   0,
+   -0.338
+  ]
  },
  "vintage_grandfather_clock_01": {
   "group": "level-04",
@@ -778,11 +1441,24 @@
   "source": "https://polyhaven.com/a/vintage_grandfather_clock_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 8582,
-  "tris": 8582,
+  "tris": {
+   "512": 3025,
+   "1k": 7998
+  },
   "bytes": {
-   "512": 218580,
-   "1k": 393432
-  }
+   "512": 164976,
+   "1k": 388680
+  },
+  "size": [
+   0.626,
+   2.191,
+   0.427
+  ],
+  "min": [
+   -0.313,
+   0,
+   -0.188
+  ]
  },
  "CashRegister_01": {
   "group": "level-04",
@@ -793,11 +1469,24 @@
   "source": "https://polyhaven.com/a/CashRegister_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 9927,
-  "tris": 9927,
+  "tris": {
+   "512": 3186,
+   "1k": 7999
+  },
   "bytes": {
-   "512": 250444,
-   "1k": 405552
-  }
+   "512": 174556,
+   "1k": 386424
+  },
+  "size": [
+   0.598,
+   0.62,
+   0.623
+  ],
+  "min": [
+   -0.224,
+   0.002,
+   -0.172
+  ]
  },
  "Sofa_01": {
   "group": "level-04",
@@ -808,11 +1497,24 @@
   "source": "https://polyhaven.com/a/Sofa_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 4101,
-  "tris": 4101,
+  "tris": {
+   "512": 3000,
+   "1k": 4101
+  },
   "bytes": {
-   "512": 104756,
+   "512": 93360,
    "1k": 218004
-  }
+  },
+  "size": [
+   1.57,
+   0.797,
+   0.658
+  ],
+  "min": [
+   -0.777,
+   -0.001,
+   -0.361
+  ]
  },
  "old_bed_frame": {
   "group": "level-05",
@@ -823,11 +1525,24 @@
   "source": "https://polyhaven.com/a/old_bed_frame",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 49990,
-  "tris": 11905,
+  "tris": {
+   "512": 2942,
+   "1k": 7154
+  },
   "bytes": {
-   "512": 239284,
-   "1k": 459032
-  }
+   "512": 146748,
+   "1k": 417104
+  },
+  "size": [
+   0.905,
+   1.201,
+   2.002
+  ],
+  "min": [
+   -0.448,
+   0,
+   -0.998
+  ]
  },
  "medical_box": {
   "group": "level-05",
@@ -838,11 +1553,24 @@
   "source": "https://polyhaven.com/a/medical_box",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 3718,
-  "tris": 3718,
+  "tris": {
+   "512": 2995,
+   "1k": 3718
+  },
   "bytes": {
-   "512": 132644,
+   "512": 128036,
    "1k": 295124
-  }
+  },
+  "size": [
+   0.525,
+   0.098,
+   0.35
+  ],
+  "min": [
+   -0.263,
+   0,
+   -0.172
+  ]
  },
  "industrial_microscope": {
   "group": "level-05",
@@ -853,11 +1581,24 @@
   "source": "https://polyhaven.com/a/industrial_microscope",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 16598,
-  "tris": 12239,
+  "tris": {
+   "512": 4790,
+   "1k": 8036
+  },
   "bytes": {
-   "512": 271848,
-   "1k": 434092
-  }
+   "512": 190192,
+   "1k": 390188
+  },
+  "size": [
+   0.215,
+   0.462,
+   0.498
+  ],
+  "min": [
+   -0.094,
+   -0.002,
+   -0.331
+  ]
  },
  "metal_stool_01": {
   "group": "level-05",
@@ -868,11 +1609,24 @@
   "source": "https://polyhaven.com/a/metal_stool_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 8334,
-  "tris": 8334,
+  "tris": {
+   "512": 2999,
+   "1k": 8000
+  },
   "bytes": {
-   "512": 162124,
-   "1k": 368064
-  }
+   "512": 119568,
+   "1k": 365980
+  },
+  "size": [
+   0.351,
+   0.882,
+   0.354
+  ],
+  "min": [
+   -0.175,
+   0,
+   -0.177
+  ]
  },
  "chemistry_set": {
   "group": "level-05",
@@ -883,11 +1637,24 @@
   "source": "https://polyhaven.com/a/chemistry_set",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 41958,
-  "tris": 23008,
+  "tris": {
+   "512": 11098,
+   "1k": 12940
+  },
   "bytes": {
-   "512": 393556,
-   "1k": 585616
-  }
+   "512": 297980,
+   "1k": 513188
+  },
+  "size": [
+   1.078,
+   0.428,
+   0.353
+  ],
+  "min": [
+   -0.525,
+   -0.008,
+   -0.228
+  ]
  },
  "BarberShopChair_01": {
   "group": "level-05",
@@ -898,11 +1665,24 @@
   "source": "https://polyhaven.com/a/BarberShopChair_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 4280,
-  "tris": 4280,
+  "tris": {
+   "512": 3440,
+   "1k": 4280
+  },
   "bytes": {
-   "512": 237528,
+   "512": 228064,
    "1k": 450812
-  }
+  },
+  "size": [
+   0.757,
+   1.489,
+   1.325
+  ],
+  "min": [
+   -0.394,
+   0,
+   -0.44
+  ]
  },
  "bleach_bottle": {
   "group": "level-05",
@@ -913,11 +1693,24 @@
   "source": "https://polyhaven.com/a/bleach_bottle",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 4052,
-  "tris": 4052,
+  "tris": {
+   "512": 3000,
+   "1k": 4052
+  },
   "bytes": {
-   "512": 74896,
+   "512": 67324,
    "1k": 132764
-  }
+  },
+  "size": [
+   0.088,
+   0.294,
+   0.061
+  ],
+  "min": [
+   -0.044,
+   0,
+   -0.031
+  ]
  },
  "tool_cart": {
   "group": "level-05",
@@ -928,11 +1721,24 @@
   "source": "https://polyhaven.com/a/tool_cart",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 29394,
-  "tris": 12000,
+  "tris": {
+   "512": 3863,
+   "1k": 7999
+  },
   "bytes": {
-   "512": 238356,
-   "1k": 475160
-  }
+   "512": 153232,
+   "1k": 436588
+  },
+  "size": [
+   1.259,
+   0.962,
+   0.752
+  ],
+  "min": [
+   -0.648,
+   -0.001,
+   -0.385
+  ]
  },
  "lifebuoy": {
   "group": "level-06",
@@ -943,11 +1749,24 @@
   "source": "https://polyhaven.com/a/lifebuoy",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 10728,
-  "tris": 10728,
+  "tris": {
+   "512": 3000,
+   "1k": 8000
+  },
   "bytes": {
-   "512": 208580,
-   "1k": 529016
-  }
+   "512": 150076,
+   "1k": 509872
+  },
+  "size": [
+   0.783,
+   0.841,
+   0.155
+  ],
+  "min": [
+   -0.39,
+   -0.462,
+   -0.07
+  ]
  },
  "metal_jerrycan": {
   "group": "level-06",
@@ -958,11 +1777,24 @@
   "source": "https://polyhaven.com/a/metal_jerrycan",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 20022,
-  "tris": 11999,
+  "tris": {
+   "512": 2999,
+   "1k": 8000
+  },
   "bytes": {
-   "512": 225940,
-   "1k": 532672
-  }
+   "512": 149824,
+   "1k": 500848
+  },
+  "size": [
+   0.35,
+   0.455,
+   0.172
+  ],
+  "min": [
+   -0.17,
+   0,
+   -0.089
+  ]
  },
  "flood_lights": {
   "group": "level-06",
@@ -973,11 +1805,24 @@
   "source": "https://polyhaven.com/a/flood_lights",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 76868,
-  "tris": 26560,
+  "tris": {
+   "512": 10649,
+   "1k": 11098
+  },
   "bytes": {
-   "512": 609728,
-   "1k": 1008296
-  }
+   "512": 412316,
+   "1k": 822368
+  },
+  "size": [
+   4.573,
+   1.806,
+   2.044
+  ],
+  "min": [
+   -2.436,
+   -0.02,
+   -0.875
+  ]
  },
  "security_light": {
   "group": "level-06",
@@ -988,11 +1833,24 @@
   "source": "https://polyhaven.com/a/security_light",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 4668,
-  "tris": 4668,
+  "tris": {
+   "512": 3014,
+   "1k": 4668
+  },
   "bytes": {
-   "512": 169932,
+   "512": 155532,
    "1k": 444720
-  }
+  },
+  "size": [
+   0.323,
+   0.531,
+   0.417
+  ],
+  "min": [
+   -0.162,
+   -0.359,
+   -0.031
+  ]
  },
  "metal_toolbox": {
   "group": "level-06",
@@ -1003,11 +1861,24 @@
   "source": "https://polyhaven.com/a/metal_toolbox",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 14228,
-  "tris": 12003,
+  "tris": {
+   "512": 3419,
+   "1k": 7996
+  },
   "bytes": {
-   "512": 230672,
-   "1k": 485556
-  }
+   "512": 154252,
+   "1k": 451628
+  },
+  "size": [
+   0.4,
+   0.305,
+   0.27
+  ],
+  "min": [
+   -0.2,
+   0,
+   -0.156
+  ]
  },
  "Barrel_02": {
   "group": "level-06",
@@ -1018,11 +1889,24 @@
   "source": "https://polyhaven.com/a/Barrel_02",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 2688,
-  "tris": 2688,
+  "tris": {
+   "512": 2688,
+   "1k": 2688
+  },
   "bytes": {
    "512": 84280,
    "1k": 174992
-  }
+  },
+  "size": [
+   0.488,
+   0.88,
+   0.485
+  ],
+  "min": [
+   -0.244,
+   0.005,
+   -0.242
+  ]
  },
  "modular_street_seating": {
   "group": "level-07",
@@ -1033,11 +1917,24 @@
   "source": "https://polyhaven.com/a/modular_street_seating",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 25156,
-  "tris": 15065,
+  "tris": {
+   "512": 9346,
+   "1k": 11868
+  },
   "bytes": {
-   "512": 487680,
-   "1k": 958164
-  }
+   "512": 423908,
+   "1k": 925408
+  },
+  "size": [
+   4.34,
+   0.95,
+   0.77
+  ],
+  "min": [
+   -2.36,
+   0,
+   -0.37
+  ]
  },
  "Megaphone_01": {
   "group": "level-07",
@@ -1048,11 +1945,24 @@
   "source": "https://polyhaven.com/a/Megaphone_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 15814,
-  "tris": 11999,
+  "tris": {
+   "512": 2990,
+   "1k": 8000
+  },
   "bytes": {
-   "512": 190624,
-   "1k": 273068
-  }
+   "512": 96400,
+   "1k": 230908
+  },
+  "size": [
+   0.371,
+   0.3,
+   0.227
+  ],
+  "min": [
+   -0.228,
+   -0.186,
+   -0.113
+  ]
  },
  "concrete_road_barrier": {
   "group": "level-07",
@@ -1063,11 +1973,24 @@
   "source": "https://polyhaven.com/a/concrete_road_barrier",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 60928,
-  "tris": 12000,
+  "tris": {
+   "512": 3000,
+   "1k": 7998
+  },
   "bytes": {
-   "512": 197380,
-   "1k": 498404
-  }
+   "512": 124568,
+   "1k": 467012
+  },
+  "size": [
+   1.544,
+   0.83,
+   0.639
+  ],
+  "min": [
+   -0.774,
+   -0.008,
+   -0.295
+  ]
  },
  "street_lamp_01": {
   "group": "level-07",
@@ -1078,11 +2001,24 @@
   "source": "https://polyhaven.com/a/street_lamp_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 30610,
-  "tris": 12133,
+  "tris": {
+   "512": 3201,
+   "1k": 8163
+  },
   "bytes": {
-   "512": 163572,
-   "1k": 268948
-  }
+   "512": 89604,
+   "1k": 237788
+  },
+  "size": [
+   0.702,
+   3.87,
+   0.385
+  ],
+  "min": [
+   -0.351,
+   0,
+   -0.192
+  ]
  },
  "vintage_radio_transceiver": {
   "group": "level-07",
@@ -1093,11 +2029,24 @@
   "source": "https://polyhaven.com/a/vintage_radio_transceiver",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 42350,
-  "tris": 23676,
+  "tris": {
+   "512": 12549,
+   "1k": 13388
+  },
   "bytes": {
-   "512": 614760,
-   "1k": 1131232
-  }
+   "512": 477232,
+   "1k": 1005916
+  },
+  "size": [
+   0.574,
+   0.434,
+   0.412
+  ],
+  "min": [
+   -0.329,
+   -0.001,
+   -0.138
+  ]
  },
  "plastic_monobloc_chair_01": {
   "group": "level-08",
@@ -1108,11 +2057,24 @@
   "source": "https://polyhaven.com/a/plastic_monobloc_chair_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 3356,
-  "tris": 3356,
+  "tris": {
+   "512": 3000,
+   "1k": 3356
+  },
   "bytes": {
-   "512": 142400,
+   "512": 139032,
    "1k": 281172
-  }
+  },
+  "size": [
+   0.642,
+   0.88,
+   0.628
+  ],
+  "min": [
+   -0.321,
+   0,
+   -0.336
+  ]
  },
  "painted_wooden_bench": {
   "group": "level-08",
@@ -1123,11 +2085,24 @@
   "source": "https://polyhaven.com/a/painted_wooden_bench",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 630,
-  "tris": 630,
+  "tris": {
+   "512": 630,
+   "1k": 630
+  },
   "bytes": {
    "512": 67268,
    "1k": 260204
-  }
+  },
+  "size": [
+   1.165,
+   0.889,
+   0.496
+  ],
+  "min": [
+   -0.576,
+   -0.001,
+   -0.254
+  ]
  },
  "plastic_crate_01": {
   "group": "level-08",
@@ -1138,11 +2113,24 @@
   "source": "https://polyhaven.com/a/plastic_crate_01",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 18320,
-  "tris": 12000,
+  "tris": {
+   "512": 10350,
+   "1k": 10350
+  },
   "bytes": {
-   "512": 308968,
-   "1k": 574580
-  }
+   "512": 292108,
+   "1k": 558016
+  },
+  "size": [
+   0.298,
+   0.264,
+   0.408
+  ],
+  "min": [
+   -0.149,
+   0,
+   -0.204
+  ]
  },
  "television_02": {
   "group": "level-09",
@@ -1153,11 +2141,24 @@
   "source": "https://polyhaven.com/a/television_02",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 2310,
-  "tris": 2310,
+  "tris": {
+   "512": 2310,
+   "1k": 2310
+  },
   "bytes": {
    "512": 76592,
    "1k": 156028
-  }
+  },
+  "size": [
+   0.4,
+   0.411,
+   0.35
+  ],
+  "min": [
+   -0.202,
+   0,
+   -0.228
+  ]
  },
  "circuit_board": {
   "group": "level-09",
@@ -1168,11 +2169,24 @@
   "source": "https://polyhaven.com/a/circuit_board",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 14430,
-  "tris": 12109,
+  "tris": {
+   "512": 5248,
+   "1k": 7999
+  },
   "bytes": {
-   "512": 330756,
-   "1k": 708272
-  }
+   "512": 247156,
+   "1k": 666360
+  },
+  "size": [
+   0.404,
+   0.078,
+   0.397
+  ],
+  "min": [
+   -0.207,
+   -0.006,
+   -0.199
+  ]
  },
  "exterior_aircon_unit": {
   "group": "level-09",
@@ -1183,11 +2197,24 @@
   "source": "https://polyhaven.com/a/exterior_aircon_unit",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 18986,
-  "tris": 12036,
+  "tris": {
+   "512": 3036,
+   "1k": 8004
+  },
   "bytes": {
-   "512": 453332,
-   "1k": 1276252
-  }
+   "512": 408496,
+   "1k": 1257084
+  },
+  "size": [
+   1.796,
+   0.923,
+   0.374
+  ],
+  "min": [
+   -0.891,
+   -0.32,
+   -0.216
+  ]
  },
  "vintage_video_camera": {
   "group": "level-09",
@@ -1199,11 +2226,24 @@
   "source": "https://polyhaven.com/a/vintage_video_camera",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 18682,
-  "tris": 11998,
+  "tris": {
+   "512": 6041,
+   "1k": 7997
+  },
   "bytes": {
-   "512": 265508,
-   "1k": 433184
-  }
+   "512": 201844,
+   "1k": 391164
+  },
+  "size": [
+   0.071,
+   0.144,
+   0.132
+  ],
+  "min": [
+   -0.037,
+   -0.002,
+   -0.049
+  ]
  },
  "security_camera_02": {
   "group": "level-09",
@@ -1215,11 +2255,24 @@
   "source": "https://polyhaven.com/a/security_camera_02",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 12477,
-  "tris": 11997,
+  "tris": {
+   "512": 3000,
+   "1k": 7997
+  },
   "bytes": {
-   "512": 183528,
-   "1k": 258188
-  }
+   "512": 97064,
+   "1k": 223764
+  },
+  "size": [
+   0.141,
+   0.208,
+   0.394
+  ],
+  "min": [
+   -0.07,
+   -0.044,
+   0
+  ]
  },
  "vintage_spacecraft_instrument": {
   "group": "level-10",
@@ -1230,11 +2283,24 @@
   "source": "https://polyhaven.com/a/vintage_spacecraft_instrument",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 13279,
-  "tris": 11998,
+  "tris": {
+   "512": 3393,
+   "1k": 7997
+  },
   "bytes": {
-   "512": 255660,
-   "1k": 433680
-  }
+   "512": 167368,
+   "1k": 396808
+  },
+  "size": [
+   0.409,
+   0.269,
+   0.204
+  ],
+  "min": [
+   -0.204,
+   -0.135,
+   -0.085
+  ]
  },
  "portable_searchlight": {
   "group": "level-10",
@@ -1245,11 +2311,24 @@
   "source": "https://polyhaven.com/a/portable_searchlight",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 18802,
-  "tris": 11999,
+  "tris": {
+   "512": 2998,
+   "1k": 7998
+  },
   "bytes": {
-   "512": 180872,
-   "1k": 277812
-  }
+   "512": 103704,
+   "1k": 245396
+  },
+  "size": [
+   0.165,
+   0.185,
+   0.253
+  ],
+  "min": [
+   -0.083,
+   -0.083,
+   -0.127
+  ]
  },
  "signal_flashlight": {
   "group": "level-10",
@@ -1260,10 +2339,23 @@
   "source": "https://polyhaven.com/a/signal_flashlight",
   "license": "CC0 1.0 (Poly Haven)",
   "trisOriginal": 9730,
-  "tris": 9730,
+  "tris": {
+   "512": 3054,
+   "1k": 7991
+  },
   "bytes": {
-   "512": 182616,
-   "1k": 360120
-  }
+   "512": 128640,
+   "1k": 347776
+  },
+  "size": [
+   0.071,
+   0.15,
+   0.044
+  ],
+  "min": [
+   -0.035,
+   0,
+   -0.022
+  ]
  }
 }
