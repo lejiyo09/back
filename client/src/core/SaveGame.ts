@@ -1,0 +1,39 @@
+/** What carries over from one level to the next (and into a save). */
+export interface CarryState {
+  recorder: boolean;
+  heard: number[];
+  deaths: number;
+  time: number;
+  battery: number;
+}
+
+export interface SaveData {
+  version: 1;
+  /** 1 = reached Level 1 (checkpoint at its start) */
+  chapter: 1;
+  seed: number;
+  carry: CarryState;
+  /** finished Level 1 (walked down the B3 stairs) */
+  completed: boolean;
+  savedAt: number;
+}
+
+const KEY = 'lost-signal.save.v1';
+
+/** Single-player checkpoint save (design doc roadmap 6: 저장 시스템). Browser-local, best effort. */
+export const SaveGame = {
+  load(): SaveData | null {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return null;
+      const d = JSON.parse(raw) as SaveData;
+      return d.version === 1 ? d : null;
+    } catch { return null; }
+  },
+  save(d: Omit<SaveData, 'version' | 'savedAt'>): void {
+    try { localStorage.setItem(KEY, JSON.stringify({ ...d, version: 1, savedAt: Date.now() })); } catch { /* storage unavailable */ }
+  },
+  clear(): void {
+    try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+  },
+};

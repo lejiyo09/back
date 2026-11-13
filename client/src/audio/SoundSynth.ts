@@ -466,3 +466,33 @@ export function drip(ctx: Ctx): AudioBuffer {
     return Math.sin(2 * Math.PI * f * t) * Math.exp(-t * 18) * 0.7;
   }), 0.6);
 }
+
+/** Wading through standing water. */
+export function splash(ctx: Ctx, variant: number): AudioBuffer {
+  const noise = rngFrom(2500 + variant * 7);
+  let hp = 0, prev = 0, lp = 0;
+  return normalize(buffer(ctx, 0.45, (t) => {
+    const n = noise();
+    hp = 0.9 * (hp + n - prev); prev = n;
+    lp += (hp - lp) * 0.35;
+    const env = Math.min(1, t * 60) * Math.exp(-t * 9);
+    const bubble = Math.sin(2 * Math.PI * (500 + variant * 120 - t * 600) * t) * Math.exp(-t * 20) * 0.3;
+    return lp * env * 1.6 + bubble;
+  }), 0.8);
+}
+
+/** Distant warehouse machinery: a slow industrial thrum. 6 s loop. */
+export function machinery(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(31);
+  let lp = 0;
+  const b = buffer(ctx, 6, (t) => {
+    lp += (noise() - lp) * 0.006;
+    const thrum = Math.sin(2 * Math.PI * 47 * t) * (0.5 + 0.5 * Math.sin(2 * Math.PI * (1 / 1.5) * t)) * 0.25;
+    const clank = (t % 3) < 0.04 ? noise() * 0.4 * (1 - (t % 3) / 0.04) : 0;
+    return lp * 5 + thrum + clank;
+  });
+  const d = b.getChannelData(0);
+  const fade = Math.floor(ctx.sampleRate * 0.4);
+  for (let i = 0; i < fade; i++) { const k = i / fade; d[i] = d[i] * k + d[d.length - fade + i] * (1 - k); }
+  return normalize(b, 0.6);
+}

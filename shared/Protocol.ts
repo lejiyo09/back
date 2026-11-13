@@ -25,6 +25,8 @@ export interface SessionInfo {
   hostId: string;
   seed: number;
   started: boolean;
+  /** current level of the room (0 or 1) — late joiners load this one */
+  level: number;
   players: PlayerInfo[];
 }
 
@@ -36,6 +38,8 @@ export interface ClientToServerEvents {
   'session:resume': (req: SessionResumeReq, ack: Ack<SessionInfo>) => void;
   'session:leave': () => void;
   'game:start': () => void;
+  /** host only — move the whole room to another level */
+  'game:level': (msg: { level: number }) => void;
   'player:state': (state: PlayerNetState) => void;
   'interaction:request': (req: InteractionRequest) => void;
   /** host only */
@@ -58,6 +62,7 @@ export interface ServerToClientEvents {
   'session:host-changed': (hostId: string) => void;
   'session:ended': (reason: string) => void;
   'game:started': () => void;
+  'game:level': (msg: { level: number; seed: number }) => void;
   'player:state': (playerId: string, state: PlayerNetState) => void;
   /** delivered to host only */
   'interaction:request': (playerId: string, req: InteractionRequest) => void;

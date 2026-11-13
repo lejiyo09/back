@@ -38,6 +38,8 @@ export class PlayerController {
   private airTime = 0;
   headBob = true;
   flashlightOn = false;
+  /** terrain slowdown (Level 1 flooded cells) */
+  speedMul = 1;
   onFootstep?: (e: FootstepEvent) => void;
   onLand?: (impact: number) => void;
 
@@ -104,7 +106,7 @@ export class PlayerController {
 
     const wantSprint = (inp.isDown('ShiftLeft') || inp.isDown('ShiftRight')) && moving && !this.crouching && inp.isDown('KeyW');
     this.sprinting = wantSprint && this.status.canSprint() && this.grounded;
-    const speed = this.crouching ? PLAYER.CROUCH_SPEED : this.sprinting ? PLAYER.RUN_SPEED : PLAYER.WALK_SPEED;
+    const speed = (this.crouching ? PLAYER.CROUCH_SPEED : this.sprinting ? PLAYER.RUN_SPEED : PLAYER.WALK_SPEED) * this.speedMul;
 
     const jump = inp.wasPressed('Space');
     if (this.grounded) {

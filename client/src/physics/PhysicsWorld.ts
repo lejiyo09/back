@@ -32,6 +32,13 @@ export class PhysicsWorld {
     );
   }
 
+  addStaticBoxRotated(cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, q: { x: number; y: number; z: number; w: number }): RAPIER.Collider {
+    return this.world.createCollider(
+      this.R.ColliderDesc.cuboid(hx, hy, hz).setTranslation(cx, cy, cz).setRotation(q),
+      this.staticBody,
+    );
+  }
+
   addSensorBall(x: number, y: number, z: number, radius: number): RAPIER.Collider {
     return this.world.createCollider(
       this.R.ColliderDesc.ball(radius).setTranslation(x, y, z).setSensor(true),

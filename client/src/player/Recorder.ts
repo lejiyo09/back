@@ -44,6 +44,24 @@ export function buildLogs(rightFrequency: string): RecorderLog[] {
         { at: 12.2, text: '그래서 지금 이걸 녹음하고 있는 거야.' },
       ],
     },
+    {
+      title: '녹음 04', pitch: 0.97, duration: 14,
+      lines: [
+        { at: 0, text: '여긴 Level 1이야. 창고. 끝이 없어.' },
+        { at: 3.0, text: '불이 나가면 움직이지 마. 상자 뒤에 숨어.' },
+        { at: 6.6, text: '상자 안에 아몬드 워터가 있을 거야. 이상한 맛이지만, 마셔.' },
+        { at: 10.4, text: '차단기가 두 개 있어. B3 계단을 열어 줄 거야.' },
+      ],
+    },
+    {
+      title: '녹음 05', pitch: 0.94, duration: 14.5,
+      lines: [
+        { at: 0, text: '계단 아래는 배관뿐이래. 어둡고, 뜨겁고, 끝이 없대.' },
+        { at: 4.0, text: '나는 여기서 너를 기다렸어.' },
+        { at: 6.6, text: '아니… 네가 나를 기다린 건가.' },
+        { at: 9.4, text: '신호가 약해져. 아래로 갈수록. 그런데 그건… 계속 따라와.' },
+      ],
+    },
   ];
 }
 

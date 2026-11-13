@@ -3,6 +3,7 @@ import { GAME_VERSION } from '@shared/Constants';
 
 export interface MenuHandlers {
   single: (name: string) => void;
+  resume: (name: string) => void;
   host: (name: string) => void;
   join: (code: string, name: string) => void;
   settings: () => void;
@@ -29,6 +30,7 @@ export class MainMenu {
         </div>
         <div class="menu-main">
           <label class="name">생존자 이름 <input maxlength="16" placeholder="Survivor" value=""></label>
+          <button class="primary resume-btn hidden" data-act="resume">이어하기</button>
           <button class="primary" data-act="single">싱글플레이</button>
           <div class="mp">
             <button data-act="host">방 만들기 (호스트)</button>
@@ -63,6 +65,7 @@ export class MainMenu {
     const on = (act: string, fn: () => void) =>
       this.root.querySelector(`[data-act="${act}"]`)!.addEventListener('click', fn);
     on('single', () => h.single(name()));
+    on('resume', () => h.resume(name()));
     on('host', () => h.host(name()));
     on('join', () => {
       const code = codeInput.value.trim().toUpperCase();
@@ -91,6 +94,16 @@ export class MainMenu {
 
   hide(): void {
     this.root.classList.add('hidden');
+  }
+
+  /** Show the saved-game button (null hides it). */
+  setResume(label: string | null): void {
+    const b = this.root.querySelector<HTMLButtonElement>('[data-act="resume"]')!;
+    b.classList.toggle('hidden', !label);
+    if (label) b.textContent = label;
+    const single = this.root.querySelector<HTMLButtonElement>('[data-act="single"]')!;
+    single.classList.toggle('primary', !label);
+    single.textContent = label ? '새 게임 (Level 0)' : '싱글플레이';
   }
 
   setBusy(b: boolean): void {

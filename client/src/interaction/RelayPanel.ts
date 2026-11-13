@@ -49,7 +49,7 @@ export class RelayPanel implements Interactable {
   private leverAngle = 0.9;
   readonly index: number;
 
-  constructor(readonly id: string, spot: WallSpot, level: Level0Data, physics: PhysicsWorld, metal: THREE.Material, lit: (m: THREE.MeshStandardMaterial) => THREE.MeshStandardMaterial = (m) => m) {
+  constructor(readonly id: string, spot: WallSpot, level: Level0Data, physics: PhysicsWorld, metal: THREE.Material, lit: (m: THREE.MeshStandardMaterial) => THREE.MeshStandardMaterial = (m) => m, ceiling: number = WORLD.CEILING_HEIGHT) {
     this.index = Number(id.split('-')[1]);
     const c = cellCenter(level, spot.cx, spot.cy);
     const half = WORLD.CELL_SIZE / 2 - WORLD.WALL_THICKNESS / 2 - 0.07;
@@ -64,8 +64,8 @@ export class RelayPanel implements Interactable {
       map: labelTexture([`RELAY 0${this.index + 1}`, '주 전원 차단기', 'MAIN BREAKER — B2']), roughness: 0.7,
     })));
     face.position.set(-0.01, 1.47, 0.061);
-    const conduit = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, WORLD.CEILING_HEIGHT - 1.66, 8), metal);
-    conduit.position.set(0.12, (WORLD.CEILING_HEIGHT + 1.66) / 2, 0);
+    const conduit = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, ceiling - 1.66, 8), metal);
+    conduit.position.set(0.12, (ceiling + 1.66) / 2, 0);
     this.lever.position.set(0.16, 1.22, 0.07);
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.16, 0.025), new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.5 }));
     arm.position.y = 0.08;

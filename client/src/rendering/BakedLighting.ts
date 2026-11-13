@@ -175,14 +175,14 @@ export class BakedLighting {
             vec2 bakeXZ = vBakeWorld.xz + vBakeNormal.xz * 0.3;
             vec2 bakeUV = ( bakeXZ - uBakeBounds.xy ) / uBakeBounds.zw;
             vec3 baked = texture2D( uBakeMap, bakeUV ).rgb * 2.0;
-            float hf = 1.0 - 0.3 * clamp( vBakeWorld.y / ${WORLD.CEILING_HEIGHT.toFixed(2)}, 0.0, 1.0 );
+            float hf = 1.0 - 0.3 * clamp( vBakeWorld.y / ${this.level.ceiling.toFixed(2)}, 0.0, 1.0 );
             // soft contact darkening where walls meet the floor
             hf *= mix( 0.72, 1.0, smoothstep( 0.0, 0.35, vBakeWorld.y ) * step( 0.5, 1.0 - abs( vBakeNormal.y ) ) + step( 0.5, abs( vBakeNormal.y ) ) );
             reflectedLight.indirectDiffuse += material.diffuseColor * baked * hf * uBakeIntensity;
           }`,
         );
     };
-    material.customProgramCacheKey = () => 'baked-light-v1';
+    material.customProgramCacheKey = () => `baked-light-v1-${this.level.ceiling}`;
     return material;
   }
 }

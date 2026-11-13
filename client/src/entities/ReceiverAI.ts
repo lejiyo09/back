@@ -101,6 +101,8 @@ export class ReceiverAI {
   private burstTimer = 0;
   private burstCooldown = 2.5;
   get bursting(): boolean { return this.burstTimer > 0; }
+  /** Level 1 blackout: it hears further and drifts straight toward the living */
+  darkHunt = false;
 
   constructor(
     private physics: PhysicsWorld,
@@ -301,13 +303,14 @@ export class ReceiverAI {
       this.suspicion = Math.max(0, this.suspicion - decay * dt);
     }
 
-    // hearing (players' own noise radius)
+    // hearing (players' own noise radius) — sharper in the dark
+    const ear = this.darkHunt ? 1.5 : 1;
     for (const t of targets) {
       if (t.dead || t.noise <= 0.1) continue;
       const d = t.feet.distanceTo(this.pos);
-      if (d > t.noise) continue;
+      if (d > t.noise * ear) continue;
       const muffled = !this.lineOfSight(this.pos.clone().setY(1.5), t.feet.clone().setY(t.feet.y + 0.6));
-      const reach = t.noise * (muffled ? 0.55 : 1);
+      const reach = t.noise * ear * (muffled ? 0.55 : 1);
       if (d <= reach) this.onHeard(t.feet, d, 1 - d / reach);
     }
   }
@@ -420,7 +423,7 @@ export class ReceiverAI {
     const W = this.world.level.w;
     const candidates: number[] = [];
     // Threat pressure: often drift towards the region someone is in — never straight at them.
-    const near = alive.length && this.rng.chance(0.45) ? this.rng.pick(alive) : null;
+    const near = alive.length && this.rng.chance(this.darkHunt ? 0.85 : 0.45) ? this.rng.pick(alive) : null;
     const nearCell = near ? this.nav.cellOf(near.feet.x, near.feet.z) : null;
     for (let i = 0; i < dist.length; i++) {
       if (dist[i] < 4) continue;

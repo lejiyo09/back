@@ -16,6 +16,7 @@ export interface Room {
   hostId: string;
   seed: number;
   started: boolean;
+  level: number;
   players: Map<string, Player>;
   createdAt: number;
 }
@@ -45,7 +46,7 @@ export class RoomManager {
       code = Array.from({ length: NET.ROOM_CODE_LENGTH }, () =>
         CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
     } while (this.rooms.has(code));
-    const room: Room = { code, hostId: '', seed: (Math.random() * 0xffffffff) >>> 0, started: false, players: new Map(), createdAt: Date.now() };
+    const room: Room = { code, hostId: '', seed: (Math.random() * 0xffffffff) >>> 0, started: false, level: 0, players: new Map(), createdAt: Date.now() };
     this.rooms.set(code, room);
     const player = this.addPlayer(room, socketId, name);
     room.hostId = player.id;

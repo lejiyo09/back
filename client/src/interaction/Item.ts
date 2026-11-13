@@ -18,6 +18,7 @@ export class Item implements Interactable {
     mesh: THREE.Object3D,
     physics: PhysicsWorld,
     readonly noteIndex = -1,
+    private readonly hold = 0,
   ) {
     this.root.position.copy(pos);
     this.root.rotation.y = rot;
@@ -31,6 +32,10 @@ export class Item implements Interactable {
 
   position(): THREE.Vector3 {
     return this.root.position.clone();
+  }
+
+  holdTime(): number {
+    return this.collected ? 0 : this.hold;
   }
 
   setCollected(v: boolean): void {

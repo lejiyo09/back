@@ -44,6 +44,10 @@ export class RevealDirector {
     if (mode === 'skip') { this.stage = 3; this.timer = this.fast ? 3 : 3; }
   }
 
+  setDelay(seconds: number): void {
+    this.timer = seconds;
+  }
+
   private gap(normal: number): number {
     return this.fast ? Math.min(normal, 12) : normal;
   }

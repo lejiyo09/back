@@ -101,6 +101,10 @@ export class HostAuthority implements GameAuthority {
     this.net.socket.emit('entity:state', list);
   }
 
+  worldEvent(targetId: string, value: number): void {
+    this.confirm(newEventId('world'), targetId, 'world', value);
+  }
+
   deliverHit(hit: PlayerHit): void {
     this.net.socket.emit('player:hit', hit);
   }

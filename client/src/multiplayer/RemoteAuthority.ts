@@ -65,6 +65,7 @@ export class RemoteAuthority implements GameAuthority {
   entityRequest(): void { /* host simulates entities */ }
   publishEntities(): void { /* host only */ }
   deliverHit(): void { /* host only */ }
+  worldEvent(): void { /* host only */ }
 
   shutdown(): void {
     this.listeners.clear();

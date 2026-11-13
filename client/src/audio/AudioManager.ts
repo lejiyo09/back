@@ -6,7 +6,7 @@ export type SoundKey =
   | 'step0' | 'step1' | 'step2' | 'step3' | 'distant0' | 'distant1' | 'distant2'
   | 'rBreath' | 'rStatic' | 'rStep0' | 'rStep1' | 'rStep2' | 'rScreech' | 'hit' | 'staticBurst' | 'heartbeat'
   | 'beep' | 'relay' | 'surge' | 'ding' | 'elevDoor' | 'knock' | 'whisper0' | 'whisper1'
-  | 'drone' | 'rumble' | 'bang' | 'rain' | 'city' | 'drip';
+  | 'drone' | 'rumble' | 'bang' | 'rain' | 'city' | 'drip' | 'splash0' | 'splash1' | 'machinery';
 
 /**
  * Web Audio + three.js positional audio (design doc 10). One listener on the
@@ -58,6 +58,9 @@ export class AudioManager {
     this.buffers.set('rain', Synth.rain(ctx));
     this.buffers.set('city', Synth.cityHum(ctx));
     this.buffers.set('drip', Synth.drip(ctx));
+    this.buffers.set('splash0', Synth.splash(ctx, 0));
+    this.buffers.set('splash1', Synth.splash(ctx, 1));
+    this.buffers.set('machinery', Synth.machinery(ctx));
 
     for (let i = 0; i < 8; i++) this.oneShots.push(new THREE.Audio(this.listener));
     for (let i = 0; i < 6; i++) {

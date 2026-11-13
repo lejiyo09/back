@@ -44,6 +44,7 @@ export const NOISE = {
   RECORDER_PLAY: 13,    // playing a recording is loud
   RELAY: 18,            // throwing a breaker carries far
   POWER_SURGE: 999,     // the whole floor hears the power come back
+  WATER: 12,            // wading through flooded cells (Level 1)
   DECAY_PER_SEC: 12,
 } as const;
 
@@ -123,6 +124,15 @@ export const OBJECTIVE = {
   BLEED_OUT: 30,         // downed → respawn if nobody helps
   LOG_RADIUS: 4,         // recorder picks up a voice within this distance
   FREQUENCIES: ['88.1', '104.6'] as const,
+} as const;
+
+/** Level 1 (Habitable Zone): random blackouts, supplies. */
+export const LEVEL1 = {
+  BLACKOUT_EVERY: [55, 90] as const,   // seconds between blackouts
+  BLACKOUT_LENGTH: [14, 20] as const,
+  ALMOND_HEAL: 35,
+  WATER_SPEED: 0.6,
+  RELAY_COUNT: 2,
 } as const;
 
 export const PLAYER_HEALTH = {

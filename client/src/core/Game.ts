@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { NET, NOISE, OBJECTIVE, PLAYER, PLAYER_HEALTH, RECEIVER, SURVIVAL, WORLD } from '@shared/Constants';
+import { LEVEL1, NET, NOISE, OBJECTIVE, PLAYER, PLAYER_HEALTH, RECEIVER, SURVIVAL, WORLD } from '@shared/Constants';
 import type { GameMode, PlayerInfo } from '@shared/GameTypes';
 import { QUALITY_PRESETS, URL_FLAGS, type Settings } from './GameConfig';
 import { GameLoop } from './GameLoop';
@@ -25,6 +25,8 @@ import { RemotePlayers } from '../multiplayer/RemotePlayers';
 import { EntityManager } from '../entities/EntityManager';
 import type { AITarget } from '../entities/ReceiverAI';
 import { Recorder } from '../player/Recorder';
+import { SaveGame, type CarryState } from './SaveGame';
+import { Stairwell } from '../interaction/Stairwell';
 import { ScareDirector } from '../horror/ScareDirector';
 import { EndingScene } from '../world/EndingScenes';
 import { radioVoice } from '../audio/SoundSynth';
@@ -39,7 +41,13 @@ export interface GameOptions {
   players?: PlayerInfo[];
   net?: NetworkManager;
   onProgress: (step: string, progress: number) => void;
-  onExit: (reason?: string) => void;
+  onExit: (reason?: string, transition?: boolean) => void;
+  /** which level to build (0 = Level 0, 1 = Level 1) */
+  level?: 0 | 1;
+  /** state carried over from the previous level */
+  carry?: CarryState;
+  /** Ending B → "continue into Level 1" (single-player or host) */
+  onContinue?: () => void;
   openSettings: (onClose: () => void) => void;
 }
 
@@ -95,6 +103,14 @@ export class Game {
   private endingLoops: THREE.Audio[] = [];
   private dripTimer = 2;
   private deaths = 0;
+  private levelIndex: 0 | 1 = 0;
+  private fogLit = FOG_LIT.clone();
+  private timeOffset = 0;
+  private blackoutTimer = 0;
+  private powerTarget = 1;
+  private blackoutFlicker = 0;
+  private chapterDone = false;
+  private ambient: THREE.Audio | null = null;
 
   /** Accessibility: the flicker-intensity setting also scales screen glitching. */
   private settingsGlitch(v: number): number {
@@ -167,9 +183,11 @@ export class Game {
 
     o.onProgress('Level 0 생성 · 조명 베이크 · 텍스처 생성', 0.3);
     await nextFrame();
-    this.world = new World(this.session.mapSeed, this.physics, preset, this.renderer.maxAnisotropy);
+    this.levelIndex = o.level ?? 0;
+    this.world = new World(this.session.mapSeed, this.physics, preset, this.renderer.maxAnisotropy, this.levelIndex);
+    if (this.levelIndex === 1) this.fogLit = new THREE.Color(0x585b55); // Level 1: grey, low fog
     this.scene.add(this.world.group);
-    this.scene.fog = new THREE.FogExp2(FOG_LIT.getHex(), 0.042);
+    this.scene.fog = new THREE.FogExp2(this.fogLit.getHex(), 0.042);
     this.scene.background = new THREE.Color(0x000000);
 
     o.onProgress('플레이어 · 사운드 준비', 0.75);
@@ -201,7 +219,9 @@ export class Game {
       seed: this.session.entitySeed,
       enabled: URL_FLAGS.ai !== 'off',
       // ?ai=now → compressed reveal for testing; ?ai=hunt → skip the reveal entirely
-      revealMode: URL_FLAGS.ai === 'hunt' ? 'skip' : URL_FLAGS.ai === 'now' ? 'fast' : 'normal',
+      // Level 1: you already know what it is — no reveal, it simply arrives after a while
+      revealMode: this.levelIndex === 1 || URL_FLAGS.ai === 'hunt' ? 'skip' : URL_FLAGS.ai === 'now' ? 'fast' : 'normal',
+      spawnDelay: this.levelIndex === 1 ? (URL_FLAGS.ai === 'now' || URL_FLAGS.ai === 'hunt' ? 4 : 30) : undefined,
       ignoreColliders: [this.player.collider],
       names: () => ({
         local: this.names.get(this.authority?.localPlayerId ?? '') ?? (this.opts.settings.playerName || ''),
@@ -219,6 +239,18 @@ export class Game {
 
     // Signal Recorder + Scare Director (both local to this player)
     this.recorder = new Recorder(this.audio, this.world);
+    const carry = o.carry;
+    if (carry) {
+      if (carry.recorder) this.recorder.pickUp();
+      carry.heard.forEach((h) => this.recorder.heard.add(h));
+      this.deaths = carry.deaths;
+      this.timeOffset = carry.time;
+    }
+    if (this.levelIndex === 1) {
+      this.recorder.pickUp();          // it came down with you
+      this.recorder.heard.add(0);      // and it no longer introduces itself
+      this.blackoutTimer = 40 + Math.random() * 20;
+    }
     this.recorder.onSubtitle = (text, title) => this.hud.setSubtitle(text, title ? `녹음기 · ${title}` : '');
     this.scares = new ScareDirector({
       camera: this.camera,
@@ -231,7 +263,14 @@ export class Game {
     }, this.audio, this.world, this.entities, this.physics, this.session.eventSeed,
     this.authority.localPlayerId || 'local', URL_FLAGS.ai === 'now', [this.player.collider]);
 
-    this.player.onFootstep = (e) => this.audio.footstep(e.gait);
+    if (carry) this.player.status.battery = carry.battery;
+    this.player.onFootstep = (e) => {
+      if (this.levelIndex === 1 && this.world.isWater(this.player.feet.x, this.player.feet.z)) {
+        // wading: loud, and it carries
+        this.audio.play(Math.random() < 0.5 ? 'splash0' : 'splash1', e.gait === 'crouch' ? 0.35 : 0.7, 0.9 + Math.random() * 0.2);
+        this.player.status.emitNoise(e.gait === 'crouch' ? NOISE.WATER * 0.5 : NOISE.WATER);
+      } else this.audio.footstep(e.gait);
+    };
     this.player.onLand = (k) => this.audio.footstep(k > 0.6 ? 'run' : 'walk');
     this.world.onEvent = (e) => this.onWorldEvent(e);
 
@@ -401,6 +440,32 @@ export class Game {
       this.audio.playAt(e.state === 0 ? 'doorClose' : 'doorOpen', p, 1.4, 0.95 + Math.random() * 0.1, this.isOccluded(p));
       if (p.distanceTo(this.camera.position) < NOISE.DOOR) this.player.status.emitNoise(NOISE.DOOR * 0.6);
       if (e.byPlayerId !== 'receiver') this.entities?.hearNoise(p, NOISE.DOOR);
+    } else if (e.type === 'item' && this.world.supplyContent.has(e.item.id)) {
+      // Level 1 supply crate: opened by someone; whoever opened it gets what is inside
+      this.audio.playAt('doorOpen', e.item.position(), 0.5, 1.6);
+      if (e.byPlayerId === this.authority.localPlayerId) {
+        const c = this.world.supplyContent.get(e.item.id);
+        if (c === 'almond') {
+          this.player.status.health = Math.min(SURVIVAL.MAX_HEALTH, this.player.status.health + LEVEL1.ALMOND_HEAL);
+          this.player.status.stamina = SURVIVAL.MAX_STAMINA;
+          this.audio.play('pickup', 0.7, 0.8);
+          this.hud.toast(`아몬드 워터를 마셨다 — 체력 +${LEVEL1.ALMOND_HEAL}, 기력 회복`);
+        } else if (c === 'battery') {
+          this.player.status.addBattery(SURVIVAL.BATTERY_PICKUP);
+          this.batteriesFound++;
+          this.audio.play('pickup', 0.8);
+          this.hud.toast(`상자 안에 배터리가 있었다  +${SURVIVAL.BATTERY_PICKUP}%`);
+        } else {
+          this.hud.toast(this.world.supplyContent.size % 2 ? '젖은 종이 뭉치뿐이다.' : '비어 있다. 머리카락 한 움큼.');
+        }
+      }
+    } else if (e.type === 'blackout') {
+      // Level 1: the lights fail across the whole floor
+      this.powerTarget = e.on ? 0.03 : 1;
+      this.blackoutFlicker = 1.2;
+      this.audio.play('click', 0.6, e.on ? 0.5 : 0.8);
+      this.entities.setBlackout(e.on);
+      if (e.on) this.scares.hush(30);
     } else if (e.type === 'item') {
       if (e.byPlayerId === this.authority.localPlayerId) {
         this.player.status.addBattery(SURVIVAL.BATTERY_PICKUP);
@@ -463,6 +528,7 @@ export class Game {
 
   private fixedUpdate(dt: number): void {
     this.player.flashlightOn = this.flashlight.on;
+    this.player.speedMul = this.levelIndex === 1 && this.world.isWater(this.player.feet.x, this.player.feet.z) ? LEVEL1.WATER_SPEED : 1;
     if (!this.dead && !this.downed && (this.endingSeq === -1 || this.epilogueWalk)) this.player.fixedUpdate(dt);
     this.world.fixedUpdate(dt);
     this.entities.fixedUpdate(dt, this.aiTargets());
@@ -608,6 +674,7 @@ export class Game {
     }
 
     this.updatePowerSequence(dt);
+    this.updateLevel1(dt);
     this.updateEndingSequence(dt);
     if (!this.dead && !this.downed && this.endingSeq === -1) {
       const recNoise = this.recorder.update(dt, this.camera.position, this.camera.getWorldDirection(new THREE.Vector3()), jam);
@@ -628,7 +695,7 @@ export class Game {
       this.renderer.setExposure(this.exposure * this.endingScene.exposure);
       this.renderer.distress = 0.15;
     } else {
-      fog.color.lerp(FOG_DARK.clone().lerp(FOG_LIT, lit), 1 - Math.exp(-dt * 1.5));
+      fog.color.lerp(FOG_DARK.clone().lerp(this.fogLit, lit), 1 - Math.exp(-dt * 1.5));
       fog.density = THREE.MathUtils.lerp(0.075, 0.042, lit);
       this.renderer.setExposure(this.exposure * THREE.MathUtils.lerp(1.35, 1, lit));
       this.renderer.distress = Math.min(1, Math.max(1 - lit, threat * 1.3) + (this.dead ? 1 : 0));
@@ -711,7 +778,7 @@ export class Game {
       this.audio.play('paper', 0.7);
     } else if (f.kind === 'tool') {
       // the recorder is personal: everyone finds their own
-      this.world.recorder.setCollected(true);
+      this.world.recorder?.setCollected(true);
       this.recorder.pickUp();
       this.audio.play('pickup', 0.8);
       this.hud.toast('녹음기를 주웠다 — R 로 켜기');
@@ -729,6 +796,11 @@ export class Game {
   private objectiveText(): string {
     const el = this.world.elevator;
     const n = this.world.activeRelays;
+    if (this.levelIndex === 1) {
+      if (this.chapterDone) return '';
+      if (el.powered) return 'B3 계단으로 내려가라';
+      return `차단기 두 개를 찾아 계단 문 전원을 살려라 (${n}/${LEVEL1.RELAY_COUNT})`;
+    }
     if (el.ending) return '';
     if (el.open) return this.session.mode === 'single' ? '엘리베이터에 타서 주파수를 선택하라' : '모든 생존자가 탑승한 뒤 주파수를 선택하라';
     if (el.powered) return '엘리베이터를 찾아 호출하라';
@@ -745,7 +817,17 @@ export class Game {
     if (t < 0.5) s = Math.random() > 0.5 ? 1 : 0.1;
     else if (t < 3.2) s = 0;
     else if (t < 4.4) s = Math.random() > 0.35 ? (t - 3.2) / 1.2 : 0.05;
-    else { s = 1; this.powerSeq = -1; this.audio.playAt('ding', this.world.elevator.doorPosition, 1.8); this.hud.toast('어딘가에서 엘리베이터가 깨어났다'); }
+    else {
+      s = 1;
+      this.powerSeq = -1;
+      if (this.levelIndex === 1) {
+        this.audio.playAt('elevDoor', this.world.elevator.doorPosition, 1.8);
+        this.hud.toast('어딘가에서 무거운 문이 열렸다');
+      } else {
+        this.audio.playAt('ding', this.world.elevator.doorPosition, 1.8);
+        this.hud.toast('어딘가에서 엘리베이터가 깨어났다');
+      }
+    }
     this.world.lighting.surge = s;
   }
 
@@ -873,8 +955,86 @@ export class Game {
       title: 'WRONG FREQUENCY',
       body: '콘크리트 바닥과 콘크리트 벽. 천장의 배관에서 물이 떨어지고, 짙은 습기가 통로를 채운다. 창고 같은 통로가 끝없이 이어진다.\n\nLevel 1.\n\n불빛이 하나씩 꺼져 왔고, 안개 속에 무언가 서 있었다.\n\n녹음기가 켜진다.\n“이걸 듣고 있다면, 넌 다른 쪽을 눌렀어.”\n\n이제, 네가 녹음할 차례다.',
       stats,
+      ...(this.levelIndex === 0 && !escaped ? this.continueOption() : {}),
     }, () => this.exit());
     this.hud.fade(0, 1.5);
+  }
+
+  /** Ending B leads on into Level 1 — chosen by the single player or the host. */
+  private continueOption(): { continueLabel?: string; onContinue?: () => void; waiting?: string } {
+    if (!this.opts.onContinue) return {};
+    if (this.session.mode === 'client') return { waiting: '호스트가 Level 1로 계속할지 정하는 중…' };
+    return { continueLabel: '계속 — Level 1', onContinue: () => this.opts.onContinue?.() };
+  }
+
+  /** What the next level inherits from this one. */
+  carryState(): CarryState {
+    return {
+      recorder: this.recorder.has,
+      heard: [...this.recorder.heard],
+      deaths: this.deaths,
+      time: this.timeOffset + this.time,
+      battery: Math.max(30, this.player.status.battery),
+    };
+  }
+
+  /** Level 1: blackout schedule (simulating side only) and the lights following it (everyone). */
+  private updateLevel1(dt: number): void {
+    if (this.levelIndex !== 1) return;
+    if (!this.ambient) this.ambient = this.audio.loop('machinery', 0.1);
+    if (this.authority.simulates && !this.chapterDone) {
+      this.blackoutTimer -= dt;
+      if (this.blackoutTimer <= 0) {
+        const on = !this.world.blackout;
+        this.authority.worldEvent('blackout', on ? 1 : 0);
+        const [a, b] = on ? LEVEL1.BLACKOUT_LENGTH : LEVEL1.BLACKOUT_EVERY;
+        this.blackoutTimer = a + Math.random() * (b - a);
+      }
+    }
+    // lights stutter on the way out and back in, then settle
+    let p = this.powerTarget;
+    if (this.blackoutFlicker > 0) {
+      this.blackoutFlicker -= dt;
+      p = Math.random() < 0.5 ? 1 : 0.03;
+    }
+    this.world.lighting.power = p;
+    this.dripTimer -= dt;
+    if (this.dripTimer <= 0) {
+      this.dripTimer = 2 + Math.random() * 4;
+      const q = this.camera.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 16, 3, (Math.random() - 0.5) * 16));
+      this.audio.playAt('drip', q, 1.0, 0.85 + Math.random() * 0.3, this.isOccluded(q));
+    }
+    // reaching the bottom of the B3 stairs ends the chapter
+    const ex = this.world.elevator;
+    if (!this.chapterDone && ex instanceof Stairwell && ex.descended(this.player.feet)) this.completeChapter();
+  }
+
+  private completeChapter(): void {
+    this.chapterDone = true;
+    this.endingSeq = -2;
+    this.hud.fade(1, 2.2);
+    if (this.recorder.on) this.recorder.toggle();
+    const carry = this.carryState();
+    if (this.session.mode === 'single') SaveGame.save({ chapter: 1, seed: this.session.mapSeed, carry, completed: true });
+    setTimeout(() => {
+      if (this.ended) return;
+      const secs = Math.floor(carry.time);
+      this.input.enabled = false;
+      if (this.controls.isLocked) this.controls.unlock();
+      this.hud.showPause(false);
+      this.hud.showEnding({
+        kicker: 'CHAPTER 2 COMPLETE · LEVEL 1',
+        title: 'B3',
+        body: '계단은 생각보다 길었다. 한 층, 또 한 층.\n\n공기가 뜨거워지고, 벽을 타고 배관이 늘어나기 시작한다. 쇠가 식으며 내는 소리, 어디선가 증기가 새는 소리.\n\n녹음기의 잡음이 거의 들리지 않을 만큼 약해졌다.\n그런데 계단 위에서, 무언가 내려오는 발소리가 들린다.\n\nLevel 2 — 다음 장에서 계속.',
+        stats: [
+          `총 시간 ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`,
+          `사망 ${this.deaths}`,
+          `녹음 ${this.recorder.heard.size}/${this.recorder.logs.length}`,
+          `Seed ${this.session.mapSeed}`,
+        ],
+      }, () => this.exit());
+      this.hud.fade(0, 1.5);
+    }, 2600);
   }
 
   private inventoryLines(): string[] {
@@ -898,14 +1058,14 @@ export class Game {
     this.player.teleport(new THREE.Vector3((cx + 0.5) * s - (L.w * s) / 2, 0.05, (cy + 0.5) * s - (L.h * s) / 2));
   }
 
-  exit(reason?: string): void {
+  exit(reason?: string, transition = false): void {
     if (this.ended) return;
     this.ended = true;
     this.loop.stop();
     if (this.controls.isLocked) this.controls.unlock();
     this.authority?.shutdown();
     this.dispose();
-    this.opts.onExit(reason);
+    this.opts.onExit(reason, transition);
   }
 
   private dispose(): void {

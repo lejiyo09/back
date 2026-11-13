@@ -6,6 +6,7 @@ import { Game } from './core/Game';
 import { MainMenu } from './ui/MainMenu';
 import { buildSettingsPanel } from './ui/SettingsUI';
 import { NetworkManager } from './multiplayer/NetworkManager';
+import { SaveGame, type CarryState } from './core/SaveGame';
 
 /**
  * App shell: title screen → (lobby) → game → back to title.
@@ -21,6 +22,7 @@ class App {
   constructor() {
     this.menu = new MainMenu({
       single: (name) => this.startSingle(name),
+      resume: (name) => this.resumeSave(name),
       host: (name) => void this.host(name),
       join: (code, name) => void this.join(code, name),
       settings: () => this.openSettings(),
@@ -28,7 +30,32 @@ class App {
       lobbyLeave: () => this.leaveLobby(),
     }, this.settings.playerName);
 
+    this.refreshResume();
     if (URL_FLAGS.autostart === 'single') this.startSingle('Survivor');
+    if (URL_FLAGS.autostart === 'level1') this.launch('single', URL_FLAGS.seed ?? randomSeed(), 'SOLO', [{ id: 'local', name: 'Survivor', isHost: true, online: true }], 1);
+  }
+
+  private refreshResume(): void {
+    const save = SaveGame.load();
+    this.menu.setResume(save ? (save.completed ? 'Level 1 다시 하기' : '이어하기 — Level 1') : null);
+  }
+
+  private resumeSave(name: string): void {
+    const save = SaveGame.load();
+    if (!save) return;
+    this.rememberName(name);
+    void this.launch('single', save.seed, 'SOLO', [{ id: 'local', name, isHost: true, online: true }], 1, save.carry);
+  }
+
+  /** Ending B → Level 1. Single-player swaps immediately; the host moves the whole room. */
+  private continueToLevel1(): void {
+    if (!this.game) return;
+    if (this.game.session.mode === 'host') { this.net?.socket.emit('game:level', { level: 1 }); return; }
+    const carry = this.game.carryState();
+    const seed = (this.game.session.mapSeed ^ 0x9e3779b1) >>> 0;
+    const players = [...this.game.session.players.values()];
+    this.game.exit(undefined, true);
+    void this.launch('single', seed, 'SOLO', players, 1, carry);
   }
 
   private rememberName(name: string): void {
@@ -79,6 +106,14 @@ class App {
     s.off('session:ended').on('session:ended', (reason) => {
       if (!this.game) { this.menu.show(); this.menu.showError(reason); }
     });
+    s.off('game:level').on('game:level', ({ level, seed }) => {
+      const carry = this.game?.carryState();
+      this.game?.exit(undefined, true);
+      const info = net.session!;
+      info.seed = seed;
+      info.level = level;
+      void this.launch(net.isHost ? 'host' : 'client', seed, info.code, this.lobbyPlayers, level as 0 | 1, carry);
+    });
     s.off('game:started').on('game:started', () => {
       const info = net.session!;
       void this.launch(net.isHost ? 'host' : 'client', info.seed, info.code, this.lobbyPlayers);
@@ -110,7 +145,7 @@ class App {
       this.lobbyPlayers = [...info.players];
       this.bindLobby(net);
       if (info.started) {
-        await this.launch('client', info.seed, info.code, this.lobbyPlayers);
+        await this.launch('client', info.seed, info.code, this.lobbyPlayers, (info.level ?? 0) as 0 | 1);
       } else {
         this.menu.showLobby(true, info.code, this.lobbyPlayers, false);
       }
@@ -126,12 +161,16 @@ class App {
     this.menu.showLobby(false);
   }
 
-  private async launch(mode: GameMode, seed: number, sessionId: string, players: PlayerInfo[]): Promise<void> {
+  private async launch(mode: GameMode, seed: number, sessionId: string, players: PlayerInfo[], level: 0 | 1 = 0, carry?: CarryState): Promise<void> {
     if (this.game) return;
+    if (level === 1 && mode === 'single') {
+      SaveGame.save({ chapter: 1, seed, carry: carry ?? { recorder: true, heard: [0], deaths: 0, time: 0, battery: 100 }, completed: false });
+    }
     document.querySelector('canvas#view')?.remove();
     const canvas = document.createElement('canvas');
     canvas.id = 'view';
     document.body.prepend(canvas);
+    this.menu.root.classList.remove('hidden');
     this.menu.setLoading('준비 중', 0);
     try {
       const game = await Game.create({
@@ -142,8 +181,11 @@ class App {
         sessionId,
         players,
         net: mode === 'single' ? undefined : this.net,
+        level,
+        carry,
+        onContinue: mode === 'client' ? () => undefined : () => this.continueToLevel1(),
         onProgress: (step, p) => this.menu.setLoading(step, p),
-        onExit: (reason) => this.onGameExit(reason),
+        onExit: (reason, transition) => this.onGameExit(reason, transition),
         openSettings: (onClose) => this.openSettings(onClose),
       });
       this.game = game;
@@ -157,12 +199,14 @@ class App {
     }
   }
 
-  private onGameExit(reason?: string): void {
+  private onGameExit(reason?: string, transition = false): void {
     this.game = undefined;
     document.querySelector('canvas#view')?.remove();
+    if (transition) return; // moving to another level: keep the session, the next launch shows its own loading screen
     this.net?.leave();
     this.lobbyPlayers = [];
     this.menu.show();
+    this.refreshResume();
     if (reason) this.menu.showError(reason);
   }
 }

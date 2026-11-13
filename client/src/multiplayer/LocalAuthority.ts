@@ -31,6 +31,7 @@ export class LocalAuthority implements GameAuthority {
   }
 
   publishEntities(): void { /* no peers */ }
+  worldEvent(targetId: string, value: number): void { this.world?.applyInteraction(targetId, value, 'world'); }
   deliverHit(): void { /* only the local player exists */ }
 
   shutdown(): void {

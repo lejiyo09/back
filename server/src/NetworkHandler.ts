@@ -40,7 +40,7 @@ export function attachNetworkHandler(io: IO, rooms = new RoomManager(), opts: Ha
 
   const toInfo = (room: Room, player: Player): SessionInfo => ({
     code: room.code, playerId: player.id, token: player.token, hostId: room.hostId,
-    seed: room.seed, started: room.started, players: rooms.info(room),
+    seed: room.seed, started: room.started, level: room.level, players: rooms.info(room),
   });
   const hostSocket = (room: Room) => room.players.get(room.hostId)?.socketId ?? null;
 
@@ -115,6 +115,16 @@ export function attachNetworkHandler(io: IO, rooms = new RoomManager(), opts: Ha
       if (!found || found.room.hostId !== found.player.id || found.room.started) return;
       found.room.started = true;
       io.to(found.room.code).emit('game:started');
+    });
+
+    socket.on('game:level', (msg) => {
+      const found = me();
+      const level = Number(msg?.level);
+      if (!found || found.room.hostId !== found.player.id || !found.room.started) return;
+      if (!Number.isInteger(level) || level < 0 || level > 1 || level === found.room.level) return;
+      found.room.level = level;
+      found.room.seed = (found.room.seed ^ Math.imul(level, 0x9e3779b1)) >>> 0;
+      io.to(found.room.code).emit('game:level', { level, seed: found.room.seed });
     });
 
     socket.on('player:state', (state) => {

@@ -23,6 +23,8 @@ export interface GameAuthority {
   publishEntities(list: EntityNetState[]): void;
   /** Damage for a remote player (host only). */
   deliverHit(hit: PlayerHit): void;
+  /** World-driven change decided by the simulation (e.g. a Level 1 blackout). */
+  worldEvent(targetId: string, value: number): void;
 }
 
 export interface AuthorityCallbacks {

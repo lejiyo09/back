@@ -48,7 +48,7 @@ export class HUD {
       <div class="subtitle"><span class="who"></span><span class="line"></span></div>
       <div class="recorder hidden"><canvas width="220" height="70"></canvas><div class="rec-row"><span class="rec-state">SCAN</span><span class="rec-bars"></span></div></div>
       <div class="downed hidden"><div class="death-title">DOWN</div><div class="death-sub">동료가 일으켜 줄 때까지 버텨라</div><div class="death-timer"></div></div>
-      <div class="ending overlay hidden"><div class="ending-inner"><div class="ending-kicker"></div><h1></h1><div class="ending-body"></div><ul class="ending-stats"></ul><button class="primary" data-act="menu">메인 메뉴로</button></div></div>
+      <div class="ending overlay hidden"><div class="ending-inner"><div class="ending-kicker"></div><h1></h1><div class="ending-body"></div><ul class="ending-stats"></ul><div class="ending-actions"><button class="primary" data-act="continue">계속</button><button data-act="menu">메인 메뉴로</button></div><div class="ending-wait"></div></div></div>
       <div class="prompt"><kbd>E</kbd><span></span></div>
       <div class="meters">
         <div class="battery" title="손전등 배터리"><div class="cell"><div class="fill"></div></div><span>100%</span></div>
@@ -179,7 +179,7 @@ export class HUD {
     if (show) $('.death-timer', this.downed).textContent = reviving ? '일으켜 세우는 중…' : `${Math.ceil(secondsLeft)}초`;
   }
 
-  showEnding(e: { kicker: string; title: string; body: string; stats: string[] }, onMenu: () => void): void {
+  showEnding(e: { kicker: string; title: string; body: string; stats: string[]; continueLabel?: string; onContinue?: () => void; waiting?: string }, onMenu: () => void): void {
     $('.ending-kicker', this.ending).textContent = e.kicker;
     $('h1', this.ending).textContent = e.title;
     const body = $('.ending-body', this.ending);
@@ -196,6 +196,11 @@ export class HUD {
     type();
     const btn = $('[data-act="menu"]', this.ending) as HTMLButtonElement;
     btn.onclick = (ev) => { ev.stopPropagation(); onMenu(); };
+    const cont = $('[data-act="continue"]', this.ending) as HTMLButtonElement;
+    cont.style.display = e.onContinue ? '' : 'none';
+    cont.textContent = e.continueLabel ?? '계속';
+    cont.onclick = (ev) => { ev.stopPropagation(); cont.disabled = true; e.onContinue?.(); };
+    $('.ending-wait', this.ending).textContent = e.waiting ?? '';
   }
 
   /** health 0..100 → persistent red vignette as it drops. */

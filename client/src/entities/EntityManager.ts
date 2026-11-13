@@ -23,6 +23,8 @@ export interface EntityManagerOptions {
   ignoreColliders: RAPIER.Collider[];
   revealMode: RevealMode;
   enabled: boolean;
+  /** seconds before it first appears when the reveal is skipped (Level 1) */
+  spawnDelay?: number;
   /** names for mimicry: the local player and teammates */
   names?: () => { local: string; others: string[] };
   subtitle?: (text: string | null, who: string) => void;
@@ -106,7 +108,12 @@ export class EntityManager {
     if (o.simulate && o.enabled) {
       this.ai = new ReceiverAI(o.physics, o.world, new THREE.Vector3(0, 0, 0), o.seed, o.hooks, o.ignoreColliders);
       this.director = new RevealDirector(this.ai, o.world, o.seed, o.revealMode);
+      if (o.spawnDelay !== undefined) this.director.setDelay(o.spawnDelay);
     }
+  }
+
+  setBlackout(on: boolean): void {
+    if (this.ai) this.ai.darkHunt = on;
   }
 
   /**
