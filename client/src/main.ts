@@ -8,6 +8,8 @@ import { buildSettingsPanel } from './ui/SettingsUI';
 import { NetworkManager } from './multiplayer/NetworkManager';
 import { SaveGame, type CarryState } from './core/SaveGame';
 import { MAX_LEVEL, nextLevelSeed } from '@shared/Levels';
+import { Offline } from './core/Offline';
+import { QUALITY_PRESETS } from './core/GameConfig';
 
 /**
  * App shell: title screen → (lobby) → game → back to title.
@@ -19,6 +21,7 @@ class App {
   private game?: Game;
   private net?: NetworkManager;
   private lobbyPlayers: PlayerInfo[] = [];
+  private offline!: Offline;
 
   constructor() {
     this.menu = new MainMenu({
@@ -32,6 +35,9 @@ class App {
     }, this.settings.playerName);
 
     this.refreshResume();
+    // offline play: cache the game + this quality's models; show readiness on the menu
+    this.offline = new Offline(() => (QUALITY_PRESETS[this.settings.quality]?.textureSize >= 1024 ? '1k' : '512'));
+    this.offline.onChange((st) => this.menu.setOffline(Offline.label(st), st.online));
     if (URL_FLAGS.autostart === 'single') this.startSingle('Survivor');
     const auto = /^level(\d+)$/.exec(URL_FLAGS.autostart ?? '');
     if (auto && Number(auto[1]) >= 1 && Number(auto[1]) <= MAX_LEVEL) {
@@ -59,6 +65,7 @@ class App {
   private continueToNextLevel(): void {
     if (!this.game) return;
     const next = Math.min(MAX_LEVEL, this.game.level + 1);
+    if (this.game.session.mode === 'client') return; // the host moves the room
     if (this.game.session.mode === 'host') { this.net?.socket.emit('game:level', { level: next }); return; }
     const carry = this.game.carryState();
     const seed = nextLevelSeed(this.game.session.mapSeed, next);
@@ -76,6 +83,7 @@ class App {
     const panel = buildSettingsPanel(this.settings, (s, key) => {
       saveSettings(s);
       if (key !== 'quality') this.game?.applySettings(s);
+      else this.offline.download(); // the other quality tier's models for offline play
     }, () => { panel.remove(); onClose?.(); });
     document.body.appendChild(panel);
   }
@@ -130,6 +138,7 @@ class App {
   }
 
   private async host(name: string): Promise<void> {
+    if (!this.offline.online) { this.menu.showError('오프라인 상태입니다 — 멀티플레이는 인터넷이 필요합니다. 싱글 플레이는 그대로 할 수 있습니다.'); return; }
     this.rememberName(name);
     this.menu.setBusy(true);
     try {
@@ -146,6 +155,7 @@ class App {
   }
 
   private async join(code: string, name: string): Promise<void> {
+    if (!this.offline.online) { this.menu.showError('오프라인 상태입니다 — 멀티플레이는 인터넷이 필요합니다. 싱글 플레이는 그대로 할 수 있습니다.'); return; }
     this.rememberName(name);
     this.menu.setBusy(true);
     try {
@@ -192,7 +202,8 @@ class App {
         net: mode === 'single' ? undefined : this.net,
         level,
         carry,
-        onContinue: mode === 'client' ? () => undefined : () => this.continueToNextLevel(),
+        onContinue: () => this.continueToNextLevel(),
+        onSolo: () => { this.net?.leave(); this.net = undefined; this.lobbyPlayers = []; },
         onProgress: (step, p) => this.menu.setLoading(step, p),
         onExit: (reason, transition) => this.onGameExit(reason, transition),
         openSettings: (onClose) => this.openSettings(onClose),
@@ -216,6 +227,9 @@ class App {
     this.lobbyPlayers = [];
     this.menu.show();
     this.refreshResume();
+    // offline play: cache the game + this quality's models; show readiness on the menu
+    this.offline = new Offline(() => (QUALITY_PRESETS[this.settings.quality]?.textureSize >= 1024 ? '1k' : '512'));
+    this.offline.onChange((st) => this.menu.setOffline(Offline.label(st), st.online));
     if (reason) this.menu.showError(reason);
   }
 }

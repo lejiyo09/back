@@ -226,6 +226,11 @@ export class RemotePlayers {
     }
   }
 
+  /** remove every avatar (going solo after the connection was lost) */
+  clear(): void {
+    for (const id of [...this.avatars.keys()]) this.remove(id);
+  }
+
   dispose(): void {
     for (const id of [...this.avatars.keys()]) this.remove(id);
     this.materials.body.dispose();

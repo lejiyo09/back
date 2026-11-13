@@ -40,6 +40,7 @@ export class MainMenu {
             </div>
           </div>
           <button data-act="settings" class="ghost">설정</button>
+          <div class="offline-status"></div>
           <div class="error"></div>
         </div>
         <div class="lobby hidden">
@@ -51,7 +52,7 @@ export class MainMenu {
           <button class="ghost" data-act="leave">나가기</button>
         </div>
         <footer>
-          <span>Prototype ${GAME_VERSION} · Level 0</span>
+          <span>v${GAME_VERSION} · Level 0–10</span>
           <span class="controls">WASD 이동 · Shift 달리기 · Ctrl 웅크리기 · Space 점프 · E 상호작용 · F 손전등 · Tab 소지품 · Esc 메뉴</span>
         </footer>
       </div>
@@ -104,6 +105,14 @@ export class MainMenu {
     const single = this.root.querySelector<HTMLButtonElement>('[data-act="single"]')!;
     single.classList.toggle('primary', !label);
     single.textContent = label ? '새 게임 (Level 0)' : '싱글플레이';
+  }
+
+  /** offline readiness line + multiplayer availability */
+  setOffline(text: string, online: boolean): void {
+    const el = this.root.querySelector<HTMLElement>('.offline-status')!;
+    el.textContent = text;
+    this.root.querySelector('.mp')!.classList.toggle('disabled', !online);
+    this.root.querySelectorAll<HTMLButtonElement>('.mp button').forEach((b) => { b.title = online ? '' : '오프라인 — 멀티플레이는 인터넷이 필요합니다'; });
   }
 
   setBusy(b: boolean): void {

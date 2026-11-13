@@ -198,3 +198,7 @@ kbd {
 #hud .cctv .rec { position: absolute; left: 18px; top: 14px; color: #ff4a3a; font: 700 14px ui-monospace, monospace; }
 #hud .cctv .cam { position: absolute; right: 18px; top: 14px; color: #ddd; font: 600 13px ui-monospace, monospace; }
 #hud .hidden.scanner, #hud .hidden.cctv { display: none; }
+
+/* offline readiness */
+.offline-status { font-size: 12px; opacity: 0.75; min-height: 1.2em; text-align: center; letter-spacing: 0.02em; }
+.mp.disabled { opacity: 0.45; }

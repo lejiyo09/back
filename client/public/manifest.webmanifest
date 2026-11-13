@@ -1,0 +1,12 @@
+{
+  "name": "LOST SIGNAL",
+  "short_name": "LOST SIGNAL",
+  "description": "브라우저 1인칭 백룸 생존 공포 게임 — 오프라인 플레이 지원",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b0a06",
+  "theme_color": "#0b0a06",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

@@ -1,3 +1,4 @@
+import { NET } from '@shared/Constants';
 import { io, type Socket } from 'socket.io-client';
 import type { ClientToServerEvents, ServerToClientEvents, SessionInfo } from '@shared/Protocol';
 
@@ -23,6 +24,7 @@ export class NetworkManager {
   session?: SessionInfo;
   events: ConnectionEvents = {};
   private dropped = false;
+  private giveUp: ReturnType<typeof setTimeout> | undefined;
   private leaving = false;
 
   constructor(url = import.meta.env.VITE_SERVER_URL || window.location.origin) {
@@ -39,8 +41,16 @@ export class NetworkManager {
       if (this.leaving || reason === 'io client disconnect' || !this.session) return;
       this.dropped = true;
       this.events.lost?.();
+      // the server keeps our slot for NET.PLAYER_GRACE seconds; past that, stop waiting and play on alone
+      clearTimeout(this.giveUp);
+      this.giveUp = setTimeout(() => {
+        if (!this.dropped || !this.session) return;
+        this.session = undefined;
+        this.events.failed?.('인터넷 연결 없음');
+      }, (NET.PLAYER_GRACE + 4) * 1000);
     });
     this.socket.on('connect', () => {
+      clearTimeout(this.giveUp);
       if (!this.dropped || !this.session) return;
       this.dropped = false;
       const { code, token } = this.session;

@@ -52,6 +52,8 @@ export interface GameOptions {
   carry?: CarryState;
   /** Ending B → "continue into Level 1" (single-player or host) */
   onContinue?: () => void;
+  /** multiplayer turned into single-player (connection lost) */
+  onSolo?: () => void;
   openSettings: (onClose: () => void) => void;
 }
 
@@ -175,7 +177,7 @@ export class Game {
       onRemoteState: (id, st) => this.remotes?.onState(id, st),
       onPeerJoined: (id, name) => { this.names.set(id, name); this.remotes?.setName(id, name); this.hud.toast(`${name} 님이 백룸에 들어왔습니다`); },
       onPeerLeft: (id) => { this.hud.toast(`${this.names.get(id) ?? '생존자'} 님이 세션을 떠났습니다`); this.remotes?.remove(id); this.remotes?.forgetName(id); },
-      onSessionEnded: (reason) => this.exit(reason),
+      onSessionEnded: (reason) => this.goSolo(reason),
       onEntityStates: (list) => this.entities?.applySnapshots(list),
       getLocal: () => ({ pos: this.player.feet.clone(), downed: this.downed, dead: this.dead }),
       onHostChanged: (hostId) => this.onHostChanged(hostId),
@@ -284,8 +286,10 @@ export class Game {
     if (this.levelIndex === 2) this.steamTimers = this.world.steamVents.map(() => 3 + Math.random() * 8);
     if (theme) {
       if (carry?.choice) this.l2Choice = carry.choice;
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
+      const self = this;
       this.mech = new LevelMechanics({
-        level: this.levelIndex, theme, world: this.world, entities: this.entities, authority: this.authority, hud: this.hud,
+        level: this.levelIndex, theme, world: this.world, entities: this.entities, get authority() { return self.authority; }, hud: this.hud,
         audio: this.audio, input: this.input, scene: this.scene, camera: this.camera, flashlight: this.flashlight, recorder: this.recorder,
         feet: () => this.player.feet,
         teleport: (p) => { this.player.teleport(p); this.camera.position.set(p.x, p.y + PLAYER.EYE_HEIGHT, p.z); },
@@ -339,7 +343,7 @@ export class Game {
           else if (this.authority instanceof HostAuthority) this.authority.resync();
           for (const p of info.players) this.remotes.setOnline(p.id, p.online);
         },
-        failed: (reason) => this.exit(`재연결 실패: ${reason}`),
+        failed: (reason) => this.goSolo(`재연결 실패: ${reason}`),
       };
     }
 
@@ -466,6 +470,23 @@ export class Game {
       : new RemoteAuthority(this.opts.net, this.authorityCallbacks);
     void this.authority.startSession(this.world);
     this.entities.setAuthority(mode === 'host');
+  }
+
+  /**
+   * The connection is gone for good (Wi-Fi dropped past the grace period, or the
+   * session ended): keep playing alone in the same world instead of quitting.
+   */
+  private goSolo(reason: string): void {
+    if (this.ended || this.session.mode === 'single') return;
+    this.authority.shutdown();
+    this.session.mode = 'single';
+    this.authority = new LocalAuthority();
+    void this.authority.startSession(this.world);
+    this.entities.setAuthority(true);
+    this.remotes.clear();
+    this.hud.setBanner(null);
+    this.hud.toast(`연결이 끊겼습니다 (${reason}) — 같은 맵에서 혼자 계속합니다`, 6000);
+    this.opts.onSolo?.();
   }
 
   private onHostChanged(hostId: string): void {

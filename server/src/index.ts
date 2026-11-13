@@ -16,7 +16,7 @@ const MIME: Record<string, string> = {
   '.json': 'application/json', '.wasm': 'application/wasm', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.webp': 'image/webp', '.ktx2': 'image/ktx2', '.glb': 'model/gltf-binary',
   '.gltf': 'model/gltf+json', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav',
-  '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2',
+  '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json',
 };
 
 let rooms: ReturnType<typeof attachNetworkHandler> | undefined;
@@ -36,7 +36,8 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
     const s = await stat(file).catch(() => null);
     if (!s || s.isDirectory()) file = join(CLIENT_DIST, 'index.html');
     const body = await readFile(file);
-    const isAsset = file.includes(`${join(CLIENT_DIST, 'assets')}`);
+    // only content-hashed bundles are immutable; models/catalog/sw.js must revalidate
+    const isAsset = /-[\w-]{8}\.(js|css|wasm)$/.test(file);
     res.writeHead(200, {
       'content-type': MIME[extname(file)] ?? 'application/octet-stream',
       'cache-control': isAsset ? 'public, max-age=31536000, immutable' : 'no-cache',
