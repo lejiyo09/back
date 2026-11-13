@@ -65,18 +65,22 @@ export type SupplyContent = 'almond' | 'battery' | 'empty';
 export interface SupplySpot extends Spot { content: SupplyContent }
 
 export interface Level0Data {
-  /** 0 = Level 0, 1 = Level 1 (same grid engine, different data) */
-  index: 0 | 1;
+  /** 0 = Level 0, 1 = Level 1, 2 = Level 2 (same grid engine, different data) */
+  index: 0 | 1 | 2;
   /** ceiling height in metres */
   ceiling: number;
   /** how the level is left: Level 0's service elevator, Level 1's stairwell down */
-  exitKind: 'elevator' | 'stairs';
+  exitKind: 'elevator' | 'stairs' | 'radio';
   /** static crate stacks (obstacles / cover): cell + corner offset */
   crates: { cx: number; cy: number; ox: number; oy: number; height: number }[];
   /** openable supply crates */
   supplies: SupplySpot[];
   /** flooded cells — slow and loud to wade through */
   water: { cx: number; cy: number }[];
+  /** Level 2: steel floor grates (loud), machinery at dead ends (heat), leaking steam pipes */
+  grates: { cx: number; cy: number }[];
+  machines: { cx: number; cy: number; side: 'n' | 's' | 'e' | 'w' }[];
+  steam: { cx: number; cy: number; side: 'n' | 's' | 'e' | 'w' }[];
   seed: number;
   w: number;
   h: number;
@@ -358,7 +362,7 @@ export function generateLevel0(seed: number): Level0Data {
   ];
 
   return {
-    index: 0, ceiling: WORLD.CEILING_HEIGHT, exitKind: 'elevator', crates: [], supplies: [], water: [],
+    index: 0, ceiling: WORLD.CEILING_HEIGHT, exitKind: 'elevator', crates: [], supplies: [], water: [], grates: [], machines: [], steam: [],
     seed, w: W, h: H, hEdges, vEdges, pillars, lights, dark, doors, batteries, notes, spawn,
     recorder, relays, logSpots, exit, correctFrequency: objRng.int(0, 1),
   };

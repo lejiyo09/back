@@ -135,6 +135,17 @@ export const LEVEL1 = {
   RELAY_COUNT: 2,
 } as const;
 
+/** Level 2 (Pipe Dreams): heat near machinery, grates, steam leaks. */
+export const LEVEL2 = {
+  HEAT_DAMAGE: 2.2,     // hp/s standing in the machinery heat
+  HEAT_STAMINA: 14,     // stamina/s drained by the heat
+  NOISE_MASK: 0.4,      // your noise is multiplied by this next to the machines
+  GRATE_NOISE: 14,
+  STEAM_DAMAGE: 9,      // per burst if you are in it
+  STEAM_EVERY: [5, 11] as const,
+  RELAY_COUNT: 2,
+} as const;
+
 export const PLAYER_HEALTH = {
   REGEN_DELAY: 12,
   REGEN_PER_SEC: 2.5,

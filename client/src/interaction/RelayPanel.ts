@@ -48,9 +48,11 @@ export class RelayPanel implements Interactable {
   private lampMat: THREE.MeshBasicMaterial;
   private leverAngle = 0.9;
   readonly index: number;
+  private valve = false;
 
-  constructor(readonly id: string, spot: WallSpot, level: Level0Data, physics: PhysicsWorld, metal: THREE.Material, lit: (m: THREE.MeshStandardMaterial) => THREE.MeshStandardMaterial = (m) => m, ceiling: number = WORLD.CEILING_HEIGHT) {
+  constructor(readonly id: string, spot: WallSpot, level: Level0Data, physics: PhysicsWorld, metal: THREE.Material, lit: (m: THREE.MeshStandardMaterial) => THREE.MeshStandardMaterial = (m) => m, ceiling: number = WORLD.CEILING_HEIGHT, labelLines?: string[]) {
     this.index = Number(id.split('-')[1]);
+    this.valve = labelLines?.[0] === 'VALVE';
     const c = cellCenter(level, spot.cx, spot.cy);
     const half = WORLD.CELL_SIZE / 2 - WORLD.WALL_THICKNESS / 2 - 0.07;
     const off = { n: [0, -half, 0], s: [0, half, Math.PI], w: [-half, 0, Math.PI / 2], e: [half, 0, -Math.PI / 2] }[spot.side];
@@ -61,7 +63,7 @@ export class RelayPanel implements Interactable {
     box.position.y = 1.35;
     box.castShadow = true;
     const face = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.25), lit(new THREE.MeshStandardMaterial({
-      map: labelTexture([`RELAY 0${this.index + 1}`, '주 전원 차단기', 'MAIN BREAKER — B2']), roughness: 0.7,
+      map: labelTexture(labelLines ? [`${labelLines[0]} 0${this.index + 1}`, ...labelLines.slice(1)] : [`RELAY 0${this.index + 1}`, '주 전원 차단기', 'MAIN BREAKER — B2']), roughness: 0.7,
     })));
     face.position.set(-0.01, 1.47, 0.061);
     const conduit = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, ceiling - 1.66, 8), metal);
@@ -84,7 +86,7 @@ export class RelayPanel implements Interactable {
   }
 
   prompt(): string {
-    return this.active ? '' : '전력 패널 레버 내리기';
+    return this.active ? '' : this.valve ? '증기 밸브 돌리기' : '전력 패널 레버 내리기';
   }
 
   holdTime(): number {

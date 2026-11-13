@@ -34,20 +34,21 @@ export class Lighting {
 
   constructor(level: Level0Data, private baked: BakedLighting, poolSize: number) {
     const lv1 = level.index === 1;
-    // Level 1: bare strip lights hung on chains below a high concrete ceiling
-    const y = level.ceiling - (lv1 ? 0.75 : 0);
+    const lv2 = level.index === 2;
+    // Level 1: bare strip lights hung on chains below a high concrete ceiling; Level 2: caged bulbs
+    const y = level.ceiling - (lv1 ? 0.75 : lv2 ? 0.22 : 0);
     for (const l of level.lights) {
       const c = cellCenter(level, l.cx, l.cy);
       this.fixtures.push({ data: l, pos: new THREE.Vector3(c.x, y - 0.02, c.z), level: 1 });
     }
 
     // Housing (metal frame) — 0.625 x 1.25 m troffer, flush with the tile grid.
-    const housingGeo = lv1 ? new THREE.BoxGeometry(0.18, 0.07, 1.42) : new THREE.BoxGeometry(0.64, 0.04, 1.27);
+    const housingGeo = lv2 ? new THREE.CylinderGeometry(0.09, 0.07, 0.16, 6, 1, true) : lv1 ? new THREE.BoxGeometry(0.18, 0.07, 1.42) : new THREE.BoxGeometry(0.64, 0.04, 1.27);
     const housingMat = baked.apply(new THREE.MeshStandardMaterial({ color: 0xd8d6cf, roughness: 0.5, metalness: 0.3 }));
     const housing = new THREE.InstancedMesh(housingGeo, housingMat, this.fixtures.length);
 
     // Diffuser panel – unlit, per-instance brightness through instanceColor.
-    const panelGeo = lv1 ? new THREE.PlaneGeometry(0.1, 1.34) : new THREE.PlaneGeometry(0.56, 1.18);
+    const panelGeo = lv2 ? new THREE.SphereGeometry(0.05, 8, 6) : lv1 ? new THREE.PlaneGeometry(0.1, 1.34) : new THREE.PlaneGeometry(0.56, 1.18);
     panelGeo.rotateX(Math.PI / 2);
     const panelMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: true });
     this.panel = new THREE.InstancedMesh(panelGeo, panelMat, this.fixtures.length);
@@ -76,7 +77,7 @@ export class Lighting {
     }
 
     for (let i = 0; i < poolSize; i++) {
-      const pl = new THREE.PointLight(lv1 ? 0xe4eee6 : 0xfff1cf, 0, lv1 ? 12 : 9, 2);
+      const pl = new THREE.PointLight(lv2 ? 0xffc48a : lv1 ? 0xe4eee6 : 0xfff1cf, 0, lv2 ? 7 : lv1 ? 12 : 9, 2);
       pl.castShadow = false;
       this.poolLights.push(pl);
       this.poolAssign.push(null);

@@ -7,6 +7,8 @@ import { BakedLighting } from '../rendering/BakedLighting';
 import { Lighting } from '../rendering/Lighting';
 import { carpetTexture, ceilingTexture, concreteTexture, doorTexture, paperTexture, wallpaperTexture, type PBRSet } from '../rendering/Textures';
 import { generateLevel1 } from './Level1Layout';
+import { generateLevel2 } from './Level2Layout';
+import { RadioRoom, RADIO_HEIGHT, RADIO_OPENING } from '../interaction/RadioRoom';
 import { Stairwell, STAIR_HEIGHT, STAIR_OPENING } from '../interaction/Stairwell';
 import { Door } from '../interaction/Door';
 import { Item, makeBatteryMesh, makeNoteMesh, makeRecorderMesh } from '../interaction/Item';
@@ -65,7 +67,12 @@ export class World {
   readonly byId = new Map<string, Interactable>();
   readonly relays = new Map<string, RelayPanel>();
   /** the level's exit: Level 0's service elevator or Level 1's stairwell */
-  elevator!: Elevator | Stairwell;
+  elevator!: Elevator | Stairwell | RadioRoom;
+  /** Level 2: machinery (heat), steam leaks, grates */
+  readonly machines: { root: THREE.Object3D; pos: THREE.Vector3 }[] = [];
+  readonly steamVents: { pos: THREE.Vector3; dir: THREE.Vector3 }[] = [];
+  private heatCells = new Set<string>();
+  private grateCells = new Set<string>();
   recorder: Item | null = null;
   /** Level 1: the lights are out across the whole floor */
   blackout = false;
@@ -75,12 +82,13 @@ export class World {
   onEvent?: (e: WorldEvent) => void;
   private lastActor = '';
 
-  constructor(seed: number, private physics: PhysicsWorld, quality: QualityPreset, anisotropy: number, levelIndex: 0 | 1 = 0) {
-    this.level = levelIndex === 1 ? generateLevel1(seed) : generateLevel0(seed);
+  constructor(seed: number, private physics: PhysicsWorld, quality: QualityPreset, anisotropy: number, levelIndex: 0 | 1 | 2 = 0) {
+    this.level = levelIndex === 2 ? generateLevel2(seed) : levelIndex === 1 ? generateLevel1(seed) : generateLevel0(seed);
     H = this.level.ceiling;
     this.baked = new BakedLighting(this.level);
     const L = this.level;
-    const lv1 = L.index === 1;
+    const lv1 = L.index >= 1;   // concrete levels (1 and 2)
+    const lv2 = L.index === 2;
     const size = L.w * WORLD.CELL_SIZE;
     const ts = quality.textureSize;
     const aniso = Math.min(anisotropy, quality.textureSize >= 1024 ? 8 : 4);
@@ -94,11 +102,11 @@ export class World {
     const doorTex = doorTexture(Math.max(256, ts / 2), seed, aniso);
     this.textures.push(...new Set([wallTex, carpetTex, ceilTex, doorTex]));
 
-    const wallMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...wallTex, roughness: 1, metalness: 0, color: lv1 ? 0xd8d8d2 : 0xffffff }));
+    const wallMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...wallTex, roughness: 1, metalness: 0, color: lv2 ? 0x9a9890 : lv1 ? 0xd8d8d2 : 0xffffff }));
     wallMat.normalScale.set(0.6, 0.6);
     const darkWallMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...wallTex, color: lv1 ? 0xbcbcb5 : 0xb8ad8a, roughness: 1 }));
-    const carpetMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...carpetTex, roughness: 1, color: lv1 ? 0xb0b0aa : 0xffffff }));
-    const ceilMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...ceilTex, roughness: 1, color: lv1 ? 0x8a8a86 : 0xffffff }));
+    const carpetMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...carpetTex, roughness: 1, color: lv2 ? 0x86847c : lv1 ? 0xb0b0aa : 0xffffff }));
+    const ceilMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...ceilTex, roughness: 1, color: lv2 ? 0x5e5c56 : lv1 ? 0x8a8a86 : 0xffffff }));
     const doorMat = this.baked.apply(lv1
       ? new THREE.MeshStandardMaterial({ color: 0x5d6460, roughness: 0.5, metalness: 0.6 })
       : new THREE.MeshStandardMaterial({ ...doorTex, roughness: 1 }));
@@ -125,6 +133,7 @@ export class World {
       const b = dir === 'h' ? L.dark[y - 1]?.[x] : L.dark[y]?.[x - 1];
       return !!a && !!b;
     };
+    const pipes: THREE.BufferGeometry[] = [];
     const addWall = (x0: number, z0: number, x1: number, z1: number, y0: number, y1: number, dark: boolean, extend = true) => {
       const horizontal = Math.abs(z1 - z0) < 1e-6;
       const len = Math.hypot(x1 - x0, z1 - z0) + (extend ? T : 0);
@@ -132,6 +141,16 @@ export class World {
       const sx = horizontal ? len : T, sz = horizontal ? T : len;
       (dark ? darkWalls : litWalls).push(worldBox(cx, cy, cz, sx, hy, sz, 1));
       physics.addStaticBox(cx, cy, cz, sx / 2, hy / 2, sz / 2);
+      // Level 2: every tunnel wall is lined with pipes, both faces
+      if (lv2 && y0 === 0 && len > 0.6) {
+        for (const face of [-1, 1]) for (const [py, r] of [[2.2, 0.07], [1.95, 0.045], [0.32, 0.06]] as const) {
+          const g = new THREE.CylinderGeometry(r, r, len, 8, 1);
+          if (horizontal) g.rotateZ(Math.PI / 2); else g.rotateX(Math.PI / 2);
+          const off = T / 2 + r + 0.03;
+          g.translate(cx + (horizontal ? 0 : face * off), py, cz + (horizontal ? face * off : 0));
+          pipes.push(g);
+        }
+      }
     };
 
     const runs = (dir: 'h' | 'v') => {
@@ -162,6 +181,7 @@ export class World {
               const p1 = dir === 'h' ? gridPoint(L, b + 1, a) : gridPoint(L, a, b + 1);
               if (e === EDGE_DOOR) this.buildDoorwayWalls(p0, p1, d, addWall, frames, dir);
               else if (L.exitKind === 'stairs') this.buildDoorwayWalls(p0, p1, d, addWall, null, dir, STAIR_OPENING, STAIR_HEIGHT);
+              else if (L.exitKind === 'radio') this.buildDoorwayWalls(p0, p1, d, addWall, null, dir, RADIO_OPENING, RADIO_HEIGHT);
               else this.buildDoorwayWalls(p0, p1, d, addWall, null, dir, ELEVATOR_OPENING, ELEVATOR_HEIGHT);
             }
           }
@@ -191,10 +211,12 @@ export class World {
     mk(litWalls, wallMat);
     mk(darkWalls, darkWallMat);
     mk(frames, frameMat);
+    if (pipes.length) mk(pipes, this.baked.apply(new THREE.MeshStandardMaterial({ color: 0x6b5a48, roughness: 0.55, metalness: 0.6 })));
 
     // ── Lights ──────────────────────────────────────────────
     this.lighting = new Lighting(L, this.baked, quality.dynamicLights);
-    if (lv1) this.buildLevel1Props(physics);
+    if (L.index === 1) this.buildLevel1Props(physics);
+    if (lv2) this.buildLevel2Props(physics);
     this.group.add(this.lighting.group);
 
     // ── Doors ───────────────────────────────────────────────
@@ -312,6 +334,111 @@ export class World {
     }
   }
 
+  /** Level 2: grates, machinery in the dead ends, steam leaks, dripping ducts, supplies. */
+  private buildLevel2Props(physics: PhysicsWorld): void {
+    const L = this.level;
+    const s = WORLD.CELL_SIZE;
+    const sideVec = (side: 'n' | 's' | 'e' | 'w') => ({ n: new THREE.Vector3(0, 0, -1), s: new THREE.Vector3(0, 0, 1), w: new THREE.Vector3(-1, 0, 0), e: new THREE.Vector3(1, 0, 0) })[side];
+    // steel grates: a canvas lattice, slightly raised
+    const gc = document.createElement('canvas');
+    gc.width = gc.height = 128;
+    const gx = gc.getContext('2d')!;
+    gx.fillStyle = '#0c0c0c'; gx.fillRect(0, 0, 128, 128);
+    gx.fillStyle = '#5b5d5c';
+    for (let i = 0; i < 128; i += 16) { gx.fillRect(i, 0, 5, 128); gx.fillRect(0, i, 128, 5); }
+    const gtex = new THREE.CanvasTexture(gc);
+    gtex.wrapS = gtex.wrapT = THREE.RepeatWrapping;
+    gtex.repeat.set(4, 4);
+    gtex.colorSpace = THREE.SRGBColorSpace;
+    const grateMat = this.baked.apply(new THREE.MeshStandardMaterial({ map: gtex, roughness: 0.45, metalness: 0.7 }));
+    const grates: THREE.BufferGeometry[] = [];
+    for (const g of L.grates) {
+      const c = cellCenter(L, g.cx, g.cy);
+      const geo = new THREE.PlaneGeometry(s - 0.2, s - 0.2);
+      geo.rotateX(-Math.PI / 2);
+      geo.translate(c.x, 0.015, c.z);
+      grates.push(geo);
+      this.grateCells.add(`${g.cx},${g.cy}`);
+    }
+    if (grates.length) this.group.add(new THREE.Mesh(mergeGeometries(grates), grateMat));
+    // machinery humming in the dead ends — the hottest, loudest corners of the tunnels
+    const machMat = this.baked.apply(new THREE.MeshStandardMaterial({ color: 0x4d5148, roughness: 0.6, metalness: 0.55 }));
+    const rust = this.baked.apply(new THREE.MeshStandardMaterial({ color: 0x6e4a30, roughness: 0.8, metalness: 0.4 }));
+    for (const m of L.machines) {
+      const c = cellCenter(L, m.cx, m.cy);
+      const back = sideVec(m.side);
+      const pos = new THREE.Vector3(c.x, 0, c.z).addScaledVector(back, s / 2 - 0.55);
+      const root = new THREE.Group();
+      root.position.copy(pos);
+      root.rotation.y = Math.atan2(-back.x, -back.z);
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.7, 0.9), machMat);
+      body.position.y = 0.85;
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.8, 12), rust);
+      top.position.set(-0.4, 2.1, 0);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3010 }));
+      lamp.position.set(0.55, 1.45, 0.46);
+      root.add(body, top, lamp);
+      root.traverse((o) => { if (o instanceof THREE.Mesh) o.castShadow = true; });
+      this.group.add(root);
+      physics.addStaticBox(pos.x, 0.85, pos.z, Math.abs(back.x) > 0 ? 0.45 : 0.8, 0.85, Math.abs(back.z) > 0 ? 0.45 : 0.8);
+      this.machines.push({ root, pos: pos.clone().setY(1) });
+      // heat spreads into the cell and its open neighbours
+      this.heatCells.add(`${m.cx},${m.cy}`);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) this.heatCells.add(`${m.cx + dx},${m.cy + dy}`);
+    }
+    // leaking steam pipes, and vents that drip black liquid
+    const ventMat = new THREE.MeshStandardMaterial({ color: 0x222321, roughness: 0.7, metalness: 0.5 });
+    const ooze = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.2 });
+    L.steam.forEach((st, i) => {
+      const c = cellCenter(L, st.cx, st.cy);
+      const out = sideVec(st.side).negate(); // pointing away from the wall into the corridor
+      const wallPt = new THREE.Vector3(c.x, 1.95, c.z).addScaledVector(out, -(s / 2 - WORLD.WALL_THICKNESS / 2 - 0.15));
+      this.steamVents.push({ pos: wallPt, dir: out });
+      if (i % 2 === 0) {
+        const vent = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.06), ventMat);
+        const vp = new THREE.Vector3(c.x, L.ceiling - 0.3, c.z).addScaledVector(out, -(s / 2 - WORLD.WALL_THICKNESS / 2 - 0.03));
+        vent.position.copy(vp);
+        vent.rotation.y = Math.atan2(out.x, out.z);
+        const streak = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 1.4), ooze);
+        streak.position.copy(vp).add(new THREE.Vector3(0, -0.85, 0)).addScaledVector(out, 0.035);
+        streak.rotation.y = Math.atan2(out.x, out.z);
+        this.group.add(vent, streak);
+      }
+    });
+    // supplies: same crates as Level 1
+    if (L.supplies.length) this.buildSupplies(physics);
+  }
+
+  private buildSupplies(physics: PhysicsWorld): void {
+    const L = this.level;
+    const crateMat = this.baked.apply(new THREE.MeshStandardMaterial({ color: 0x735a38, roughness: 0.85 }));
+    const slatMat = this.baked.apply(new THREE.MeshStandardMaterial({ color: 0x4f3d26, roughness: 0.9 }));
+    for (const s of L.supplies) {
+      const c = cellCenter(L, s.cx, s.cy);
+      const mesh = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.5), crateMat);
+      body.position.y = 0.25;
+      const lid = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.05, 0.54), slatMat);
+      lid.position.y = 0.52;
+      mesh.add(body, lid);
+      const item = new Item(s.id, 'item', '보급 상자 열기', new THREE.Vector3(c.x, 0, c.z), s.rot, mesh, physics, -1, 1.2);
+      this.items.set(item.id, item);
+      this.supplyContent.set(item.id, s.content);
+      this.register(item);
+      this.group.add(item.root);
+    }
+  }
+
+  isHeat(x: number, z: number): boolean {
+    const c = worldToCell(this.level, x, z);
+    return this.heatCells.has(`${c.cx},${c.cy}`);
+  }
+
+  isGrate(x: number, z: number): boolean {
+    const c = worldToCell(this.level, x, z);
+    return this.grateCells.has(`${c.cx},${c.cy}`);
+  }
+
   /** Is this world point standing in a flooded cell? */
   isWater(x: number, z: number): boolean {
     const c = worldToCell(this.level, x, z);
@@ -322,7 +449,8 @@ export class World {
     const L = this.level;
     const metal = this.baked.apply(new THREE.MeshStandardMaterial({ color: 0x5f6560, roughness: 0.55, metalness: 0.35 }));
     for (const spot of L.relays) {
-      const r = new RelayPanel(spot.id, spot, L, physics, metal, (m) => this.baked.apply(m), L.ceiling);
+      const r = new RelayPanel(spot.id, spot, L, physics, metal, (m) => this.baked.apply(m), L.ceiling,
+        L.index === 2 ? ['VALVE', '증기 압력 밸브', 'STEAM — B4'] : undefined);
       this.relays.set(r.id, r);
       this.register(r);
       this.group.add(r.root);
@@ -330,7 +458,11 @@ export class World {
     const steel = new THREE.MeshStandardMaterial({ color: 0x8b8e8f, roughness: 0.38, metalness: 0.55 });
     const trim = new THREE.MeshStandardMaterial({ color: 0x4a4c4d, roughness: 0.5, metalness: 0.5 });
     const floor = new THREE.MeshStandardMaterial({ color: 0x2b2a28, roughness: 0.85 });
-    if (L.exitKind === 'stairs') {
+    if (L.exitKind === 'radio') {
+      const concrete = this.baked.apply(new THREE.MeshStandardMaterial({ color: 0x5c5b56, roughness: 0.9 }));
+      const desk = this.baked.apply(new THREE.MeshStandardMaterial({ color: 0x3b3a34, roughness: 0.7, metalness: 0.2 }));
+      this.elevator = new RadioRoom(L, physics, { concrete, steel, desk });
+    } else if (L.exitKind === 'stairs') {
       const concrete = this.baked.apply(new THREE.MeshStandardMaterial({ color: 0x6d6d68, roughness: 0.9 }));
       this.elevator = new Stairwell(L, physics, { concrete, steel, rail: trim });
     } else {
@@ -401,7 +533,7 @@ export class World {
       this.onEvent?.({ type: 'elevator', byPlayerId });
       return true;
     }
-    if (targetId.startsWith('freq-') && this.elevator.open && !this.elevator.ending && value) {
+    if ((targetId.startsWith('freq-') || targetId.startsWith('final-')) && this.elevator.open && !this.elevator.ending && value) {
       this.elevator.ending = value;
       this.onEvent?.({ type: 'ending', frequency: value - 1, byPlayerId });
       return true;

@@ -1,7 +1,16 @@
-# LOST SIGNAL — Prototype 0.1
+# LOST SIGNAL
 
-브라우저에서 실행되는 1인칭 백룸(Backrooms) 생존 공포 게임.
-**Prototype 0.1 — Player & World Foundation** 마일스톤 구현체입니다.
+브라우저에서 실행되는 1인칭 백룸(Backrooms) 생존 공포 게임. Level 0 → Level 1 → Level 2, 엔딩 4종까지 처음부터 끝까지 플레이할 수 있다.
+
+## 캠페인 전체 흐름
+
+```
+Level 0 (노란 사무실) ── 엘리베이터 주파수 ──┬─ 올바른 주파수 → ENDING A · ESCAPE
+                                              └─ 다른 주파수   → ENDING B · WRONG FREQUENCY ─ 계속 ─┐
+Level 1 (콘크리트 창고) ── B3 비상 계단 ──────────────────────────────────── 계속 ─┐                 │
+Level 2 (배관 터널) ── 무전실 ──┬─ 녹음하기  → FINAL · ENDING C · LOOP                │ ◀───────────────┘
+                                └─ 송신 차단 → FINAL · ENDING D · SILENCE
+```
 
 > You were never alone. You were only never listening.
 
@@ -39,7 +48,7 @@ Render에는 `render.yaml` 블루프린트로 Web Service 하나만 배포하면
 
 ### 테스트용 URL 플래그
 
-`?debug=1` 포인터 락 없이 조작 + 디버그 표시 · `?seed=1234` 맵 고정 · `?quality=low|medium|high|ultra` · `?autostart=single` · `?autostart=level1`
+`?debug=1` 포인터 락 없이 조작 + 디버그 표시 · `?seed=1234` 맵 고정 · `?quality=low|medium|high|ultra` · `?autostart=single` · `?autostart=level1` · `?autostart=level2`
 `?ai=now` 단계적 공개를 압축(4초 후 시작) · `?ai=hunt` 공개 생략하고 바로 사냥 · `?ai=off` 괴물 비활성
 디버그 모드에서는 콘솔의 `window.__LS`로 게임 객체에 접근할 수 있습니다 (`__LS.debugTeleport(22, 22)` → 정전 구역).
 
@@ -86,8 +95,26 @@ Ending B 화면의 **계속 — Level 1**(싱글 또는 호스트)로 이어진�
 | 은신 | 상자 더미 뒤에 웅크리면 시야가 가려진다 |
 | 목표 | 녹음 04–05 → 차단기 2개 → B3 비상 계단 개방 → 계단을 내려가면 챕터 완료 (Level 2는 다음 장) |
 | 이월 | 녹음기·들은 녹음·사망 수·누적 시간·배터리가 다음 레벨로 넘어간다 |
-| 저장 | 싱글: Level 1 시작 시 체크포인트, 메인 메뉴 **이어하기 — Level 1** |
+| 저장 | 싱글: 각 레벨 시작 시 체크포인트, 메인 메뉴 **이어하기 — Level N** (최종 엔딩 달성 여부 기록) |
 | 멀티 | 호스트가 계속을 누르면 서버가 방 전체를 Level 1로 이동(`game:level`), 늦게 들어온 사람도 Level 1로 바로 입장 |
+
+## Chapter 3 — Level 2 "Pipe Dreams" (최종장)
+
+Level 1 완료 화면의 **계속 — Level 2**로 이어진다. 보관된 Backrooms Wiki와 커뮤니티 위키의 묘사(끝없이 이어지는 어둡고 회색의
+콘크리트 정비 터널, 벽을 따라 늘어선 배관, 가장 시끄러운 기계가 있는 복도 끝일수록 뜨거워지는 공기, 검은 액체가 떨어지는 덕트,
+환기구에서 들리는 소리)를 기준으로 만들었다.
+
+| 요소 | 내용 |
+|---|---|
+| 공간 | 미로(DFS + 고리)로 만든 좁고 긴 터널, 천장 2.6m, 모든 벽에 배관, 검은 액체가 흐르는 덕트 |
+| 어둠 | 철망 전구가 드문드문 켜져 있을 뿐 — 손전등이 주 광원 (제한된 시야) |
+| 열기 | 막다른 길의 기계 옆: 체력 2.2/s·기력 감소, 공기 일렁임 — **대신 기계 소리가 발소리를 60% 덮는다** (소음 관리) |
+| 쇠 격자 | 밟으면 14m 울림, 웅크리면 조용 |
+| 증기 누출 | 배관이 주기적으로 증기를 뿜는다(피해 9, 쉭 소리) |
+| 환기구 | 벽 안을 무언가 기어 다니는 소리 |
+| 목표 | 녹음 06–07 → 증기 밸브 2개 → **무전실** 개방 → 최종 선택 (멀티는 전원 입실 필수) |
+| 엔딩 C · LOOP | 녹음 버튼: 네 목소리로 처음 녹음이 다시 시작된다 — 다음 사람을 위해 |
+| 엔딩 D · SILENCE | 송신 차단: 문을 두드리던 그것의 비명이 끊기고, 백룸의 모든 소음이 멈춘다 |
 
 **Scare Director (`horror/ScareDirector.ts`)** — 플레이어별 로컬 연출(공유 월드는 바꾸지 않음): 뒤에서 다가오는 발소리, 벽 너머 노크,
 주변 조명 국소 정전, 녹음기 속삭임, **시야 가장자리의 형체(바라보면 사라짐)**, 보이지 않는 곳의 문 닫힘.
@@ -181,7 +208,7 @@ client/src/
 
 - 실제 CC0 스캔 텍스처(ambientCG / Poly Haven)와 AssetManager, `assets/manifest.json` 등록
 - 그래프 기반 모듈 생성기(설계서 4장)로 `Level0Layout`의 분할 단계 교체 + 경로 검증
-- Level 2 (Pipe Dreams — 어두운 배관 통로), 공간 변형(Room Mutation) 이벤트
+- 공간 변형(Room Mutation) 이벤트
 - 괴물 외형을 Blender 조각 모델(glTF)로 교체
 - Signal Recorder(R), 체력/사망·다운/구조, 호스트 이탈 처리 고도화
 - 번들 분할(현재 단일 ~5MB, gzip ~1.8MB — 대부분 Rapier WASM 인라인)

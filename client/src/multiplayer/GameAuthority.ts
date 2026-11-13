@@ -66,11 +66,11 @@ export interface PlayerSnapshot { pos: THREE.Vector3; downed: boolean; dead: boo
  *                 chosen once every survivor is inside the elevator.
  */
 export function resolveInteraction(world: World, targetId: string, pos: THREE.Vector3 | undefined, everyone: THREE.Vector3[] = []): number | null {
-  if (targetId.startsWith('freq-')) {
+  if (targetId.startsWith('freq-') || targetId.startsWith('final-')) {
     const el = world.elevator;
     if (!el.open || el.ending || !pos || !el.contains(pos)) return null;
     if (everyone.some((p) => !el.contains(p))) return null;
-    return Number(targetId.slice(5)) + 1;
+    return Number(targetId.split('-')[1]) + 1;
   }
   if (targetId === 'elevator-call') {
     const el = world.elevator;

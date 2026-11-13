@@ -496,3 +496,37 @@ export function machinery(ctx: Ctx): AudioBuffer {
   for (let i = 0; i < fade; i++) { const k = i / fade; d[i] = d[i] * k + d[d.length - fade + i] * (1 - k); }
   return normalize(b, 0.6);
 }
+
+/** A pipe venting steam: sharp onset, long roaring hiss. */
+export function steamHiss(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(9090);
+  let hp = 0, prev = 0;
+  return normalize(buffer(ctx, 2.2, (t) => {
+    const n = noise();
+    hp = 0.98 * (hp + n - prev); prev = n;
+    const env = Math.min(1, t * 25) * (t < 1.4 ? 1 : Math.max(0, 1 - (t - 1.4) / 0.8));
+    return hp * env * (0.8 + 0.2 * Math.sin(t * 40));
+  }), 0.85);
+}
+
+/** Boot on a steel grate: a ringing clank. */
+export function grateClang(ctx: Ctx, variant: number): AudioBuffer {
+  const noise = rngFrom(4400 + variant);
+  return normalize(buffer(ctx, 0.6, (t) => {
+    const ring = Math.sin(2 * Math.PI * (620 + variant * 90) * t) * 0.4 + Math.sin(2 * Math.PI * (1430 + variant * 130) * t) * 0.25;
+    const hit = t < 0.01 ? noise() : 0;
+    return (ring * Math.exp(-t * 9) + hit * 0.8 + Math.sin(2 * Math.PI * 80 * t) * Math.exp(-t * 30) * 0.6);
+  }), 0.8);
+}
+
+/** Something moving inside a duct. */
+export function ventScrape(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(707070);
+  let lp = 0;
+  return normalize(buffer(ctx, 2.6, (t) => {
+    lp += (noise() - lp) * 0.08;
+    const drag = Math.max(0, Math.sin(t * 9)) * Math.max(0, Math.sin(t * 2.3 + 1));
+    const tap = Math.sin(t * 27) > 0.97 ? noise() * 0.6 : 0;
+    return (lp * 2.5 * drag + tap) * Math.min(1, t * 3) * Math.min(1, (2.6 - t) * 2);
+  }), 0.7);
+}

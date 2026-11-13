@@ -121,7 +121,7 @@ export function attachNetworkHandler(io: IO, rooms = new RoomManager(), opts: Ha
       const found = me();
       const level = Number(msg?.level);
       if (!found || found.room.hostId !== found.player.id || !found.room.started) return;
-      if (!Number.isInteger(level) || level < 0 || level > 1 || level === found.room.level) return;
+      if (!Number.isInteger(level) || level < 0 || level > 2 || level === found.room.level) return;
       found.room.level = level;
       found.room.seed = (found.room.seed ^ Math.imul(level, 0x9e3779b1)) >>> 0;
       io.to(found.room.code).emit('game:level', { level, seed: found.room.seed });

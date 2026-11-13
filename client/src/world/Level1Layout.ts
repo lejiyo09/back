@@ -168,7 +168,7 @@ export function generateLevel1(seed: number): Level0Data {
   const logB = free.find(([x, y]) => Math.abs(x - exit.cx) + Math.abs(y - exit.cy) <= 4) ?? free[1];
 
   return {
-    index: 1, ceiling: 4.5, exitKind: 'stairs', crates, supplies, water,
+    index: 1, ceiling: 4.5, exitKind: 'stairs', crates, supplies, water, grates: [], machines: [], steam: [],
     seed, w: W, h: H, hEdges, vEdges, pillars, lights,
     dark: Array.from({ length: H }, () => new Array<boolean>(W).fill(false)),
     doors, batteries, notes, spawn, recorder: null, relays,

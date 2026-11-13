@@ -9,12 +9,14 @@ export interface CarryState {
 
 export interface SaveData {
   version: 1;
-  /** 1 = reached Level 1 (checkpoint at its start) */
-  chapter: 1;
+  /** 1 = reached Level 1, 2 = reached Level 2 (checkpoint at its start) */
+  chapter: 1 | 2;
   seed: number;
   carry: CarryState;
   /** finished Level 1 (walked down the B3 stairs) */
   completed: boolean;
+  /** final ending reached ('C' loop / 'D' silence) */
+  ending?: 'C' | 'D';
   savedAt: number;
 }
 
