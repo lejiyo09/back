@@ -5,13 +5,15 @@ import type { WorldSnapshot } from '@shared/GameTypes';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
 import { BakedLighting } from '../rendering/BakedLighting';
 import { Lighting } from '../rendering/Lighting';
-import { carpetTexture, ceilingTexture, concreteTexture, doorTexture, paperTexture, wallpaperTexture, type PBRSet } from '../rendering/Textures';
+import { carpetTexture, ceilingTexture, concreteTexture, doorTexture, paperTexture, tileTexture, wallpaperTexture, woodTexture, type PBRSet } from '../rendering/Textures';
+import { generateThemed } from './levels/ThemedLayout';
+import { THEMES, type SurfaceKind } from './levels/Themes';
 import { generateLevel1 } from './Level1Layout';
 import { generateLevel2 } from './Level2Layout';
 import { RadioRoom, RADIO_HEIGHT, RADIO_OPENING } from '../interaction/RadioRoom';
 import { Stairwell, STAIR_HEIGHT, STAIR_OPENING } from '../interaction/Stairwell';
 import { Door } from '../interaction/Door';
-import { Item, makeBatteryMesh, makeNoteMesh, makeRecorderMesh } from '../interaction/Item';
+import { Item, makeBatteryMesh, makeKeyMesh, makeNoteMesh, makeRecorderMesh } from '../interaction/Item';
 import { RelayPanel } from '../interaction/RelayPanel';
 import { Elevator, ELEVATOR_HEIGHT, ELEVATOR_OPENING } from '../interaction/Elevator';
 import type { Interactable } from '../interaction/Interactable';
@@ -80,12 +82,22 @@ export class World {
   blackout = false;
   private waterCells = new Set<string>();
   readonly supplyContent = new Map<string, string>();
+  /** Levels 3+: key name → its pickup */
+  readonly keyItems = new Map<string, Item>();
+  hasKey(key: string): boolean {
+    return !!this.keyItems.get(key)?.collected;
+  }
+  /** the key a device needs that the team does not have yet (null = usable) */
+  missingKey(relayId: string): string | null {
+    const need = this.level.deviceNeeds?.[relayId];
+    return need && !this.hasKey(need) ? need : null;
+  }
   private textures: PBRSet[] = [];
   onEvent?: (e: WorldEvent) => void;
   private lastActor = '';
 
-  constructor(seed: number, private physics: PhysicsWorld, quality: QualityPreset, anisotropy: number, levelIndex: 0 | 1 | 2 = 0) {
-    this.level = levelIndex === 2 ? generateLevel2(seed) : levelIndex === 1 ? generateLevel1(seed) : generateLevel0(seed);
+  constructor(seed: number, private physics: PhysicsWorld, quality: QualityPreset, anisotropy: number, levelIndex = 0) {
+    this.level = levelIndex >= 3 ? generateThemed(levelIndex, seed) : levelIndex === 2 ? generateLevel2(seed) : levelIndex === 1 ? generateLevel1(seed) : generateLevel0(seed);
     H = this.level.ceiling;
     this.baked = new BakedLighting(this.level);
     const L = this.level;
@@ -97,29 +109,40 @@ export class World {
 
     // ── Materials ───────────────────────────────────────────
     // Level 0: mono-yellow wallpaper, damp carpet, acoustic tiles. Level 1: poured concrete everywhere.
-    const conc = lv1 ? concreteTexture(ts, seed, aniso) : null;
-    const wallTex = conc ?? wallpaperTexture(ts, seed, aniso);
-    const carpetTex = conc ?? carpetTexture(ts, seed, aniso);
-    const ceilTex = conc ?? ceilingTexture(Math.min(ts, 1024), seed, aniso);
+    // Levels 3+: surfaces and tints from the level's theme.
+    const theme = THEMES[L.index];
+    const texCache = new Map<SurfaceKind | 'carpet' | 'ceiling', PBRSet>();
+    const surf = (k: SurfaceKind | 'carpet' | 'ceiling'): PBRSet => {
+      if (!texCache.has(k)) texCache.set(k, k === 'concrete' ? concreteTexture(ts, seed, aniso) : k === 'tile' ? tileTexture(ts, seed, aniso)
+        : k === 'wood' ? woodTexture(ts, seed, aniso) : k === 'carpet' ? carpetTexture(ts, seed, aniso)
+          : k === 'ceiling' ? ceilingTexture(Math.min(ts, 1024), seed, aniso) : wallpaperTexture(ts, seed, aniso));
+      return texCache.get(k)!;
+    };
+    const wallTex = theme ? surf(theme.surface.wall) : lv1 ? surf('concrete') : surf('wallpaper');
+    const carpetTex = theme ? surf(theme.surface.floor) : lv1 ? surf('concrete') : surf('carpet');
+    const ceilTex = theme ? surf(theme.surface.ceil === 'wallpaper' ? 'ceiling' : theme.surface.ceil) : lv1 ? surf('concrete') : surf('ceiling');
     const doorTex = doorTexture(Math.max(256, ts / 2), seed, aniso);
-    this.textures.push(...new Set([wallTex, carpetTex, ceilTex, doorTex]));
+    this.textures.push(...new Set([...texCache.values(), doorTex]));
+    const tint = (base: number, themed?: number) => (themed ?? base);
 
-    const wallMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...wallTex, roughness: 1, metalness: 0, color: lv2 ? 0x9a9890 : lv1 ? 0xd8d8d2 : 0xffffff }));
+    const wallMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...wallTex, roughness: 1, metalness: 0, color: tint(lv2 ? 0x9a9890 : lv1 ? 0xd8d8d2 : 0xffffff, theme?.surface.wallColor) }));
     wallMat.normalScale.set(0.6, 0.6);
-    const darkWallMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...wallTex, color: lv1 ? 0xbcbcb5 : 0xb8ad8a, roughness: 1 }));
-    const carpetMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...carpetTex, roughness: 1, color: lv2 ? 0x86847c : lv1 ? 0xb0b0aa : 0xffffff }));
-    const ceilMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...ceilTex, roughness: 1, color: lv2 ? 0x5e5c56 : lv1 ? 0x8a8a86 : 0xffffff }));
-    const doorMat = this.baked.apply(lv1
+    const darkWallMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...wallTex, color: theme ? new THREE.Color(theme.surface.wallColor).multiplyScalar(0.8) : lv1 ? 0xbcbcb5 : 0xb8ad8a, roughness: 1 }));
+    const carpetMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...carpetTex, roughness: 1, color: tint(lv2 ? 0x86847c : lv1 ? 0xb0b0aa : 0xffffff, theme?.surface.floorColor) }));
+    const ceilMat = this.baked.apply(new THREE.MeshStandardMaterial({ ...ceilTex, roughness: 1, color: tint(lv2 ? 0x5e5c56 : lv1 ? 0x8a8a86 : 0xffffff, theme?.surface.ceilColor) }));
+    if (theme && theme.surface.floor === 'tile') carpetMat.roughness = 0.5;
+    const woodDoor = !lv1 || (L.index >= 3 && L.index <= 5);
+    const doorMat = this.baked.apply(!woodDoor
       ? new THREE.MeshStandardMaterial({ color: 0x5d6460, roughness: 0.5, metalness: 0.6 })
       : new THREE.MeshStandardMaterial({ ...doorTex, roughness: 1 }));
     const frameMat = this.baked.apply(new THREE.MeshStandardMaterial({ color: lv1 ? 0x3e4240 : 0x8a7350, roughness: 0.6, metalness: lv1 ? 0.5 : 0 }));
     const handleMat = this.baked.apply(new THREE.MeshStandardMaterial({ color: 0xa9a59b, roughness: 0.3, metalness: 0.55 }));
 
     // ── Floor & ceiling ─────────────────────────────────────
-    const floorGeo = worldBox(0, -0.25, 0, size, 0.5, size, lv1 ? 2 : 3);
+    const floorGeo = worldBox(0, -0.25, 0, size, 0.5, size, theme ? (theme.surface.floor === 'tile' ? 1.5 : 2) : lv1 ? 2 : 3);
     const floor = new THREE.Mesh(floorGeo, carpetMat);
     floor.receiveShadow = true;
-    const ceilGeo = worldBox(0, H + 0.25, 0, size, 0.5, size, lv1 ? 2.5 : 1.25, lv1 ? 0 : 0.3125);
+    const ceilGeo = worldBox(0, H + 0.25, 0, size, 0.5, size, lv1 && !(theme?.surface.ceil === 'wallpaper') ? 2.5 : 1.25, lv1 && !(theme?.surface.ceil === 'wallpaper') ? 0 : 0.3125);
     const ceiling = new THREE.Mesh(ceilGeo, ceilMat);
     ceiling.receiveShadow = true;
     this.group.add(floor, ceiling);
@@ -217,7 +240,7 @@ export class World {
 
     // ── Lights ──────────────────────────────────────────────
     this.lighting = new Lighting(L, this.baked, quality.dynamicLights);
-    if (L.index === 1) this.buildLevel1Props(physics);
+    if (L.index === 1 || theme) this.buildLevel1Props(physics);
     if (lv2) this.buildLevel2Props(physics);
     this.group.add(this.lighting.group);
 
@@ -332,7 +355,7 @@ export class World {
       waterGeos.push(g);
       this.waterCells.add(`${w.cx},${w.cy}`);
     }
-    if (waterGeos.length) this.group.add(new THREE.Mesh(mergeGeometries(waterGeos), waterMat));
+    if (waterGeos.length) { this.waterMesh = new THREE.Mesh(mergeGeometries(waterGeos), waterMat); this.group.add(this.waterMesh); }
     // supply crates: a lidded crate with a stencilled mark
     for (const s of L.supplies) {
       const c = cellCenter(L, s.cx, s.cy);
@@ -448,6 +471,13 @@ export class World {
     }
   }
 
+  private waterMesh: THREE.Mesh | null = null;
+  /** Level 6: the pumps run — the floor drains */
+  drainWater(): void {
+    this.waterCells.clear();
+    if (this.waterMesh) this.waterMesh.visible = false;
+  }
+
   isHeat(x: number, z: number): boolean {
     const c = worldToCell(this.level, x, z);
     return this.heatCells.has(`${c.cx},${c.cy}`);
@@ -468,8 +498,9 @@ export class World {
     const L = this.level;
     const metal = this.baked.apply(new THREE.MeshStandardMaterial({ color: 0x5f6560, roughness: 0.55, metalness: 0.35 }));
     for (const spot of L.relays) {
+      const dev = THEMES[L.index]?.devices[Number(spot.id.split('-')[1])];
       const r = new RelayPanel(spot.id, spot, L, physics, metal, (m) => this.baked.apply(m), L.ceiling,
-        L.index === 2 ? ['VALVE', '증기 압력 밸브', 'STEAM — B4'] : undefined);
+        L.index === 2 ? ['VALVE', '증기 압력 밸브', 'STEAM — B4'] : dev ? [...dev.lines] : undefined);
       this.relays.set(r.id, r);
       this.register(r);
       this.group.add(r.root);
@@ -489,6 +520,19 @@ export class World {
     }
     for (const b of this.elevator.buttons) this.register(b);
     this.group.add(this.elevator.root);
+
+    // Levels 3+: key items (team-shared: whoever picks one up, everyone has it)
+    const theme = THEMES[L.index];
+    for (const k of L.keys ?? []) {
+      const def = theme?.keys.find((d) => d.key === k.key);
+      if (!def) continue;
+      const c = cellCenter(L, k.cx, k.cy);
+      const item = new Item(k.id, 'item', `${def.name} 줍기`, new THREE.Vector3(c.x + k.ox, 0, c.z + k.oy), k.rot, makeKeyMesh(def.color), physics);
+      this.items.set(item.id, item);
+      this.keyItems.set(def.key, item);
+      this.register(item);
+      this.group.add(item.root);
+    }
 
     if (L.recorder) {
       const rc = cellCenter(L, L.recorder.cx, L.recorder.cy);
@@ -541,7 +585,13 @@ export class World {
       return true;
     }
     const relay = this.relays.get(targetId);
-    if (relay && !relay.active && value) {
+    if (relay && !relay.active && value && this.missingKey(targetId)) return false; // locked: needs an item
+    if (relay && relay.active && value === -1) {
+      // Level 10: resonators fall silent again if they are not all running together
+      relay.setActive(false);
+      return true;
+    }
+    if (relay && !relay.active && value > 0) {
       relay.setActive(true);
       this.onEvent?.({ type: 'relay', panel: relay, byPlayerId, activeCount: this.activeRelays });
       this.refreshPower(false);
@@ -563,7 +613,7 @@ export class World {
       this.onEvent?.({ type: 'blackout', on: this.blackout });
       return true;
     }
-    if (targetId.startsWith('revive:')) {
+    if (targetId.startsWith('revive:') || targetId.startsWith('mech:')) {
       this.onEvent?.({ type: 'custom', targetId, value, byPlayerId });
       return true;
     }

@@ -116,7 +116,7 @@ export class RadioRoom {
     rec.position.set(cx + 0.55, 0.83, deskZ - 0.2);
     const recBtn = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 20), new THREE.MeshStandardMaterial({ color: 0xb01a10, emissive: 0x300000, roughness: 0.4 }));
     recBtn.position.y = 0.02;
-    const recLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.075), new THREE.MeshBasicMaterial({ map: label('● 녹음', '#1a1a1a', '#ff6a5a') }));
+    const recLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.075), new THREE.MeshBasicMaterial({ map: label(level.index === 10 ? '● 송신' : '● 녹음', '#1a1a1a', '#ff6a5a') }));
     recLabel.rotation.x = -Math.PI / 2;
     recLabel.position.set(0, 0.005, 0.13);
     recLabel.rotation.z = Math.PI;
@@ -126,15 +126,15 @@ export class RadioRoom {
     cut.position.set(cx + 0.95, 0.83, deskZ - 0.2);
     const sw = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.05), new THREE.MeshStandardMaterial({ color: 0xd9c24a, roughness: 0.5 }));
     sw.position.y = 0.06;
-    const cutLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.075), new THREE.MeshBasicMaterial({ map: label('송신 차단', '#1a1a1a', '#ffe27a') }));
+    const cutLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.075), new THREE.MeshBasicMaterial({ map: label(level.index === 10 ? '침묵' : '송신 차단', '#1a1a1a', '#ffe27a') }));
     cutLabel.rotation.x = -Math.PI / 2;
     cutLabel.rotation.z = Math.PI;
     cutLabel.position.set(0, 0.005, 0.13);
     cut.add(sw, cutLabel);
     this.root.add(cut);
     this.root.updateMatrixWorld(true);
-    this.buttons.push(new Button('final-0', rec, () => (this.open && !this.ending ? '녹음하기 — 다음 사람에게 남긴다' : ''), physics, [0.07, 0.05, 0.07]));
-    this.buttons.push(new Button('final-1', cut, () => (this.open && !this.ending ? '송신 차단 — 신호를 끊는다' : ''), physics, [0.07, 0.08, 0.07]));
+    this.buttons.push(new Button('final-0', rec, () => (this.open && !this.ending ? (level.index === 10 ? '송신하기 — 신호를 세상 밖으로 보낸다' : '녹음하기 — 다음 사람에게 남긴다') : ''), physics, [0.07, 0.05, 0.07]));
+    this.buttons.push(new Button('final-1', cut, () => (this.open && !this.ending ? (level.index === 10 ? '침묵 — 모든 신호를 영원히 끊는다' : '송신 차단 — 신호를 끊는다') : ''), physics, [0.07, 0.08, 0.07]));
 
     this.lamp = new THREE.PointLight(0xffc98a, 0, 5, 2);
     this.lamp.position.set(cx - 0.9, 2.1, deskZ - 0.6);

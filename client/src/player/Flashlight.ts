@@ -5,6 +5,8 @@ import * as THREE from 'three';
  * Only the flashlight may cast real-time shadows (design doc 6-3).
  */
 export class Flashlight {
+  /** item upgrades (surgical flashlight, diving light): brighter and further */
+  boost = 1;
   readonly light: THREE.SpotLight;
   readonly target = new THREE.Object3D();
   /** Fake single-bounce fill placed where the beam lands, so dark rooms get faint spill. */
@@ -63,7 +65,7 @@ export class Flashlight {
       if (this.jam > 0) intensity *= 0.04;
       else if (interference > 0.3) intensity *= 1 - Math.random() * 0.25 * interference;
     }
-    this.light.intensity = intensity;
+    this.light.intensity = intensity * this.boost;
     const hd = Math.min(hitDistance, 12);
     this.bounce.position.copy(pos).addScaledVector(this.smoothDir, Math.max(0.3, hd - 0.35));
     this.bounce.intensity = intensity * 0.05 * Math.min(1, 4 / (1 + hd));

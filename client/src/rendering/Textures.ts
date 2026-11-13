@@ -354,3 +354,48 @@ export function asphaltTexture(size: number, seed: number, anisotropy: number): 
   }
   return finish(L, 1.2, anisotropy);
 }
+
+/** Ceramic tiles (ward, pool, station): neutral albedo (tinted by material colour), grout lines, chips and grime. Tile = 1 m → 6 tiles. */
+export function tileTexture(size: number, seed: number, anisotropy: number): PBRSet {
+  const n = new TileNoise(new SeededRandom(seed ^ 0x711e));
+  const L = makeLayers(size);
+  const tiles = 6;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size, v = y / size;
+    const i = y * size + x;
+    const tu = (u * tiles) % 1, tv = (v * tiles) % 1;
+    const grout = tu < 0.05 || tv < 0.05;
+    const grime = n.fbm(u, v, 3, 4);
+    const chip = n.value(u, v, 64) > 0.93 ? 1 : 0;
+    const shade = 0.9 + n.value(Math.floor(u * tiles) / tiles, Math.floor(v * tiles) / tiles, 8) * 0.12;
+    const k = grout ? 0.45 - grime * 0.15 : shade - grime * 0.22 - chip * 0.2;
+    L.albedo[i * 3] = clamp01(k); L.albedo[i * 3 + 1] = clamp01(k); L.albedo[i * 3 + 2] = clamp01(k * 0.98);
+    L.height[i] = grout ? 0 : 0.6 - chip * 0.4;
+    L.rough[i] = grout ? 0.95 : clamp01(0.25 + grime * 0.5 + chip * 0.3);
+  }
+  return finish(L, 2.2, anisotropy);
+}
+
+/** Old wood panelling / floorboards (archive). Neutral-warm albedo, tinted by material colour. Tile = 1 m → 6 boards. */
+export function woodTexture(size: number, seed: number, anisotropy: number): PBRSet {
+  const n = new TileNoise(new SeededRandom(seed ^ 0x3d0d));
+  const rng = new SeededRandom(seed ^ 0x99);
+  const L = makeLayers(size);
+  const boards = 6;
+  const tone = Array.from({ length: boards * 4 }, () => 0.75 + rng.next() * 0.3);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size, v = y / size;
+    const i = y * size + x;
+    const b = Math.floor(u * boards);
+    const seg = Math.floor(((v + b * 0.37) % 1) * 2);
+    const bu = (u * boards) % 1;
+    const gap = bu < 0.035 || ((v + b * 0.37) % 0.5) < 0.006;
+    const grain = Math.sin((u * boards * 3 + n.fbm(u, v, 2, 3) * 4) * 18 + v * 3) * 0.5 + 0.5;
+    const t = tone[(b * 2 + seg) % tone.length];
+    const k = gap ? 0.25 : t * (0.82 + grain * 0.14) - n.fbm(u, v, 5, 3) * 0.12;
+    L.albedo[i * 3] = clamp01(k); L.albedo[i * 3 + 1] = clamp01(k * 0.86); L.albedo[i * 3 + 2] = clamp01(k * 0.7);
+    L.height[i] = gap ? 0 : 0.5 + grain * 0.1;
+    L.rough[i] = gap ? 0.95 : clamp01(0.55 + grain * 0.2);
+  }
+  return finish(L, 1.4, anisotropy);
+}

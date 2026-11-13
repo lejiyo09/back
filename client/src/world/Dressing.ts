@@ -4,6 +4,7 @@ import { WORLD } from '@shared/Constants';
 import type { AssetManager } from '../core/AssetManager';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
 import { EDGE_DOOR, EDGE_EXIT, EDGE_WALL, cellCenter, type Level0Data } from './Level0Layout';
+import { THEMES } from './levels/Themes';
 
 /**
  * Set dressing with real (CC0, Poly Haven) models — expansion spec §4.
@@ -138,7 +139,7 @@ export const DRESSING: Record<number, DressingPlan> = {
 
 /** asset groups a level needs (for preloading with progress) */
 export function dressingGroups(level: number): string[] {
-  return DRESSING[level]?.groups ?? ['shared'];
+  return (DRESSING[level] ?? THEMES[level]?.dressing)?.groups ?? ['shared'];
 }
 
 const YAW: Record<Side, number> = { n: 0, s: Math.PI, w: Math.PI / 2, e: -Math.PI / 2 };
@@ -151,7 +152,7 @@ export class Dressing {
   readonly spots: { recipe: string; cx: number; cy: number; side: Side }[] = [];
 
   constructor(L: Level0Data, assets: AssetManager, physics: PhysicsWorld, blocked: Set<string>, ceiling: number) {
-    const plan = DRESSING[L.index];
+    const plan = DRESSING[L.index] ?? THEMES[L.index]?.dressing;
     if (!plan) return;
     this.view = plan.view ?? [24, 12];
     const rng = new SeededRandom(L.seed ^ 0xd7e55);

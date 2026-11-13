@@ -105,6 +105,36 @@ export class HUD {
   }
 
   /** Persistent top banner for connection state; null hides it. */
+  /** non-blocking level title (no page, no click): fades in and out over the game */
+  titleCard(kicker: string, title: string, sub: string): void {
+    const el = document.createElement('div');
+    el.className = 'titlecard';
+    el.innerHTML = `<div class="k"></div><div class="t"></div><div class="s"></div>`;
+    (el.querySelector('.k') as HTMLElement).textContent = kicker;
+    (el.querySelector('.t') as HTMLElement).textContent = title;
+    (el.querySelector('.s') as HTMLElement).textContent = sub;
+    this.root.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('in'));
+    setTimeout(() => el.classList.remove('in'), 5200);
+    setTimeout(() => el.remove(), 7000);
+  }
+
+  private scannerEl: HTMLElement | null = null;
+  /** Level 5 medical scanner readout (top-left), null hides it */
+  setScanner(text: string | null, alarm = 0): void {
+    if (!this.scannerEl) { this.scannerEl = document.createElement('div'); this.scannerEl.className = 'scanner'; this.root.appendChild(this.scannerEl); }
+    this.scannerEl.classList.toggle('hidden', !text);
+    if (text) { this.scannerEl.textContent = text; this.scannerEl.style.color = alarm > 0.5 ? '#ff6a5a' : '#8fe0b0'; }
+  }
+
+  private cctvEl: HTMLElement | null = null;
+  /** Level 9 CCTV view overlay */
+  setCCTV(label: string | null): void {
+    if (!this.cctvEl) { this.cctvEl = document.createElement('div'); this.cctvEl.className = 'cctv'; this.root.appendChild(this.cctvEl); }
+    this.cctvEl.classList.toggle('hidden', !label);
+    if (label) this.cctvEl.innerHTML = `<span class="rec">● REC</span><span class="cam"></span>`, (this.cctvEl.querySelector('.cam') as HTMLElement).textContent = label;
+  }
+
   setBanner(text: string | null): void {
     const b = $('.banner', this.root);
     b.classList.toggle('hidden', !text);

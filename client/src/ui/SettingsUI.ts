@@ -23,6 +23,10 @@ export function buildSettingsPanel(settings: Settings, onChange: (s: Settings, k
         <small>갑작스러운 비명·화면 왜곡·목소리 흉내의 세기.</small></label>
       <label class="row"><input type="checkbox" data-k="headBob" ${settings.headBob ? 'checked' : ''}> 카메라 흔들림 (헤드 밥)</label>
       <label class="row"><input type="checkbox" data-k="subtitles" ${settings.subtitles ? 'checked' : ''}> 자막</label>
+      <label>캠페인 <select data-k="campaign">
+        <option value="expanded" ${settings.campaign !== 'classic' ? 'selected' : ''}>확장 캠페인 — Level 0~10 (엔딩 E/F)</option>
+        <option value="classic" ${settings.campaign === 'classic' ? 'selected' : ''}>클래식 — Level 0~2 (엔딩 A~D)</option>
+      </select><small>Level 2의 선택은 확장 캠페인에서 Level 10의 결말로 이어집니다.</small></label>
       <button class="primary" data-act="close">닫기</button>
     </div>`;
   el.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-k]').forEach((input) => {

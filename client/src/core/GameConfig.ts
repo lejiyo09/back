@@ -29,6 +29,8 @@ export interface Settings {
   headBob: boolean;         // accessibility: camera sway
   scareIntensity: number;   // accessibility: 0.3 .. 1 (stingers, glitching, mimicry)
   subtitles: boolean;
+  /** expanded = Level 0–10 continuous; classic = Level 0–2 with endings A–D */
+  campaign: 'expanded' | 'classic';
   playerName: string;
 }
 
@@ -41,6 +43,7 @@ const DEFAULTS: Settings = {
   headBob: true,
   scareIntensity: 1,
   subtitles: true,
+  campaign: 'expanded',
   playerName: '',
 };
 

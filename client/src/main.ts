@@ -7,6 +7,7 @@ import { MainMenu } from './ui/MainMenu';
 import { buildSettingsPanel } from './ui/SettingsUI';
 import { NetworkManager } from './multiplayer/NetworkManager';
 import { SaveGame, type CarryState } from './core/SaveGame';
+import { MAX_LEVEL, nextLevelSeed } from '@shared/Levels';
 
 /**
  * App shell: title screen → (lobby) → game → back to title.
@@ -32,15 +33,16 @@ class App {
 
     this.refreshResume();
     if (URL_FLAGS.autostart === 'single') this.startSingle('Survivor');
-    if (URL_FLAGS.autostart === 'level1' || URL_FLAGS.autostart === 'level2') {
-      void this.launch('single', URL_FLAGS.seed ?? randomSeed(), 'SOLO', [{ id: 'local', name: 'Survivor', isHost: true, online: true }], URL_FLAGS.autostart === 'level2' ? 2 : 1);
+    const auto = /^level(\d+)$/.exec(URL_FLAGS.autostart ?? '');
+    if (auto && Number(auto[1]) >= 1 && Number(auto[1]) <= MAX_LEVEL) {
+      void this.launch('single', URL_FLAGS.seed ?? randomSeed(), 'SOLO', [{ id: 'local', name: 'Survivor', isHost: true, online: true }], Number(auto[1]));
     }
   }
 
   private refreshResume(): void {
     const save = SaveGame.load();
     const lv = save?.chapter ?? 1;
-    this.menu.setResume(save ? (save.ending ? `Level ${lv} 다시 하기 (엔딩 ${save.ending} 달성)` : save.completed && lv === 1 ? '이어하기 — Level 2' : `이어하기 — Level ${lv}`) : null);
+    this.menu.setResume(save ? (save.ending ? `Level ${lv} 다시 하기 (엔딩 ${save.ending} 달성)` : save.completed ? `이어하기 — Level ${Math.min(MAX_LEVEL, lv + 1)}` : `이어하기 — Level ${lv}`) : null);
   }
 
   private resumeSave(name: string): void {
@@ -48,18 +50,18 @@ class App {
     if (!save) return;
     this.rememberName(name);
     // finished Level 1 but never started Level 2 → go straight on to Level 2
-    const level = save.chapter === 1 && save.completed ? 2 : save.chapter;
-    const seed = level !== save.chapter ? (save.seed ^ 0x51ed27) >>> 0 : save.seed;
+    const level = save.completed && !save.ending && save.chapter < MAX_LEVEL ? save.chapter + 1 : save.chapter;
+    const seed = level !== save.chapter ? nextLevelSeed(save.seed, level) : save.seed;
     void this.launch('single', seed, 'SOLO', [{ id: 'local', name, isHost: true, online: true }], level, save.carry);
   }
 
   /** Ending B → Level 1, Level 1's stairs → Level 2. Single-player swaps immediately; the host moves the whole room. */
   private continueToNextLevel(): void {
     if (!this.game) return;
-    const next = (this.game.level + 1) as 1 | 2;
+    const next = Math.min(MAX_LEVEL, this.game.level + 1);
     if (this.game.session.mode === 'host') { this.net?.socket.emit('game:level', { level: next }); return; }
     const carry = this.game.carryState();
-    const seed = (this.game.session.mapSeed ^ (next === 1 ? 0x9e3779b1 : 0x51ed27)) >>> 0;
+    const seed = nextLevelSeed(this.game.session.mapSeed, next);
     const players = [...this.game.session.players.values()];
     this.game.exit(undefined, true);
     void this.launch('single', seed, 'SOLO', players, next, carry);
@@ -119,7 +121,7 @@ class App {
       const info = net.session!;
       info.seed = seed;
       info.level = level;
-      void this.launch(net.isHost ? 'host' : 'client', seed, info.code, this.lobbyPlayers, level as 0 | 1 | 2, carry);
+      void this.launch(net.isHost ? 'host' : 'client', seed, info.code, this.lobbyPlayers, level, carry);
     });
     s.off('game:started').on('game:started', () => {
       const info = net.session!;
@@ -152,7 +154,7 @@ class App {
       this.lobbyPlayers = [...info.players];
       this.bindLobby(net);
       if (info.started) {
-        await this.launch('client', info.seed, info.code, this.lobbyPlayers, (info.level ?? 0) as 0 | 1 | 2);
+        await this.launch('client', info.seed, info.code, this.lobbyPlayers, info.level ?? 0);
       } else {
         this.menu.showLobby(true, info.code, this.lobbyPlayers, false);
       }
@@ -168,10 +170,10 @@ class App {
     this.menu.showLobby(false);
   }
 
-  private async launch(mode: GameMode, seed: number, sessionId: string, players: PlayerInfo[], level: 0 | 1 | 2 = 0, carry?: CarryState): Promise<void> {
+  private async launch(mode: GameMode, seed: number, sessionId: string, players: PlayerInfo[], level = 0, carry?: CarryState): Promise<void> {
     if (this.game) return;
     if (level >= 1 && mode === 'single') {
-      SaveGame.save({ chapter: level as 1 | 2, seed, carry: carry ?? { recorder: true, heard: [0], deaths: 0, time: 0, battery: 100 }, completed: false });
+      SaveGame.save({ chapter: level, seed, carry: carry ?? { recorder: true, heard: [0], deaths: 0, time: 0, battery: 100 }, completed: false });
     }
     document.querySelector('canvas#view')?.remove();
     const canvas = document.createElement('canvas');

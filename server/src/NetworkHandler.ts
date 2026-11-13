@@ -1,6 +1,7 @@
 import type { Server, Socket } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents, SessionInfo } from '../../shared/Protocol.ts';
 import { NET } from '../../shared/Constants.ts';
+import { MAX_LEVEL } from '../../shared/Levels.ts';
 import { RoomManager, type Player, type Room } from './RoomManager.ts';
 import {
   cleanCode, cleanName, isEntityStates, isInteractionConfirmed, isInteractionRequest, isPlayerHit, isPlayerState, isWorldSnapshot,
@@ -121,7 +122,7 @@ export function attachNetworkHandler(io: IO, rooms = new RoomManager(), opts: Ha
       const found = me();
       const level = Number(msg?.level);
       if (!found || found.room.hostId !== found.player.id || !found.room.started) return;
-      if (!Number.isInteger(level) || level < 0 || level > 2 || level === found.room.level) return;
+      if (!Number.isInteger(level) || level < 0 || level > MAX_LEVEL || level === found.room.level) return;
       found.room.level = level;
       found.room.seed = (found.room.seed ^ Math.imul(level, 0x9e3779b1)) >>> 0;
       io.to(found.room.code).emit('game:level', { level, seed: found.room.seed });

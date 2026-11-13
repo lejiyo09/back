@@ -389,7 +389,7 @@ export class ReceiverAI {
         if (!tgt) { this.setState('search'); break; }
         if (tgt.dead) { this.setState('retreat'); break; }
         if (this.timeSinceSeen > this.P.LOSE_TARGET_AFTER) { this.setState('search'); break; }
-        if (distToTarget < this.P.ATTACK_RANGE && this.seenNow && this.attackLockout <= 0) this.setState('attack');
+        if (distToTarget < this.P.ATTACK_RANGE && this.seenNow && this.attackLockout <= 0 && !this.frozen) this.setState('attack');
         break;
       case 'search':
         if (this.stateTime > this.P.SEARCH_DURATION) { this.suspicion *= 0.5; this.setState('patrol'); }
@@ -505,13 +505,24 @@ export class ReceiverAI {
     return true;
   }
 
+  /** level mechanics: multiplier on every speed (Drowned in water, Conductor on the rails…) */
+  speedMul = 1;
+  /** Curtain Walker: cannot move while anyone is looking at it */
+  freezeWhenWatched = false;
+  get frozen(): boolean { return this.freezeWhenWatched && this.observed && this.state !== 'hidden'; }
+
   private desiredSpeed(): number {
+    return this.frozen ? 0 : this.baseSpeed() * this.speedMul;
+  }
+
+  private baseSpeed(): number {
+    const k = this.P.CHASE_SPEED / 5.4;
     switch (this.state) {
       case 'patrol': return this.P.PATROL_SPEED;
       case 'stalk': return this.P.STALK_SPEED;
       case 'investigate':
       case 'search': return this.P.INVESTIGATE_SPEED;
-      case 'chase': return this.burstTimer > 0 ? 7.0 : 4.9; // lunges; averages ≈ 5.2 m/s
+      case 'chase': return (this.burstTimer > 0 ? 7.0 : 4.9) * k; // lunges; averages ≈ 5.2 m/s (scaled per monster)
       case 'ambush': return this.ambushArrived ? 0 : 3.4;
       case 'retreat': return 3.6;
       default: return 0;

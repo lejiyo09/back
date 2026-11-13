@@ -6,7 +6,7 @@ import type { PhysicsWorld } from '../physics/PhysicsWorld';
 import type { World } from '../world/World';
 import type { AudioManager, SoundKey } from '../audio/AudioManager';
 import { ReceiverModel } from './Receiver';
-import { ReceiverAI, type AIHooks, type AITarget } from './ReceiverAI';
+import { ReceiverAI, type AIHooks, type AITarget, type MonsterTuning } from './ReceiverAI';
 import { RevealDirector, type RevealMode } from '../horror/RevealDirector';
 import { receiverSkinTexture } from '../rendering/Textures';
 import { radioVoice } from '../audio/SoundSynth';
@@ -28,6 +28,8 @@ export interface EntityManagerOptions {
   /** names for mimicry: the local player and teammates */
   names?: () => { local: string; others: string[] };
   subtitle?: (text: string | null, who: string) => void;
+  /** Levels 3+: this level's creature — silhouette, colour and AI tuning */
+  monster?: { scale: number; skin: number; accessory: string; tuning: Partial<MonsterTuning> };
 }
 
 interface Pose { p: THREE.Vector3; yaw: number; state: AIState; speed: number; head: number; attack: number }
@@ -97,6 +99,10 @@ export class EntityManager {
     this.flesh = new THREE.MeshStandardMaterial({ color: 0x3a0806, emissive: 0x140000, roughness: 0.22, side: THREE.BackSide });
     this.teeth = o.world.baked.apply(new THREE.MeshStandardMaterial({ color: 0xc4b996, roughness: 0.4 }));
     this.model = new ReceiverModel({ skin: this.skin, flesh: this.flesh, teeth: this.teeth });
+    if (o.monster) {
+      this.skin.color.setHex(o.monster.skin);
+      this.model.decorate(o.monster.accessory, o.monster.scale);
+    }
     this.model.root.visible = false;
     o.scene.add(this.model.root);
     this.breath = o.audio.attachLoop(this.model.root, 'rBreath', 0, 0.9, 2.0);
@@ -106,11 +112,17 @@ export class EntityManager {
     this.drone = o.audio.loop('drone', 0);
 
     if (o.simulate && o.enabled) {
-      this.ai = new ReceiverAI(o.physics, o.world, new THREE.Vector3(0, 0, 0), o.seed, o.hooks, o.ignoreColliders);
+      this.ai = new ReceiverAI(o.physics, o.world, new THREE.Vector3(0, 0, 0), o.seed, o.hooks, o.ignoreColliders, o.monster?.tuning);
+      this.onAI?.(this.ai);
       this.director = new RevealDirector(this.ai, o.world, o.seed, o.revealMode);
       if (o.spawnDelay !== undefined) this.director.setDelay(o.spawnDelay);
     }
   }
+
+  /** level mechanics: hide the body (Observer off-camera, Undertow under water) — sound stays */
+  hideRule?: (p: THREE.Vector3) => boolean;
+  /** called whenever an AI is created here (start, host migration) so mechanics can configure it */
+  onAI?: (ai: ReceiverAI) => void;
 
   setBlackout(on: boolean): void {
     if (this.ai) this.ai.darkHunt = on;
@@ -159,7 +171,8 @@ export class EntityManager {
     this.o.simulate = simulate;
     if (simulate) {
       if (!this.o.enabled) return;
-      this.ai = new ReceiverAI(this.o.physics, this.o.world, this.pose.p.clone(), this.o.seed ^ 0x51, this.o.hooks, this.o.ignoreColliders);
+      this.ai = new ReceiverAI(this.o.physics, this.o.world, this.pose.p.clone(), this.o.seed ^ 0x51, this.o.hooks, this.o.ignoreColliders, this.o.monster?.tuning);
+      this.onAI?.(this.ai);
       this.director = new RevealDirector(this.ai, this.o.world, this.o.seed, 'skip');
       if (this.pose.state !== 'hidden') this.ai.appear(this.pose.p.clone(), this.pose.yaw, 'search');
     } else {
@@ -245,6 +258,7 @@ export class EntityManager {
   spawnPhantom(pos: THREE.Vector3, yaw: number, seconds: number, duck = 0): void {
     if (!this.phantomModel) {
       this.phantomModel = new ReceiverModel({ skin: this.skin, flesh: this.flesh, teeth: this.teeth });
+      if (this.o.monster) this.phantomModel.decorate(this.o.monster.accessory, this.o.monster.scale);
       this.o.scene.add(this.phantomModel.root);
     }
     this.phantomModel.root.visible = true;
@@ -307,7 +321,7 @@ export class EntityManager {
     const stateChanged = P.state !== this.lastState;
     const prevState = this.lastState;
     this.lastState = P.state;
-    this.model.root.visible = visible;
+    this.model.root.visible = visible && !(this.hideRule?.(P.p) ?? false);
     this.bodyTime.value = this.clock;
     if (this.mimicClear > 0) { this.mimicClear -= dt; if (this.mimicClear <= 0) this.o.subtitle?.(null, ''); }
     if (!visible) {

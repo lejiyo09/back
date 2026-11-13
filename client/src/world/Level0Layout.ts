@@ -65,12 +65,20 @@ export type SupplyContent = 'almond' | 'battery' | 'empty';
 export interface SupplySpot extends Spot { content: SupplyContent }
 
 export interface Level0Data {
-  /** 0 = Level 0, 1 = Level 1, 2 = Level 2 (same grid engine, different data) */
-  index: 0 | 1 | 2;
+  /** 0..10 — every level runs on the same grid engine with different data */
+  index: number;
+  /** Levels 3+: key items to find (team-shared), each a pickup in a cell */
+  keys?: (Spot & { key: string })[];
+  /** Levels 3+: which key each device (relay) needs, by relay id */
+  deviceNeeds?: Record<string, string>;
+  /** Level 7: the rail line (row of cells) trains run along */
+  rail?: { cy: number; x0: number; x1: number };
   /** ceiling height in metres */
   ceiling: number;
   /** how the level is left: Level 0's service elevator, Level 1's stairwell down */
   exitKind: 'elevator' | 'stairs' | 'radio';
+  /** surface style for Levels 3+ (see world/levels/Themes) */
+  theme?: number;
   /** static crate stacks (obstacles / cover): cell + corner offset */
   crates: { cx: number; cy: number; ox: number; oy: number; height: number }[];
   /** openable supply crates */

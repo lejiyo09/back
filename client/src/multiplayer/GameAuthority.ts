@@ -77,8 +77,10 @@ export function resolveInteraction(world: World, targetId: string, pos: THREE.Ve
     if (!el.powered || el.open || (pos && el.doorPosition.distanceTo(pos) > PLAYER.INTERACT_DISTANCE + 2)) return null;
     return 1;
   }
+  // level mechanics (lures, CCTV, flares…): validated by the mechanic itself, applied everywhere
+  if (targetId.startsWith('mech:')) return 1;
   const relay = world.relays.get(targetId);
-  if (relay) return relay.active || (pos && relay.position().distanceTo(pos) > PLAYER.INTERACT_DISTANCE + 1.6) ? null : 1;
+  if (relay) return relay.active || world.missingKey(targetId) || (pos && relay.position().distanceTo(pos) > PLAYER.INTERACT_DISTANCE + 1.6) ? null : 1;
   return resolveInteractionAt(world, targetId, pos);
 }
 

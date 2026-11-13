@@ -69,3 +69,14 @@ export const NOTES: NoteText[] = [
       '벽 안에서 무언가 기어 다닌다. 배관을 따라. 계속.',
   },
 ];
+
+// Levels 3–10: each theme's documents are appended after the original seven.
+import { THEMES } from './levels/Themes';
+const THEME_NOTE_BASE = NOTES.length;
+for (let i = 3; i <= 10; i++) for (const n of THEMES[i]?.notes ?? []) NOTES.push(n);
+/** global NOTES index of the k-th document of a themed level */
+export function themeNoteIndex(level: number, k: number): number {
+  let idx = THEME_NOTE_BASE;
+  for (let i = 3; i < level; i++) idx += THEMES[i]?.notes.length ?? 0;
+  return idx + k;
+}

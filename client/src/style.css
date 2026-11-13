@@ -183,3 +183,18 @@ kbd {
   #menu footer .controls { display: none; }
   .meters { left: 16px; bottom: 16px; }
 }
+
+/* ── Expanded campaign HUD ─────────────────────────────── */
+#hud .titlecard { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;
+  opacity: 0; transition: opacity 1.4s ease; color: #e8e2d0; text-shadow: 0 2px 12px #000; letter-spacing: 0.08em; }
+#hud .titlecard.in { opacity: 1; }
+#hud .titlecard .k { font-size: 13px; opacity: 0.7; letter-spacing: 0.4em; }
+#hud .titlecard .t { font-size: clamp(26px, 6vw, 54px); font-weight: 700; margin: 6px 0; }
+#hud .titlecard .s { font-size: 14px; opacity: 0.8; max-width: min(560px, 86vw); line-height: 1.6; }
+#hud .scanner { position: absolute; left: 16px; top: 72px; font: 600 13px/1.4 ui-monospace, monospace; background: rgba(0,0,0,0.45);
+  padding: 4px 8px; border-left: 2px solid currentColor; pointer-events: none; }
+#hud .cctv { position: absolute; inset: 0; pointer-events: none; border: 2px solid rgba(255,255,255,0.15);
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 3px); mix-blend-mode: normal; }
+#hud .cctv .rec { position: absolute; left: 18px; top: 14px; color: #ff4a3a; font: 700 14px ui-monospace, monospace; }
+#hud .cctv .cam { position: absolute; right: 18px; top: 14px; color: #ddd; font: 600 13px ui-monospace, monospace; }
+#hud .hidden.scanner, #hud .hidden.cctv { display: none; }

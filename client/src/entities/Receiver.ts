@@ -469,6 +469,86 @@ export class ReceiverModel {
     this.hips.position.y = tick ? hipY : this.savedHips;
   }
 
+  /**
+   * Per-level silhouette (expansion §6): the same rig and animation, but each
+   * level's creature carries its own shape so none of them reads as the
+   * Receiver in a costume — papers nailed into the back, a bell in the throat,
+   * a hospital curtain hanging off the shoulders, waterlogged bloat, a lantern
+   * in the long hand, fin-like ridges, a cluster of eyes, antennae.
+   */
+  decorate(kind: string, overall = 1): void {
+    this.root.scale.setScalar(overall);
+    const mat = (c: number, o: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, ...o });
+    const add = (parent: THREE.Object3D, mesh: THREE.Mesh, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0) => {
+      mesh.position.set(x, y, z); mesh.rotation.set(rx, ry, rz); mesh.castShadow = true; parent.add(mesh); return mesh;
+    };
+    const rnd = (k: number) => (Math.sin(k * 91.7) * 43758.5) % 1;
+    if (kind === 'pages') {
+      // index cards and torn pages pinned into the back and shoulders
+      const paper = mat(0xd8cdb0, { side: THREE.DoubleSide, roughness: 0.95 });
+      for (let i = 0; i < 18; i++) {
+        const g = new THREE.PlaneGeometry(0.1 + rnd(i) * 0.06, 0.13 + rnd(i + 3) * 0.05);
+        add(i < 10 ? this.spineHigh : this.spineLow, new THREE.Mesh(g, paper), (rnd(i + 7) - 0.5) * 0.24, 0.05 + rnd(i + 11) * 0.42, -0.12 - rnd(i + 5) * 0.03, -0.4 + rnd(i) * 0.8, rnd(i + 2) * 0.6, rnd(i + 9) * 1.2);
+      }
+    } else if (kind === 'bell') {
+      // a brass service bell lodged in the throat, a tarnished cap on the skull
+      const brass = mat(0xb08a3a, { metalness: 0.8, roughness: 0.35 });
+      add(this.neck[0], new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), brass), 0, -0.06, 0.07, Math.PI, 0, 0);
+      add(this.spineHigh, new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.42, 0.26), mat(0x5a1612, { roughness: 0.7 })), 0, 0.26, 0.0);
+      for (let i = 0; i < 4; i++) add(this.spineHigh, new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), brass), 0.05, 0.4 - i * 0.08, 0.135);
+      add(this.head, new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.11, 0.06, 16), mat(0x4a1410)), 0, 0.13, -0.01, -0.15, 0, 0.1);
+      add(this.head, new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.01, 16), brass), 0, 0.105, -0.01, -0.15, 0, 0.1);
+    } else if (kind === 'curtain') {
+      // a long hospital curtain draped from the shoulders down past the knees
+      const cloth = mat(0xa9b8b0, { side: THREE.DoubleSide, roughness: 0.9, transparent: true, opacity: 0.92 });
+      const g = new THREE.CylinderGeometry(0.2, 0.34, 1.25, 18, 8, true, Math.PI * 0.15, Math.PI * 1.7);
+      const pos = g.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); pos.setX(i, pos.getX(i) * (1 + Math.sin(i * 1.7) * 0.06 * (0.6 - y))); }
+      g.computeVertexNormals();
+      add(this.spineHigh, new THREE.Mesh(g, cloth), 0, -0.25, -0.02);
+      for (let i = 0; i < 6; i++) add(this.spineHigh, new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.004, 6, 10), mat(0x9a9a9a, { metalness: 0.8 })), Math.cos(i) * 0.19, 0.36, Math.sin(i) * 0.12 - 0.02, Math.PI / 2, 0, 0);
+    } else if (kind === 'drowned') {
+      // bloated, waterlogged; weed hanging off the arms, a glossy wet skin
+      const weed = mat(0x23331f, { side: THREE.DoubleSide, roughness: 0.5 });
+      for (let i = 0; i < 12; i++) add(i % 2 ? this.spineHigh : this.longArm.elbow, new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.25 + rnd(i) * 0.3), weed), (rnd(i + 1) - 0.5) * 0.2, -0.1 - rnd(i + 2) * 0.2, (rnd(i + 4) - 0.5) * 0.18, 0, rnd(i) * 3, 0.2);
+      this.spineHigh.scale.set(1.25, 1, 1.2);
+      this.spineLow.scale.set(1.3, 1, 1.25);
+    } else if (kind === 'lantern') {
+      // a conductor's lantern swinging from the long hand, a peaked cap
+      const lamp = new THREE.Group();
+      add(lamp, new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.22, 8), mat(0x2a2a2a, { metalness: 0.6 })), 0, -0.16, 0);
+      add(lamp, new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffb050 })), 0, -0.16, 0);
+      add(this.spineHigh, new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, 0.95, 14, 1, true), mat(0x14161c, { side: THREE.DoubleSide })), 0, -0.05, -0.01);
+      lamp.position.y = -0.1;
+      this.longArm.wrist.add(lamp);
+      add(this.head, new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.07, 16), mat(0x14161c)), 0, 0.13, -0.01, -0.2);
+      add(this.head, new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.012, 0.09), mat(0x0c0c10)), 0, 0.1, 0.08, -0.2);
+    } else if (kind === 'fins') {
+      // a ridge of fin-like spines along the back and long forearm
+      const fin = mat(0x1a2a30, { side: THREE.DoubleSide, roughness: 0.3 });
+      for (let i = 0; i < 9; i++) {
+        const g = new THREE.ConeGeometry(0.04, 0.16 + (i % 3) * 0.05, 3);
+        add(i < 5 ? this.spineHigh : this.spineLow, new THREE.Mesh(g, fin), 0, 0.05 + (i % 5) * 0.08, -0.14, -0.9, 0, 0);
+      }
+      for (let i = 0; i < 4; i++) add(this.longArm.elbow, new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.12, 3), fin), 0, -0.05 - i * 0.08, -0.04, -1.1, 0, 0);
+    } else if (kind === 'eyes') {
+      // a cluster of camera-like eyes bulging out of the faceless plate
+      const lens = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.05, metalness: 0.4, emissive: 0xff1a0a, emissiveIntensity: 0.9 });
+      const rim = mat(0x30353a, { metalness: 0.7, roughness: 0.4 });
+      for (let i = 0; i < 14; i++) {
+        const a = i * 2.4, r = 0.02 + (i % 5) * 0.026;
+        add(this.head, new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.03, 10), rim), Math.cos(a) * r, Math.sin(a) * r * 1.3, 0.12, Math.PI / 2, 0, 0);
+        add(this.head, new THREE.Mesh(new THREE.SphereGeometry(0.016, 10, 8), lens), Math.cos(a) * r, Math.sin(a) * r * 1.3, 0.137);
+      }
+    } else if (kind === 'antenna') {
+      // antennae and wire growing out of the skull and spine — the origin of every receiver
+      const wire = mat(0x3a3530, { metalness: 0.7, roughness: 0.4 });
+      for (let i = 0; i < 5; i++) add(this.head, new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.016, 0.6 + i * 0.12, 6), wire), (i - 2) * 0.05, 0.38 + i * 0.03, -0.03, -0.3 + i * 0.12, 0, (i - 2) * 0.25);
+      for (let i = 0; i < 4; i++) add(this.spineHigh, new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.01, 0.5, 6), wire), (i - 1.5) * 0.08, 0.35, -0.12, -0.6, 0, (i - 1.5) * 0.3);
+      for (let i = 0; i < 5; i++) add(this.head, new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff2010 })), (i - 2) * 0.05 + Math.sin(-0.3 + i * 0.12) * 0.3, 0.68 + i * 0.05, -0.1 - (i - 2) * 0.02);
+    }
+  }
+
   headWorld(target = new THREE.Vector3()): THREE.Vector3 {
     return this.head.getWorldPosition(target);
   }
