@@ -378,3 +378,91 @@ export function knock(ctx: Ctx): AudioBuffer {
     return s;
   }), 0.8);
 }
+
+// ── Dread & endings ───────────────────────────────────────────
+
+/** Low, detuned, slowly beating drone with a breathing noise bed. Seamless 8 s loop. */
+export function dreadDrone(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(13);
+  let lp = 0;
+  const b = buffer(ctx, 8, (t) => {
+    const w = 2 * Math.PI * t;
+    // all frequencies are multiples of 1/8 Hz → seamless
+    const tones = Math.sin(w * 41.125) * 0.5 + Math.sin(w * 41.5) * 0.45 + Math.sin(w * 61.75 + 1) * 0.25 + Math.sin(w * 82.25) * 0.12;
+    const swell = 0.6 + 0.4 * Math.sin(w * 0.125);
+    lp += (noise() - lp) * 0.01;
+    const dissonance = Math.sin(w * 233.125) * Math.sin(w * 0.25) * 0.05;
+    return (tones * swell + lp * 2.5 + dissonance) * 0.6;
+  });
+  return normalize(b, 0.8);
+}
+
+export function elevatorRumble(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(707);
+  let lp = 0;
+  const b = buffer(ctx, 4, (t) => {
+    lp += (noise() - lp) * 0.03;
+    const motor = Math.sin(2 * Math.PI * 55 * t + Math.sin(2 * Math.PI * 0.5 * t) * 2) * 0.25;
+    const rattle = Math.sin(2 * Math.PI * 9 * t) > 0.97 ? noise() * 0.3 : 0;
+    return lp * 3 + motor + rattle;
+  });
+  const d = b.getChannelData(0);
+  const fade = Math.floor(ctx.sampleRate * 0.2);
+  for (let i = 0; i < fade; i++) { const k = i / fade; d[i] = d[i] * k + d[d.length - fade + i] * (1 - k); }
+  return normalize(b, 0.7);
+}
+
+/** Something hitting the elevator cab from outside. */
+export function cabinBang(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(1313);
+  let lp = 0;
+  const hits = [0, 0.45, 0.62, 1.3];
+  return normalize(buffer(ctx, 2.2, (t) => {
+    lp += (noise() - lp) * 0.25;
+    let s = 0;
+    for (const h of hits) if (t >= h) {
+      const k = t - h;
+      s += (Math.sin(2 * Math.PI * 70 * k) * 1.2 + lp * 1.5 + Math.sin(2 * Math.PI * 410 * k) * 0.3) * Math.exp(-k * 9);
+    }
+    return s;
+  }), 0.95);
+}
+
+/** Steady rain on asphalt — 4 s seamless loop. */
+export function rain(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(1999);
+  let lp = 0, hp = 0, prev = 0;
+  const b = buffer(ctx, 4, () => {
+    const n = noise();
+    hp = 0.97 * (hp + n - prev); prev = n;
+    lp += (hp - lp) * 0.5;
+    const drop = noise() > 0.9985 ? noise() * 1.5 : 0;
+    return lp * 0.6 + drop;
+  });
+  const d = b.getChannelData(0);
+  const fade = Math.floor(ctx.sampleRate * 0.25);
+  for (let i = 0; i < fade; i++) { const k = i / fade; d[i] = d[i] * k + d[d.length - fade + i] * (1 - k); }
+  return normalize(b, 0.6);
+}
+
+/** Distant traffic and a city hum. 6 s loop. */
+export function cityHum(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(42);
+  let lp = 0;
+  const b = buffer(ctx, 6, (t) => {
+    lp += (noise() - lp) * 0.008;
+    const pass = Math.exp(-((t - 2.2) ** 2) * 1.5) * Math.sin(2 * Math.PI * (90 - (t - 2.2) * 12) * t) * 0.15;
+    return lp * 4 + pass;
+  });
+  const d = b.getChannelData(0);
+  const fade = Math.floor(ctx.sampleRate * 0.4);
+  for (let i = 0; i < fade; i++) { const k = i / fade; d[i] = d[i] * k + d[d.length - fade + i] * (1 - k); }
+  return normalize(b, 0.6);
+}
+
+export function drip(ctx: Ctx): AudioBuffer {
+  return normalize(buffer(ctx, 0.5, (t) => {
+    const f = 900 + 1400 * Math.exp(-t * 30);
+    return Math.sin(2 * Math.PI * f * t) * Math.exp(-t * 18) * 0.7;
+  }), 0.6);
+}

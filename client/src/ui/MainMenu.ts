@@ -113,7 +113,7 @@ export class MainMenu {
 
   updateLobbyPlayers(players: PlayerInfo[], isHost: boolean): void {
     this.lobby.querySelector('.players')!.innerHTML = players
-      .map((p) => `<li>${escapeHtml(p.name)}${p.isHost ? ' <em>호스트</em>' : ''}</li>`).join('');
+      .map((p) => `<li class="${p.online === false ? 'offline' : ''}">${escapeHtml(p.name)}${p.isHost ? ' <em>호스트</em>' : ''}${p.online === false ? ' <em>연결 끊김</em>' : ''}</li>`).join('');
     (this.lobby.querySelector('[data-act="start"]') as HTMLElement).style.display = isHost ? '' : 'none';
     this.lobby.querySelector('.lobby-hint')!.textContent = isHost
       ? `친구에게 방 코드를 알려 주세요. (${players.length}/4)`

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../shared/Protocol.ts';
 import { GAME_VERSION } from '../../shared/Constants.ts';
-import { attachNetworkHandler } from './NetworkHandler';
+import { attachNetworkHandler } from './NetworkHandler.ts';
 
 const PORT = Number(process.env.PORT ?? process.env.LS_SERVER_PORT ?? 3001);
 const CLIENT_DIST = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../client/dist');
@@ -52,9 +52,15 @@ const http = createServer((req, res) => { void handleHttp(req, res); });
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(http, {
   cors: ORIGINS ? { origin: ORIGINS } : undefined,
   maxHttpBufferSize: 64 * 1024,
-  connectionStateRecovery: { maxDisconnectionDuration: 30_000 },
+  // WebSocket only — no long-polling fallback
+  transports: ['websocket'],
+  pingInterval: 5000,
+  pingTimeout: 5000,
 });
-rooms = attachNetworkHandler(io);
+rooms = attachNetworkHandler(io, undefined, {
+  playerGraceMs: Number(process.env.LS_PLAYER_GRACE_MS) || undefined,
+  hostGraceMs: Number(process.env.LS_HOST_GRACE_MS) || undefined,
+});
 
 http.listen(PORT, () => {
   console.log(`[lost-signal] server v${GAME_VERSION} listening on :${PORT}`);

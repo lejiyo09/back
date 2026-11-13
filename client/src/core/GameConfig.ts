@@ -27,6 +27,8 @@ export interface Settings {
   brightness: number;       // 0.6 .. 1.6 (exposure)
   flickerIntensity: number; // 0 .. 1 (accessibility: light flicker strength)
   headBob: boolean;         // accessibility: camera sway
+  scareIntensity: number;   // accessibility: 0.3 .. 1 (stingers, glitching, mimicry)
+  subtitles: boolean;
   playerName: string;
 }
 
@@ -37,6 +39,8 @@ const DEFAULTS: Settings = {
   brightness: 1,
   flickerIntensity: 1,
   headBob: true,
+  scareIntensity: 1,
+  subtitles: true,
   playerName: '',
 };
 

@@ -26,6 +26,8 @@ import { EntityManager } from '../entities/EntityManager';
 import type { AITarget } from '../entities/ReceiverAI';
 import { Recorder } from '../player/Recorder';
 import { ScareDirector } from '../horror/ScareDirector';
+import { EndingScene } from '../world/EndingScenes';
+import { radioVoice } from '../audio/SoundSynth';
 import type { NetworkManager } from '../multiplayer/NetworkManager';
 
 export interface GameOptions {
@@ -71,6 +73,7 @@ export class Game {
   private spawnIndex = 0;
   private hitKick = 0;
   private forceLook = 0;
+  private fovPunch = 0;
   recorder!: Recorder;
   scares!: ScareDirector;
   private downed = false;
@@ -82,6 +85,15 @@ export class Game {
   private endingSeq = -1;
   private endingFreq = -1;
   private lastRelayPos = new THREE.Vector3();
+  // ending sequence
+  private endingScene: EndingScene | null = null;
+  private arrived = false;
+  private arrivalT = 0;
+  private finaleT = -1;
+  private epilogueWalk = false;
+  private endingFlags = new Set<string>();
+  private endingLoops: THREE.Audio[] = [];
+  private dripTimer = 2;
   private deaths = 0;
 
   /** Accessibility: the flicker-intensity setting also scales screen glitching. */
@@ -99,6 +111,7 @@ export class Game {
   private everLocked = false;
   private ended = false;
   private names = new Map<string, string>();
+  private authorityCallbacks!: AuthorityCallbacks;
   private readonly preset;
 
   private constructor(private opts: GameOptions) {
@@ -127,10 +140,22 @@ export class Game {
     const cb: AuthorityCallbacks = {
       onRemoteState: (id, st) => this.remotes?.onState(id, st),
       onPeerJoined: (id, name) => { this.names.set(id, name); this.remotes?.setName(id, name); this.hud.toast(`${name} 님이 백룸에 들어왔습니다`); },
-      onPeerLeft: (id) => { this.hud.toast(`${this.names.get(id) ?? '생존자'} 님의 신호가 끊겼습니다`); this.remotes?.remove(id); },
+      onPeerLeft: (id) => { this.hud.toast(`${this.names.get(id) ?? '생존자'} 님이 세션을 떠났습니다`); this.remotes?.remove(id); this.remotes?.forgetName(id); },
       onSessionEnded: (reason) => this.exit(reason),
       onEntityStates: (list) => this.entities?.applySnapshots(list),
       getLocal: () => ({ pos: this.player.feet.clone(), downed: this.downed, dead: this.dead }),
+      onHostChanged: (hostId) => this.onHostChanged(hostId),
+      onPeerOffline: (id) => {
+        this.remotes?.setOnline(id, false);
+        const isHost = this.opts.net?.session?.hostId === id;
+        this.hud.toast(`${this.names.get(id) ?? '생존자'} 님의 연결이 끊겼습니다`);
+        if (isHost) this.hud.setBanner('호스트 연결이 끊겼습니다 — 재접속을 기다리는 중… (20초 후 다른 생존자가 이어받습니다)');
+      },
+      onPeerOnline: (id) => {
+        this.remotes?.setOnline(id, true);
+        this.hud.toast(`${this.names.get(id) ?? '생존자'} 님이 다시 연결되었습니다`);
+        if (this.opts.net?.session?.hostId === id) this.hud.setBanner(null);
+      },
       onHit: (hit) => this.onHit(hit.damage, new THREE.Vector3(hit.from[0], 0, hit.from[1])),
     };
     if (o.mode === 'single') this.authority = new LocalAuthority();
@@ -178,6 +203,11 @@ export class Game {
       // ?ai=now → compressed reveal for testing; ?ai=hunt → skip the reveal entirely
       revealMode: URL_FLAGS.ai === 'hunt' ? 'skip' : URL_FLAGS.ai === 'now' ? 'fast' : 'normal',
       ignoreColliders: [this.player.collider],
+      names: () => ({
+        local: this.names.get(this.authority?.localPlayerId ?? '') ?? (this.opts.settings.playerName || ''),
+        others: [...this.names.entries()].filter(([id]) => id !== this.authority?.localPlayerId).map(([, n]) => n),
+      }),
+      subtitle: (t, who) => this.hud.setSubtitle(t, who),
       hooks: {
         openDoor: (id, from) => this.authority.entityRequest(id, from),
         hit: (targetId, damage, from) => {
@@ -206,6 +236,23 @@ export class Game {
     this.world.onEvent = (e) => this.onWorldEvent(e);
 
     await this.authority.startSession(this.world);
+    this.authorityCallbacks = cb;
+
+    // Connection drops: keep playing locally while the WebSocket reconnects and resumes the slot.
+    if (o.net) {
+      o.net.events = {
+        lost: () => this.hud.setBanner('서버 연결이 끊겼습니다 — 재연결 중…'),
+        resumed: (info) => {
+          this.hud.setBanner(null);
+          this.hud.toast('다시 연결되었습니다');
+          const shouldHost = info.hostId === info.playerId;
+          if (shouldHost !== (this.session.mode === 'host')) this.switchAuthority(shouldHost ? 'host' : 'client');
+          else if (this.authority instanceof HostAuthority) this.authority.resync();
+          for (const p of info.players) this.remotes.setOnline(p.id, p.online);
+        },
+        failed: (reason) => this.exit(`재연결 실패: ${reason}`),
+      };
+    }
 
     this.applySettings(o.settings);
     this.renderer.attach(this.scene, this.camera);
@@ -306,9 +353,38 @@ export class Game {
     this.world.lighting.flickerIntensity = s.flickerIntensity;
     this.player.headBob = s.headBob;
     this.exposure = s.brightness;
+    this.hud.subtitlesEnabled = s.subtitles;
+    this.entities.scareIntensity = s.scareIntensity;
   }
 
   private onResize = () => this.renderer.resize(this.camera);
+
+  /** Host migration / old host returning: swap who simulates, keep everything else. */
+  private switchAuthority(mode: 'host' | 'client'): void {
+    if (!this.opts.net || this.session.mode === mode) return;
+    this.authority.shutdown();
+    this.session.mode = mode;
+    this.authority = mode === 'host'
+      ? new HostAuthority(this.opts.net, this.authorityCallbacks)
+      : new RemoteAuthority(this.opts.net, this.authorityCallbacks);
+    void this.authority.startSession(this.world);
+    this.entities.setAuthority(mode === 'host');
+  }
+
+  private onHostChanged(hostId: string): void {
+    this.hud.setBanner(null);
+    for (const [id] of this.names) {
+      const p = this.session.players.get(id);
+      if (p) p.isHost = id === hostId;
+    }
+    if (hostId === this.authority.localPlayerId) {
+      this.switchAuthority('host');
+      this.hud.toast('호스트가 돌아오지 않아 당신이 세션을 이어받았습니다');
+    } else {
+      this.switchAuthority('client');
+      this.hud.toast(`${this.names.get(hostId) ?? '다른 생존자'} 님이 새 호스트가 되었습니다`);
+    }
+  }
 
   private isOccluded(p: THREE.Vector3): boolean {
     const from = this.camera.position;
@@ -358,6 +434,12 @@ export class Game {
       this.endingSeq = 0;
       this.audio.playAt('elevDoor', this.world.elevator.doorPosition, 1.4);
       if (this.recorder.on) this.recorder.toggle();
+      // build the destination now; any shader-compile hitch hides behind the closing doors
+      const escaped = e.frequency === this.world.level.correctFrequency;
+      const origin = this.world.elevator.center.clone().add(new THREE.Vector3(0, 0, 400));
+      this.endingScene = new EndingScene(escaped ? 'escape' : 'level1', origin, this.physics, this.session.mapSeed);
+      this.scene.add(this.endingScene.group);
+      this.renderer.renderer.compile(this.scene, this.camera);
     } else if (e.type === 'custom') {
       if (e.targetId === `revive:${this.authority.localPlayerId}` && this.downed) this.revivedByTeammate(e.byPlayerId);
     }
@@ -381,7 +463,7 @@ export class Game {
 
   private fixedUpdate(dt: number): void {
     this.player.flashlightOn = this.flashlight.on;
-    if (!this.dead && !this.downed && this.endingSeq === -1) this.player.fixedUpdate(dt);
+    if (!this.dead && !this.downed && (this.endingSeq === -1 || this.epilogueWalk)) this.player.fixedUpdate(dt);
     this.world.fixedUpdate(dt);
     this.entities.fixedUpdate(dt, this.aiTargets());
     this.physics.step();
@@ -397,7 +479,11 @@ export class Game {
     const angle = Math.atan2(fwd.x * toAttacker.z - fwd.z * toAttacker.x, fwd.dot(toAttacker));
     this.hud.flashHit(-angle);
     this.hitKick = 1;
-    if (this.entities.present) this.forceLook = 0.35;
+    const k = this.opts.settings.scareIntensity;
+    if (this.entities.present) this.forceLook = 0.3 + 0.35 * k;
+    this.fovPunch = k;
+    this.entities.glitch = Math.max(this.entities.glitch, k);
+    this.audio.play('rScreech', 0.5 + 0.5 * k, 0.75);
     if (killed) {
       // co-op: go down and wait for a teammate; alone: the signal is simply lost
       if (this.session.mode !== 'single' && this.remotes.count > 0) this.goDown();
@@ -488,6 +574,11 @@ export class Game {
       this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, this.player.feet.y + 0.25, k);
       this.camera.rotation.z = THREE.MathUtils.lerp(0, 1.2, k);
     }
+    if (this.fovPunch > 0.001) {
+      this.fovPunch *= Math.exp(-dt * 2.2);
+      this.camera.fov = PLAYER.FOV - 20 * this.fovPunch;
+      this.camera.updateProjectionMatrix();
+    }
     if (this.hitKick > 0) {
       this.hitKick = Math.max(0, this.hitKick - dt * 3);
       const s = this.hitKick * this.hitKick * 0.06;
@@ -496,7 +587,8 @@ export class Game {
     }
     const viewDir = this.camera.getWorldDirection(new THREE.Vector3());
     const beamHit = this.flashlight.on ? this.physics.castRay(this.camera.position, viewDir, 14, this.player.collider) : null;
-    this.flashlight.update(dt, this.camera, this.player.status.battery, this.time, beamHit?.distance ?? Infinity);
+    const jam = this.entities.interference(this.camera.position);
+    this.flashlight.update(dt, this.camera, this.player.status.battery, this.time, beamHit?.distance ?? Infinity, jam);
     const viewer = this.camera.position;
     this.world.update(dt, this.time, viewer);
     this.interaction.update(this.camera);
@@ -518,7 +610,7 @@ export class Game {
     this.updatePowerSequence(dt);
     this.updateEndingSequence(dt);
     if (!this.dead && !this.downed && this.endingSeq === -1) {
-      const recNoise = this.recorder.update(dt, this.camera.position, this.camera.getWorldDirection(new THREE.Vector3()));
+      const recNoise = this.recorder.update(dt, this.camera.position, this.camera.getWorldDirection(new THREE.Vector3()), jam);
       if (recNoise > 0) this.player.status.emitNoise(recNoise);
     } else if (this.recorder.on) this.recorder.toggle();
     this.scares.update(dt);
@@ -529,10 +621,18 @@ export class Game {
     // fog + gentle eye adaptation follow the local light level
     const lit = THREE.MathUtils.clamp(light / 0.9, 0, 1);
     const fog = this.scene.fog as THREE.FogExp2;
-    fog.color.lerp(FOG_DARK.clone().lerp(FOG_LIT, lit), 1 - Math.exp(-dt * 1.5));
-    fog.density = THREE.MathUtils.lerp(0.075, 0.042, lit);
-    this.renderer.setExposure(this.exposure * THREE.MathUtils.lerp(1.35, 1, lit));
-    this.renderer.distress = Math.min(1, Math.max(1 - lit, threat * 1.3) + (this.dead ? 1 : 0));
+    if (this.arrived && this.endingScene) {
+      fog.color.lerp(new THREE.Color(this.endingScene.fog.color), 1 - Math.exp(-dt * 3));
+      fog.density = this.endingScene.fog.density;
+      (this.scene.background as THREE.Color).copy(fog.color);
+      this.renderer.setExposure(this.exposure * this.endingScene.exposure);
+      this.renderer.distress = 0.15;
+    } else {
+      fog.color.lerp(FOG_DARK.clone().lerp(FOG_LIT, lit), 1 - Math.exp(-dt * 1.5));
+      fog.density = THREE.MathUtils.lerp(0.075, 0.042, lit);
+      this.renderer.setExposure(this.exposure * THREE.MathUtils.lerp(1.35, 1, lit));
+      this.renderer.distress = Math.min(1, Math.max(1 - lit, threat * 1.3) + (this.dead ? 1 : 0));
+    }
 
     // ── HUD ─────────────────────────────────────────────────
     const st = this.player.status;
@@ -629,7 +729,7 @@ export class Game {
   private objectiveText(): string {
     const el = this.world.elevator;
     const n = this.world.activeRelays;
-    if (el.ending) return '…';
+    if (el.ending) return '';
     if (el.open) return this.session.mode === 'single' ? '엘리베이터에 타서 주파수를 선택하라' : '모든 생존자가 탑승한 뒤 주파수를 선택하라';
     if (el.powered) return '엘리베이터를 찾아 호출하라';
     if (!this.recorder.has) return n ? `전력 패널을 찾아 작동시켜라 (${n}/${OBJECTIVE.RELAY_COUNT})` : '주변을 조사하라';
@@ -649,11 +749,107 @@ export class Game {
     this.world.lighting.surge = s;
   }
 
+  private once(flag: string): boolean {
+    if (this.endingFlags.has(flag)) return false;
+    this.endingFlags.add(flag);
+    return true;
+  }
+
+  private sayOnRecorder(text: string, seconds: number, pitch = 1): void {
+    const buf = radioVoice(this.audio.listener.context, seconds, 777 + text.length, pitch);
+    this.audio.playBuffer(buf, 0.9);
+    this.hud.setSubtitle(text, '녹음기');
+    setTimeout(() => this.hud.setSubtitle(null), seconds * 1000 + 600);
+  }
+
+  /**
+   * The ride down and the ending (design doc ACT 5): doors close → descent →
+   * darkness, banging, breathing → in one flicker it is in the cab with you →
+   * arrival → walk out into the destination → finale → fade → ending text.
+   */
   private updateEndingSequence(dt: number): void {
-    if (this.endingSeq < 0 || this.ended) return;
+    if (this.endingSeq < 0 || this.ended || !this.endingScene) return;
     this.endingSeq += dt;
-    if (this.endingSeq < 3) return;
+    const t = this.endingSeq;
+    const el = this.world.elevator;
+    const S = this.endingScene;
+    const k = this.opts.settings.scareIntensity;
+
+    if (!this.arrived) {
+      if (t > 2.2 && this.once('rumble')) this.endingLoops.push(this.audio.loop('rumble', 0.45));
+      if (t > 2.2) this.hitKick = Math.max(this.hitKick, 0.12);
+      // lights: dark 4.4–5.2, one flicker 5.2–5.45, dark to 6.3, then stuttering back
+      el.blackout = (t > 4.4 && t < 5.2) || (t > 5.45 && t < 6.3) || (t > 6.3 && t < 6.9 && Math.random() < 0.5);
+      if (t > 4.4 && this.once('bang')) {
+        this.audio.play('bang', 0.6 + 0.4 * k);
+        this.audio.play('rBreath', 0.5 * k + 0.2);
+      }
+      if (t > 5.2 && this.once('phantom')) {
+        // it is standing right behind you, inside the cab
+        const dir = this.camera.getWorldDirection(new THREE.Vector3()).setY(0).normalize();
+        const p = this.camera.position.clone().addScaledVector(dir, -0.95).setY(0);
+        p.x = THREE.MathUtils.clamp(p.x, el.center.x - 0.6, el.center.x + 0.6);
+        p.z = THREE.MathUtils.clamp(p.z, el.center.z - 0.6, el.center.z + 0.65);
+        this.entities.spawnPhantom(p, Math.atan2(dir.x, dir.z), 0.3, 1);
+        this.entities.glitch = Math.max(this.entities.glitch, 0.8 * k);
+      }
+      if (t > 7.4) {
+        // arrival: swap into the copy of the cab at the destination
+        this.endingLoops.forEach((l) => { if (l.isPlaying) l.stop(); });
+        this.endingLoops = [];
+        el.blackout = false;
+        const delta = S.cabCenter.clone().sub(el.center).setY(0);
+        this.player.teleport(this.player.feet.clone().add(delta));
+        this.camera.position.add(delta);
+        this.audio.play('ding', 0.9);
+        this.arrived = true;
+        this.arrivalT = t;
+        if (S.kind === 'escape') {
+          this.endingLoops.push(this.audio.loop('rain', 0.55), this.audio.loop('city', 0.3));
+        } else {
+          this.endingLoops.push(this.audio.loop('hum', 0.06), this.audio.loop('drone', 0.12));
+        }
+      }
+      return;
+    }
+
+    const at = t - this.arrivalT;
+    S.openDoors(THREE.MathUtils.clamp((at - 0.6) / 2, 0, 1));
+    if (at > 0.6 && this.once('destDoors')) this.audio.play('elevDoor', 0.8);
+    this.epilogueWalk = at > 1.4;
+    S.update(dt, this.time, this.camera.position);
+    if (S.kind === 'level1') {
+      this.dripTimer -= dt;
+      if (this.dripTimer <= 0) {
+        this.dripTimer = 1.5 + Math.random() * 3;
+        const p = this.camera.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 12, 2, -Math.random() * 10));
+        this.audio.playAt('drip', p, 1.2, 0.9 + Math.random() * 0.3);
+      }
+    }
+    const walked = Math.hypot(this.player.feet.x - S.cabCenter.x, this.player.feet.z - S.cabCenter.z);
+    if (this.finaleT < 0 && (at > 24 || walked > 10)) {
+      this.finaleT = t;
+      if (S.kind === 'escape') {
+        this.sayOnRecorder('…녹음 중인가?', 2.2);
+      } else {
+        S.startCascade();
+        const dir = this.camera.getWorldDirection(new THREE.Vector3()).setY(0).normalize();
+        const p = this.camera.position.clone().addScaledVector(dir, 10).setY(0);
+        this.entities.spawnPhantom(p, Math.atan2(-dir.x, -dir.z), 3.4);
+        setTimeout(() => this.sayOnRecorder('이걸 듣고 있다면, 넌 다른 쪽을 눌렀어.', 3.4, 0.96), 1400);
+      }
+    }
+    if (this.finaleT >= 0) {
+      const ft = t - this.finaleT;
+      if (ft > 4.2 && this.once('fade')) this.hud.fade(1, 2.5);
+      if (ft > 7) this.showEndingScreen();
+    }
+  }
+
+  private showEndingScreen(): void {
     this.endingSeq = -2; // done: freeze
+    this.epilogueWalk = false;
+    this.endingLoops.forEach((l) => { if (l.isPlaying) l.stop(); });
     const escaped = this.endingFreq === this.world.level.correctFrequency;
     const secs = Math.floor(this.time);
     const stats = [
@@ -670,14 +866,15 @@ export class Game {
     this.hud.showEnding(escaped ? {
       kicker: 'ENDING A',
       title: 'ESCAPE',
-      body: '문이 닫히고, 형광등 소리가 멈췄다.\n\n긴 하강. 그리고 정적.\n\n문이 열리자 차가운 공기가 들어왔다. 아스팔트 냄새, 멀리서 들리는 차 소리. 가로등 아래, 평범한 밤이다.\n\n주머니 속에서 녹음기가 혼자 켜진다.\n지직거리는 잡음 사이로, 네 목소리가 말한다.\n\n“…녹음 중인가?”',
+      body: '빗소리. 젖은 아스팔트. 가로등이 웅웅거린다 — 형광등과는 다른 소리로.\n\n여기는 현실이다. 그래야만 한다.\n\n주머니 속 녹음기는 꺼지지 않는다. 지직거리는 잡음 사이로, 네 목소리가 다시 처음부터 말하기 시작한다.\n\n“…녹음 중인가?”\n\n누군가 지금 막 녹음기를 주웠다.',
       stats,
     } : {
       kicker: 'ENDING B',
       title: 'WRONG FREQUENCY',
-      body: '문이 닫히고, 형광등 소리가 멈췄다.\n\n하강은 끝나지 않았다. 몇 분인지, 몇 시간인지.\n\n문이 열린다. 콘크리트 바닥과 콘크리트 벽. 천장의 배관에서 물이 떨어지고, 짙은 습기가 통로를 채우고 있다. 형광등이 깜빡인다. 창고 같은 통로가 끝없이 이어진다.\n\nLevel 1.\n\n녹음기가 켜진다.\n“이걸 듣고 있다면, 넌 다른 쪽을 눌렀어.”',
+      body: '콘크리트 바닥과 콘크리트 벽. 천장의 배관에서 물이 떨어지고, 짙은 습기가 통로를 채운다. 창고 같은 통로가 끝없이 이어진다.\n\nLevel 1.\n\n불빛이 하나씩 꺼져 왔고, 안개 속에 무언가 서 있었다.\n\n녹음기가 켜진다.\n“이걸 듣고 있다면, 넌 다른 쪽을 눌렀어.”\n\n이제, 네가 녹음할 차례다.',
       stats,
     }, () => this.exit());
+    this.hud.fade(0, 1.5);
   }
 
   private inventoryLines(): string[] {
@@ -689,6 +886,8 @@ export class Game {
       `문서 — ${this.notesRead.size} / ${NOTES.length}`,
       this.recorder.has ? '' : `<span class="dim">신호 녹음기 — 아직 찾지 못했다</span>`,
       `<span class="dim">목표 — ${this.objectiveText()}</span>`,
+      ...(this.session.mode === 'single' ? [] : this.remotes.roster().filter((r) => r.id !== this.authority.localPlayerId).map((r) =>
+        `동료 · ${escapeHtml(r.name)} — ${r.status}${this.opts.net?.session?.hostId === r.id ? ' (호스트)' : ''}`)),
     ].filter(Boolean);
   }
 
@@ -717,6 +916,7 @@ export class Game {
     this.remotes?.dispose();
     this.entities?.dispose();
     this.recorder?.dispose();
+    this.endingScene?.dispose();
     this.world?.dispose();
     this.physics?.dispose();
     this.renderer.dispose();

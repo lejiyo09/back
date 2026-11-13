@@ -40,6 +40,8 @@ export class HUD {
       <div class="hurt"></div>
       <div class="hitflash"></div>
       <div class="death hidden"><div class="death-title">SIGNAL LOST</div><div class="death-sub">신호가 끊겼다…</div><div class="death-timer"></div></div>
+      <div class="banner hidden"></div>
+      <div class="fade"></div>
       <div class="crosshair"></div>
       <svg class="hold" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" /></svg>
       <div class="objective"><span class="label">목표</span><span class="text"></span></div>
@@ -95,6 +97,20 @@ export class HUD {
     this.ending = $('.ending', this.root);
   }
 
+  /** Fade the whole screen to black (1) or back (0). */
+  fade(to: number, seconds: number): void {
+    const f = $('.fade', this.root);
+    f.style.transition = `opacity ${seconds}s ease-in`;
+    f.style.opacity = String(to);
+  }
+
+  /** Persistent top banner for connection state; null hides it. */
+  setBanner(text: string | null): void {
+    const b = $('.banner', this.root);
+    b.classList.toggle('hidden', !text);
+    if (text) b.textContent = text;
+  }
+
   /** 0..1 progress of a held interaction; null hides the ring. */
   setHold(p: number | null): void {
     const c = 2 * Math.PI * 18;
@@ -106,6 +122,7 @@ export class HUD {
   /** Objective line; flashes for a few seconds when it changes, otherwise stays faint. */
   setObjective(text: string): void {
     const el = $('.text', this.objective);
+    this.objective.classList.toggle('hidden', !text);
     if (el.textContent === text) return;
     el.textContent = text;
     this.objectiveTimer = 7;
@@ -119,7 +136,10 @@ export class HUD {
     }
   }
 
+  subtitlesEnabled = true;
+
   setSubtitle(text: string | null, who = ''): void {
+    if (!this.subtitlesEnabled) text = null;
     this.subtitle.classList.toggle('show', !!text);
     if (text) {
       $('.who', this.subtitle).textContent = who;

@@ -46,7 +46,7 @@ class App {
 
   private startSingle(name: string): void {
     this.rememberName(name);
-    void this.launch('single', URL_FLAGS.seed ?? randomSeed(), 'SOLO', [{ id: 'local', name, isHost: true }]);
+    void this.launch('single', URL_FLAGS.seed ?? randomSeed(), 'SOLO', [{ id: 'local', name, isHost: true, online: true }]);
   }
 
   private ensureNet(): NetworkManager {
@@ -63,6 +63,18 @@ class App {
     s.off('session:peer-left').on('session:peer-left', (id) => {
       this.lobbyPlayers = this.lobbyPlayers.filter((p) => p.id !== id);
       this.menu.updateLobbyPlayers(this.lobbyPlayers, net.isHost);
+    });
+    s.off('session:peer-offline').on('session:peer-offline', (id) => {
+      this.lobbyPlayers = this.lobbyPlayers.map((p) => (p.id === id ? { ...p, online: false } : p));
+      if (!this.game) this.menu.updateLobbyPlayers(this.lobbyPlayers, net.isHost);
+    });
+    s.off('session:peer-online').on('session:peer-online', (id) => {
+      this.lobbyPlayers = this.lobbyPlayers.map((p) => (p.id === id ? { ...p, online: true } : p));
+      if (!this.game) this.menu.updateLobbyPlayers(this.lobbyPlayers, net.isHost);
+    });
+    s.off('session:host-changed').on('session:host-changed', (hostId) => {
+      this.lobbyPlayers = this.lobbyPlayers.map((p) => ({ ...p, isHost: p.id === hostId }));
+      if (!this.game) this.menu.updateLobbyPlayers(this.lobbyPlayers, net.isHost);
     });
     s.off('session:ended').on('session:ended', (reason) => {
       if (!this.game) { this.menu.show(); this.menu.showError(reason); }

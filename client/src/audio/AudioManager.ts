@@ -5,7 +5,8 @@ export type SoundKey =
   | 'hum' | 'roomTone' | 'doorOpen' | 'doorClose' | 'click' | 'paper' | 'pickup'
   | 'step0' | 'step1' | 'step2' | 'step3' | 'distant0' | 'distant1' | 'distant2'
   | 'rBreath' | 'rStatic' | 'rStep0' | 'rStep1' | 'rStep2' | 'rScreech' | 'hit' | 'staticBurst' | 'heartbeat'
-  | 'beep' | 'relay' | 'surge' | 'ding' | 'elevDoor' | 'knock' | 'whisper0' | 'whisper1';
+  | 'beep' | 'relay' | 'surge' | 'ding' | 'elevDoor' | 'knock' | 'whisper0' | 'whisper1'
+  | 'drone' | 'rumble' | 'bang' | 'rain' | 'city' | 'drip';
 
 /**
  * Web Audio + three.js positional audio (design doc 10). One listener on the
@@ -51,6 +52,12 @@ export class AudioManager {
     this.buffers.set('knock', Synth.knock(ctx));
     this.buffers.set('whisper0', Synth.radioVoice(ctx, 1.6, 91, 0.95, true));
     this.buffers.set('whisper1', Synth.radioVoice(ctx, 2.2, 92, 1.05, true));
+    this.buffers.set('drone', Synth.dreadDrone(ctx));
+    this.buffers.set('rumble', Synth.elevatorRumble(ctx));
+    this.buffers.set('bang', Synth.cabinBang(ctx));
+    this.buffers.set('rain', Synth.rain(ctx));
+    this.buffers.set('city', Synth.cityHum(ctx));
+    this.buffers.set('drip', Synth.drip(ctx));
 
     for (let i = 0; i < 8; i++) this.oneShots.push(new THREE.Audio(this.listener));
     for (let i = 0; i < 6; i++) {
@@ -105,6 +112,17 @@ export class AudioManager {
     return p;
   }
 
+  /** Non-positional loop with live volume control (drone, rain, rumble…). */
+  loop(key: SoundKey, volume = 0): THREE.Audio {
+    const a = new THREE.Audio(this.listener);
+    a.setBuffer(this.buffers.get(key)!);
+    a.setLoop(true);
+    a.setVolume(volume);
+    a.play();
+    this.loops.push(a);
+    return a;
+  }
+
   /** Attach a looping positional hum to a light (follows the pooled light). */
   attachHum(obj: THREE.Object3D, volume = 0.22): THREE.PositionalAudio {
     const p = new THREE.PositionalAudio(this.listener);
@@ -130,6 +148,24 @@ export class AudioManager {
     a.setVolume(volume);
     a.play();
     return a;
+  }
+
+  /** One-shot positional ad-hoc buffer (mimicked voices). */
+  playBufferAt(buf: AudioBuffer, pos: THREE.Vector3, volume = 1, muffled = false): void {
+    const a = this.spatialShots[this.spatialIdx++ % this.spatialShots.length];
+    if (a.isPlaying) a.stop();
+    a.position.copy(pos);
+    a.updateMatrixWorld();
+    a.setBuffer(buf);
+    a.setVolume(volume);
+    a.setPlaybackRate(1);
+    if (muffled) {
+      const f = this.listener.context.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 900;
+      a.setFilter(f);
+    } else if (a.getFilters().length) a.setFilters([]);
+    a.play();
   }
 
   play(key: SoundKey, volume = 1, rate = 1): void {

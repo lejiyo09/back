@@ -2,20 +2,58 @@ import * as THREE from 'three';
 import type { EntityNetState, PlayerHit, PlayerNetState } from '@shared/GameTypes';
 import type { World } from '../world/World';
 import type { NetworkManager } from './NetworkManager';
-import { EventDedup, newEventId, resolveEntityInteraction, resolveInteraction, resolveRevive, type AuthorityCallbacks, type GameAuthority, type PlayerSnapshot } from './GameAuthority';
+import {
+  EventDedup, Listeners, newEventId, resolveEntityInteraction, resolveInteraction, resolveRevive,
+  type AuthorityCallbacks, type GameAuthority, type PlayerSnapshot,
+} from './GameAuthority';
 
 /** Host browser: authoritative over world state; validates and confirms peer requests. */
 export class HostAuthority implements GameAuthority {
   readonly mode = 'host' as const;
+  readonly simulates = true;
   private world?: World;
   private dedup = new EventDedup();
   private lastPos = new Map<string, THREE.Vector3>();
-  private remote = new Map<string, PlayerSnapshot>();
+  private remote = new Map<string, PlayerSnapshot & { offline?: boolean }>();
+  private listeners: Listeners;
 
-  private cb: AuthorityCallbacks;
+  constructor(private net: NetworkManager, private cb: AuthorityCallbacks) {
+    const L = (this.listeners = new Listeners(net.socket as never));
+    L.on('player:state', (id: string, st: PlayerNetState) => {
+      this.lastPos.set(id, new THREE.Vector3(st.p[0], st.p[1] + 1, st.p[2]));
+      const prev = this.remote.get(id);
+      this.remote.set(id, { pos: new THREE.Vector3(st.p[0], st.p[1], st.p[2]), downed: st.dn, dead: st.d, offline: prev?.offline });
+      cb.onRemoteState?.(id, st);
+    });
+    L.on('interaction:request', (id: string, req: { eventId: string; targetId: string }) => {
+      if (!this.world || this.dedup.has(req.eventId)) return;
+      this.dedup.add(req.eventId);
+      const value = this.resolve(req.targetId, id, this.lastPos.get(id));
+      if (value === null) return;
+      this.confirm(req.eventId, req.targetId, id, value);
+    });
+    L.on('session:peer-joined', (p: { id: string; name: string }) => {
+      cb.onPeerJoined?.(p.id, p.name);
+      if (this.world) net.socket.emit('world:sync', { to: p.id, snapshot: this.world.snapshot() });
+    });
+    L.on('session:peer-left', (id: string) => { this.lastPos.delete(id); this.remote.delete(id); cb.onPeerLeft?.(id); });
+    L.on('session:peer-offline', (id: string) => { const r = this.remote.get(id); if (r) r.offline = true; cb.onPeerOffline?.(id); });
+    L.on('session:peer-online', (id: string) => {
+      const r = this.remote.get(id); if (r) r.offline = false;
+      // a returning player may have missed changes: send them the full world
+      if (this.world) net.socket.emit('world:sync', { to: id, snapshot: this.world.snapshot() });
+      cb.onPeerOnline?.(id);
+    });
+    L.on('session:host-changed', (hostId: string) => cb.onHostChanged?.(hostId));
+  }
+
+  get localPlayerId(): string {
+    return this.net.id;
+  }
 
   private everyone(): Map<string, PlayerSnapshot> {
-    const all = new Map(this.remote);
+    const all = new Map<string, PlayerSnapshot>();
+    for (const [id, p] of this.remote) if (!p.offline) all.set(id, p);
     const me = this.cb.getLocal?.();
     if (me) all.set(this.localPlayerId, me);
     return all;
@@ -29,36 +67,9 @@ export class HostAuthority implements GameAuthority {
     return resolveInteraction(this.world, targetId, pos, living);
   }
 
-  constructor(private net: NetworkManager, cb: AuthorityCallbacks) {
-    this.cb = cb;
-    const s = net.socket;
-    s.on('player:state', (id, st) => {
-      this.lastPos.set(id, new THREE.Vector3(st.p[0], st.p[1] + 1, st.p[2]));
-      this.remote.set(id, { pos: new THREE.Vector3(st.p[0], st.p[1], st.p[2]), downed: st.dn, dead: st.d });
-      cb.onRemoteState?.(id, st);
-    });
-    s.on('interaction:request', (id, req) => {
-      if (!this.world || this.dedup.has(req.eventId)) return;
-      this.dedup.add(req.eventId);
-      const value = this.resolve(req.targetId, id, this.lastPos.get(id));
-      if (value === null) return;
-      this.confirm(req.eventId, req.targetId, id, value);
-    });
-    s.on('session:peer-joined', (p) => {
-      cb.onPeerJoined?.(p.id, p.name);
-      if (this.world) s.emit('world:sync', { to: p.id, snapshot: this.world.snapshot() });
-    });
-    s.on('session:peer-left', (id) => { this.lastPos.delete(id); this.remote.delete(id); cb.onPeerLeft?.(id); });
-    s.on('disconnect', () => cb.onSessionEnded?.('서버와의 연결이 끊어졌습니다.'));
-  }
-
-  get localPlayerId(): string {
-    return this.net.id;
-  }
-
   async startSession(world: World): Promise<void> {
     this.world = world;
-    // Anyone who joined while we were loading gets the current state.
+    // anyone who joined while we were loading (or after a host migration) gets the current state
     this.net.socket.emit('world:sync', { snapshot: world.snapshot() });
   }
 
@@ -67,7 +78,7 @@ export class HostAuthority implements GameAuthority {
     this.net.socket.emit('interaction:confirmed', { eventId, targetId, byPlayerId, value });
   }
 
-  update(): void { /* AI / scare director state publishing lands here next milestone */ }
+  update(): void { /* entity snapshots are published by Game */ }
 
   requestInteraction(targetId: string, pos: THREE.Vector3): void {
     if (!this.world) return;
@@ -78,8 +89,6 @@ export class HostAuthority implements GameAuthority {
   publishState(state: PlayerNetState): void {
     this.net.socket.volatile.emit('player:state', state);
   }
-
-  readonly simulates = true;
 
   entityRequest(targetId: string, from: THREE.Vector3): void {
     if (!this.world) return;
@@ -96,9 +105,13 @@ export class HostAuthority implements GameAuthority {
     this.net.socket.emit('player:hit', hit);
   }
 
+  /** Re-broadcast the full world (after the host itself reconnects). */
+  resync(): void {
+    if (this.world) this.net.socket.emit('world:sync', { snapshot: this.world.snapshot() });
+  }
+
   shutdown(): void {
-    const s = this.net.socket;
-    for (const ev of ['player:state', 'interaction:request', 'session:peer-joined', 'session:peer-left', 'disconnect'] as const) s.off(ev);
+    this.listeners.clear();
     this.world = undefined;
   }
 }

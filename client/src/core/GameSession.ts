@@ -15,7 +15,7 @@ export class GameSession {
 
   constructor(
     readonly sessionId: string,
-    readonly mode: GameMode,
+    public mode: GameMode,
     readonly seed: number,
   ) {
     const r = new SeededRandom(seed);

@@ -62,6 +62,10 @@ export const NET = {
   INTERPOLATION_DELAY_MS: 110,
   MAX_PLAYERS: 4,
   ROOM_CODE_LENGTH: 5,
+  /** a dropped player's slot is kept this long (seconds) */
+  PLAYER_GRACE: 30,
+  /** a dropped host gets this long to come back before another player takes over */
+  HOST_GRACE: 20,
 } as const;
 
 /** The Receiver (design doc 6). Speeds chosen so a sprinting player can break away, but stamina can't sustain it. */

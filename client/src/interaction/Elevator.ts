@@ -67,6 +67,8 @@ export class Elevator {
   readonly colliders: RAPIER.Collider[] = [];
   powered = false;
   open = false;
+  /** ending ride: the cab light dies */
+  blackout = false;
   ending = 0;
   private doors: { mesh: THREE.Mesh; body: RAPIER.RigidBody; dir: number }[] = [];
   private doorOffset = 0;
@@ -201,7 +203,9 @@ export class Elevator {
       const cp = this.root.getObjectByName('ceilPanel') as THREE.Mesh;
       (cp.material as THREE.MeshBasicMaterial).color.setHex(this.powered ? 0xfff0d0 : 0x222222);
     }
-    this.cabLight.intensity = this.powered ? 3 * (Math.sin(t * 40) > 0.97 ? 0.4 : 1) : 0;
+    this.cabLight.intensity = this.powered && !this.blackout ? 3 * (Math.sin(t * 40) > 0.97 ? 0.4 : 1) : 0;
+    const cp = this.root.getObjectByName('ceilPanel') as THREE.Mesh;
+    if (this.powered) (cp.material as THREE.MeshBasicMaterial).color.setHex(this.blackout ? 0x111111 : 0xfff0d0);
     this.callLamp.color.setHex(!this.powered ? 0x2a1408 : this.open ? 0xffd27a : (Math.sin(t * 4) > 0 ? 0xffb43a : 0x7a4a10));
     void this.physics;
   }

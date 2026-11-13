@@ -19,8 +19,16 @@ class RemoteAvatar {
   speed = 0;
   lastSeen = performance.now();
   latest?: PlayerNetState;
+  offline = false;
+
+  private materials: { body: THREE.Material; head: THREE.Material };
+  setGhost(ghost: THREE.Material | null): void {
+    this.body.material = ghost ?? this.materials.body;
+    this.head.material = ghost ?? this.materials.head;
+  }
 
   constructor(name: string, materials: { body: THREE.Material; head: THREE.Material }) {
+    this.materials = materials;
     this.body = new THREE.Mesh(new THREE.CapsuleGeometry(0.27, 0.95, 6, 12), materials.body);
     this.body.position.y = 0.27 + 0.475 + 0.02;
     this.body.castShadow = true;
@@ -120,6 +128,8 @@ export class RemotePlayers {
   readonly group = new THREE.Group();
   private avatars = new Map<string, RemoteAvatar>();
   private names = new Map<string, string>();
+  private ghost = new THREE.MeshBasicMaterial({ color: 0x9aa7b0, transparent: true, opacity: 0.25, depthWrite: false });
+  private offline = new Set<string>();
   private materials = {
     body: new THREE.MeshStandardMaterial({ color: 0x2c3138, roughness: 0.85 }),
     head: new THREE.MeshStandardMaterial({ color: 0xb48f74, roughness: 0.7 }),
@@ -135,6 +145,7 @@ export class RemotePlayers {
     let a = this.avatars.get(id);
     if (!a) {
       a = new RemoteAvatar(this.names.get(id) ?? 'Survivor', this.materials);
+      if (this.offline.has(id)) { a.offline = true; a.setGhost(this.ghost); }
       this.avatars.set(id, a);
       this.group.add(a.root);
     }
@@ -154,7 +165,7 @@ export class RemotePlayers {
     const out: AITarget[] = [];
     for (const [id, a] of this.avatars) {
       const s = a.latest;
-      if (!s) continue;
+      if (!s || a.offline) continue;
       const feet = new THREE.Vector3(...s.p);
       const [yaw, pitch] = s.r;
       // camera convention: yaw/pitch in YXZ order, looking down -Z at yaw 0
@@ -163,6 +174,31 @@ export class RemotePlayers {
       out.push({ id, feet, crouching: s.c, flashlight: s.f, noise: s.n, dead: s.d || s.dn, speed: s.s, eye, viewDir });
     }
     return out;
+  }
+
+  /** Connection state of a teammate (offline avatars become translucent and stop counting). */
+  setOnline(id: string, online: boolean): void {
+    if (online) this.offline.delete(id); else this.offline.add(id);
+    const a = this.avatars.get(id);
+    if (!a) return;
+    a.offline = !online;
+    a.lastSeen = performance.now();
+    a.setGhost(online ? null : this.ghost);
+  }
+
+  /** Teammates and their state, for the Tab panel. */
+  roster(): { id: string; name: string; status: string }[] {
+    const ids = new Set([...this.names.keys(), ...this.avatars.keys()]);
+    return [...ids].map((id) => {
+      const s = this.avatars.get(id)?.latest;
+      const status = this.offline.has(id) ? '연결 끊김' : !s ? '대기' : s.d ? '신호 소실' : s.dn ? '쓰러짐' : '생존';
+      return { id, name: this.names.get(id) ?? 'Survivor', status };
+    });
+  }
+
+  forgetName(id: string): void {
+    this.names.delete(id);
+    this.offline.delete(id);
   }
 
   /** A downed teammate within reach that the camera is roughly facing. */
@@ -184,6 +220,7 @@ export class RemotePlayers {
   update(dt: number): void {
     const now = performance.now();
     for (const [id, a] of this.avatars) {
+      if (a.offline) continue; // frozen in place until they return or the slot expires
       if (now - a.lastSeen > 8000) { this.remove(id); continue; }
       a.update(dt, now, this.audio, this.occluded);
     }

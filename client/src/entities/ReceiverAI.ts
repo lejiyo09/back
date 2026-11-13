@@ -92,6 +92,15 @@ export class ReceiverAI {
   private attackLockout = 0;
   /** true while it screams — the model opens the head wide */
   screaming = false;
+  // ambush (기습형)
+  private ambushSpot = new THREE.Vector3();
+  private ambushFace = new THREE.Vector3();
+  private ambushArrived = false;
+  private ambushCooldown = 20;
+  // chase bursts: short lunges, average speed stays below a sprint
+  private burstTimer = 0;
+  private burstCooldown = 2.5;
+  get bursting(): boolean { return this.burstTimer > 0; }
 
   constructor(
     private physics: PhysicsWorld,
@@ -233,7 +242,10 @@ export class ReceiverAI {
 
   private onHeard(pos: THREE.Vector3, d: number, loudness: number): void {
     if (this.state === 'chase' || this.state === 'attack' || this.state === 'retreat' ||
-      this.state === 'hidden' || this.state === 'apparition' || this.state === 'lurk') return;
+      this.state === 'hidden' || this.state === 'apparition' || this.state === 'lurk' || this.state === 'ambush') return;
+    // Sometimes it doesn't come to you: it waits where you are going.
+    if ((this.state === 'patrol' || this.state === 'search' || this.state === 'idle') && d > 9 && d < 22 &&
+      this.ambushCooldown <= 0 && this.rng.chance(0.4) && this.planAmbush(pos)) return;
     // localisation error grows with distance
     const err = d * 0.12;
     const guess = pos.clone().add(new THREE.Vector3(this.rng.range(-err, err), 0, this.rng.range(-err, err)));
@@ -241,6 +253,27 @@ export class ReceiverAI {
     this.suspicion = Math.max(this.suspicion, Math.min(0.45, 0.15 + loudness * 0.4));
     if (this.state !== 'investigate') this.setState('investigate');
     else this.pathGoal.set(Infinity, 0, 0); // force repath to new point
+  }
+
+  /** Pick a spot on the predicted route (player → here) that the player cannot see yet. */
+  private planAmbush(prey: THREE.Vector3): boolean {
+    const path = this.nav.findPath(prey.x, prey.z, this.pos.x, this.pos.z);
+    if (!path || path.length < 5) return false;
+    const eye = prey.clone().setY(1.6);
+    for (let i = Math.floor(path.length * 0.35); i < Math.floor(path.length * 0.75); i++) {
+      const n = path[i];
+      const spot = new THREE.Vector3(n.x, 0, n.z);
+      if (spot.distanceTo(prey) < 5 || spot.distanceTo(this.pos) < 3) continue;
+      if (this.lineOfSight(eye, spot.clone().setY(1.5))) continue; // must be around a corner
+      const prev = path[i - 1];
+      this.ambushSpot.copy(spot);
+      this.ambushFace.set(prev.x, 0, prev.z); // face the way they will come from
+      this.ambushArrived = false;
+      this.ambushCooldown = 45;
+      this.setState('ambush');
+      return true;
+    }
+    return false;
   }
 
   private perceive(targets: AITarget[], dt: number): void {
@@ -311,7 +344,7 @@ export class ReceiverAI {
     const distToTarget = tgt ? tgt.feet.distanceTo(this.pos) : Infinity;
 
     // global escalation rules
-    const alertStates: AIState[] = ['idle', 'patrol', 'investigate', 'search', 'observe', 'stalk'];
+    const alertStates: AIState[] = ['idle', 'patrol', 'investigate', 'search', 'observe', 'stalk']; // not 'ambush': it holds still
     if (alertStates.includes(this.state)) {
       if (this.suspicion >= RECEIVER.SUSPICION_TO_CHASE && this.seenNow) { this.setState('chase'); return; }
       if (this.seenNow && this.suspicion >= RECEIVER.SUSPICION_TO_OBSERVE && (this.state === 'idle' || this.state === 'patrol' || this.state === 'investigate')) {
@@ -357,6 +390,21 @@ export class ReceiverAI {
         break;
       case 'attack':
         break;
+      case 'ambush': {
+        // spring when someone rounds the corner — or gets close enough to touch
+        const near = targets.find((t) => !t.dead && t.feet.distanceTo(this.pos) < 2.8);
+        const seenClose = this.seenNow && distToTarget < 4;
+        if (near || seenClose) {
+          if (near) { this.focusId = near.id; this.lastSeenPos.copy(near.feet); this.lastSeenTime = this.time; this.timeSinceSeen = 0; }
+          this.suspicion = 1.5;
+          this.setState('chase');
+          this.burstTimer = 0.8;     // lunge out of hiding
+          this.burstCooldown = 2.5;
+        } else if (this.stateTime > 30) {
+          this.setState('search');
+        }
+        break;
+      }
     }
   }
 
@@ -452,7 +500,8 @@ export class ReceiverAI {
       case 'stalk': return RECEIVER.STALK_SPEED;
       case 'investigate':
       case 'search': return RECEIVER.INVESTIGATE_SPEED;
-      case 'chase': return RECEIVER.CHASE_SPEED;
+      case 'chase': return this.burstTimer > 0 ? 7.0 : 4.9; // lunges; averages ≈ 5.2 m/s
+      case 'ambush': return this.ambushArrived ? 0 : 3.4;
       case 'retreat': return 3.6;
       default: return 0;
     }
@@ -491,6 +540,13 @@ export class ReceiverAI {
         break;
       case 'attack':
         face = tgt?.feet ?? this.lastSeenPos;
+        break;
+      case 'ambush':
+        if (!this.ambushArrived) {
+          goal = this.ambushSpot;
+          if (this.pos.distanceTo(this.ambushSpot) < 0.4) { this.ambushArrived = true; this.path = []; }
+        }
+        if (this.ambushArrived) face = this.ambushFace;
         break;
       default:
         break;
@@ -601,6 +657,17 @@ export class ReceiverAI {
     }
     if (this.state === 'attack') this.updateAttack(dt, targets);
     this.screamTimer = Math.max(0, this.screamTimer - dt);
+    this.ambushCooldown -= dt;
+    this.burstTimer = Math.max(0, this.burstTimer - dt);
+    if (this.state === 'chase' && this.screamTimer <= 0) {
+      this.burstCooldown -= dt;
+      const tgt = this.target(targets);
+      const d = tgt ? tgt.feet.distanceTo(this.pos) : 99;
+      if (this.burstCooldown <= 0 && d > 3 && d < 12) {
+        this.burstTimer = 0.55;
+        this.burstCooldown = this.rng.range(2.2, 3.6);
+      }
+    }
     this.attackLockout = Math.max(0, this.attackLockout - dt);
     this.screaming = this.screamTimer > 0;
     this.headLook = this.state === 'observe' ? Math.sin(this.stateTime * 0.8) : this.headLook * 0.95;

@@ -25,9 +25,11 @@ export interface PlayerNetState {
 }
 
 export interface PlayerInfo {
+  /** stable player id — survives reconnects (not the socket id) */
   id: string;
   name: string;
   isHost: boolean;
+  online: boolean;
 }
 
 export interface WorldSnapshot {
@@ -59,6 +61,8 @@ export const AI_STATES = [
   'idle', 'patrol', 'observe', 'investigate', 'stalk', 'chase', 'attack', 'search', 'retreat',
   // reveal / presence states
   'hidden', 'apparition', 'lurk',
+  // waits silently around a corner on the route it predicts you will take
+  'ambush',
 ] as const;
 export type AIState = (typeof AI_STATES)[number];
 

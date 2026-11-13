@@ -327,6 +327,7 @@ export class ReceiverModel {
     const chase = state === 'chase';
     const moving = speed > 0.15;
     const still = state === 'idle' || state === 'observe' || state === 'apparition' || state === 'lurk' || (!moving && attack === 0);
+    const crouched = state === 'ambush' && !moving; // folded low behind the corner, waiting
 
     // ── stop-motion while it moves; perfectly smooth while still ──
     this.stutterTimer -= dt;
@@ -361,7 +362,7 @@ export class ReceiverModel {
     const rear = attack > 0 ? (attack < 0.6 ? attack / 0.6 : 1 - ((attack - 0.6) / 0.4) * 0.6) : 0;
     const strike = attack > 0.6 ? (attack - 0.6) / 0.4 : 0;
     // lurk: it bends down over you from behind
-    const baseLean = chase ? 1.25 : state === 'stalk' ? 0.75 : state === 'lurk' ? 0.85 : 0.5;
+    const baseLean = chase ? 1.25 : state === 'stalk' ? 0.75 : state === 'lurk' ? 0.85 : crouched ? 1.05 : 0.5;
     const targetLean = attack > 0 ? THREE.MathUtils.lerp(0.5, 0.05, rear) + strike * 0.55 : baseLean + this.duckK * 0.45;
     this.lean += (targetLean - this.lean) * Math.min(1, dt * (attack > 0 ? 10 : chase ? 6 : 3));
     this.spineLow.rotation.x = this.lean * 0.55;
@@ -370,7 +371,7 @@ export class ReceiverModel {
     this.spineLow.rotation.z = moving ? Math.sin(p) * (chase ? 0.06 : 0.11) : 0.03;
     this.spineHigh.rotation.z = -0.07 + (moving ? -Math.sin(p) * 0.05 : 0); // uneven shoulders
     this.spineHigh.rotation.y = 0.08;
-    const hipY = 1.12 - (chase ? 0.14 : 0) - this.duckK * 0.3 + rear * 0.12 - strike * 0.2 +
+    const hipY = 1.12 - (chase ? 0.14 : 0) - (crouched ? 0.32 : 0) - this.duckK * 0.3 + rear * 0.12 - strike * 0.2 +
       (moving ? Math.abs(Math.cos(p)) * 0.03 * amp : Math.sin(t * 0.9) * 0.004);
     this.body.position.z = strike * 0.5;
 
@@ -431,6 +432,10 @@ export class ReceiverModel {
       wantYaw = Math.sin(t * 0.32) * 0.9 + Math.sin(t * 0.11) * 0.3; // very slow scan
       turnRate = 1.2;
       if (stared && state === 'idle') { wantYaw = toViewer; turnRate = 0.8; }
+    } else if (crouched) {
+      wantYaw = 0;                       // staring down the route you will come from
+      wantTilt = 0.9;
+      turnRate = 0.5;
     } else if (state === 'observe' || state === 'stalk' || state === 'apparition' || state === 'lurk') {
       wantYaw = toViewer;               // body stays put — only the head follows you
       wantTilt = 0.55 + headLook * 0.25 + (state === 'lurk' ? 0.35 : 0);

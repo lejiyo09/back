@@ -3,55 +3,101 @@ import type { ClientToServerEvents, ServerToClientEvents, SessionInfo } from '@s
 
 export type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
-/** Socket.IO connection + session (room) management. */
+export interface ConnectionEvents {
+  /** the WebSocket dropped mid-session; auto-reconnect is running */
+  lost?: () => void;
+  /** reconnected and the player slot was resumed */
+  resumed?: (info: SessionInfo) => void;
+  /** reconnected, but the session/slot is gone */
+  failed?: (reason: string) => void;
+}
+
+/**
+ * WebSocket connection (Socket.IO over the `websocket` transport only — no
+ * long-polling) plus session management. A dropped connection reconnects
+ * automatically and resumes the same player slot with a secret token, so the
+ * player keeps their stable id, inventory and place in the world.
+ */
 export class NetworkManager {
   readonly socket: GameSocket;
   session?: SessionInfo;
+  events: ConnectionEvents = {};
+  private dropped = false;
+  private leaving = false;
 
   constructor(url = import.meta.env.VITE_SERVER_URL || window.location.origin) {
-    this.socket = io(url, { autoConnect: false, transports: ['websocket', 'polling'], reconnectionAttempts: 5 });
+    this.socket = io(url, {
+      autoConnect: false,
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3000,
+      timeout: 6000,
+    });
+    this.socket.on('disconnect', (reason) => {
+      if (this.leaving || reason === 'io client disconnect' || !this.session) return;
+      this.dropped = true;
+      this.events.lost?.();
+    });
+    this.socket.on('connect', () => {
+      if (!this.dropped || !this.session) return;
+      this.dropped = false;
+      const { code, token } = this.session;
+      this.socket.emit('session:resume', { code, token }, (res) => {
+        if (res.ok) { this.session = res.data; this.events.resumed?.(res.data); }
+        else { this.session = undefined; this.events.failed?.(res.error); }
+      });
+    });
+    this.socket.on('session:host-changed', (hostId) => { if (this.session) this.session.hostId = hostId; });
   }
 
   connect(timeoutMs = 6000): Promise<void> {
     if (this.socket.connected) return Promise.resolve();
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { cleanup(); reject(new Error('서버에 연결할 수 없습니다.')); }, timeoutMs);
+      const timer = setTimeout(() => { cleanup(); this.socket.disconnect(); reject(new Error('서버에 연결할 수 없습니다.')); }, timeoutMs);
       const ok = () => { cleanup(); resolve(); };
-      const fail = () => { cleanup(); reject(new Error('서버에 연결할 수 없습니다.')); };
-      const cleanup = () => { clearTimeout(timer); this.socket.off('connect', ok); this.socket.off('connect_error', fail); };
+      const cleanup = () => { clearTimeout(timer); this.socket.off('connect', ok); };
       this.socket.once('connect', ok);
-      this.socket.once('connect_error', fail);
       this.socket.connect();
+    });
+  }
+
+  private request(ev: 'session:create' | 'session:join', payload: { name: string; code?: string }): Promise<SessionInfo> {
+    return new Promise((resolve, reject) => {
+      const ack = (res: { ok: true; data: SessionInfo } | { ok: false; error: string }) => {
+        if (res.ok) { this.session = res.data; this.leaving = false; resolve(res.data); } else reject(new Error(res.error));
+      };
+      if (ev === 'session:create') this.socket.emit(ev, { name: payload.name }, ack);
+      else this.socket.emit(ev, { name: payload.name, code: payload.code! }, ack);
     });
   }
 
   async createSession(name: string): Promise<SessionInfo> {
     await this.connect();
-    return new Promise((resolve, reject) => {
-      this.socket.emit('session:create', { name }, (res) => {
-        if (res.ok) { this.session = res.data; resolve(res.data); } else reject(new Error(res.error));
-      });
-    });
+    return this.request('session:create', { name });
   }
 
   async joinSession(code: string, name: string): Promise<SessionInfo> {
     await this.connect();
-    return new Promise((resolve, reject) => {
-      this.socket.emit('session:join', { code, name }, (res) => {
-        if (res.ok) { this.session = res.data; resolve(res.data); } else reject(new Error(res.error));
-      });
-    });
+    return this.request('session:join', { name, code });
   }
 
+  /** Stable player id (not the socket id). */
   get id(): string {
-    return this.socket.id ?? '';
+    return this.session?.playerId ?? '';
   }
 
   get isHost(): boolean {
-    return !!this.session && this.session.hostId === this.socket.id;
+    return !!this.session && this.session.hostId === this.session.playerId;
+  }
+
+  get connected(): boolean {
+    return this.socket.connected;
   }
 
   leave(): void {
+    this.leaving = true;
     if (this.socket.connected) this.socket.emit('session:leave');
     this.session = undefined;
   }

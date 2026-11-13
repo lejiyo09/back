@@ -136,7 +136,8 @@ export class Recorder {
   }
 
   /** @returns the noise radius it is making right now (0 when off) */
-  update(dt: number, camPos: THREE.Vector3, camDir: THREE.Vector3): number {
+  /** @param interference 0..1 — the Receiver is close: the signal goes wild */
+  update(dt: number, camPos: THREE.Vector3, camDir: THREE.Vector3, interference = 0): number {
     this.lastPos.copy(camPos);
     if (!this.on) { this.strength = 0; this.voiceNear = false; return 0; }
 
@@ -150,8 +151,9 @@ export class Recorder {
       s = THREE.MathUtils.clamp(1 - d / 45, 0, 1) ** 1.3 * (0.3 + 0.7 * facing ** 2);
     }
     this.strength += (s - this.strength) * Math.min(1, dt * 4);
+    if (interference > 0) this.strength = THREE.MathUtils.clamp(this.strength + (Math.random() - 0.5) * interference * 1.4, 0, 1);
     this.filter.frequency.value = 400 + this.strength * 2600;
-    this.hiss.setVolume(this.playing ? 0.04 : 0.1 + (1 - this.strength) * 0.12);
+    this.hiss.setVolume((this.playing ? 0.04 : 0.1 + (1 - this.strength) * 0.12) + interference * 0.35);
     this.beepTimer -= dt;
     if (!this.playing && this.beepTimer <= 0) {
       this.beepTimer = THREE.MathUtils.lerp(1.5, 0.12, this.strength ** 1.4);

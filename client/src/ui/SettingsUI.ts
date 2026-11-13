@@ -19,7 +19,10 @@ export function buildSettingsPanel(settings: Settings, onChange: (s: Settings, k
       <label>전체 음량 <input type="range" data-k="masterVolume" min="0" max="1" step="0.05" value="${settings.masterVolume}"></label>
       <label>조명 깜빡임 강도 <input type="range" data-k="flickerIntensity" min="0" max="1" step="0.05" value="${settings.flickerIntensity}">
         <small>광과민성이 있다면 낮추세요.</small></label>
+      <label>공포 연출 강도 <input type="range" data-k="scareIntensity" min="0.3" max="1" step="0.05" value="${settings.scareIntensity}">
+        <small>갑작스러운 비명·화면 왜곡·목소리 흉내의 세기.</small></label>
       <label class="row"><input type="checkbox" data-k="headBob" ${settings.headBob ? 'checked' : ''}> 카메라 흔들림 (헤드 밥)</label>
+      <label class="row"><input type="checkbox" data-k="subtitles" ${settings.subtitles ? 'checked' : ''}> 자막</label>
       <button class="primary" data-act="close">닫기</button>
     </div>`;
   el.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-k]').forEach((input) => {

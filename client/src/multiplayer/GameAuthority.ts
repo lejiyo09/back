@@ -34,6 +34,23 @@ export interface AuthorityCallbacks {
   onHit?: (hit: PlayerHit) => void;
   /** The host needs its own player's state to validate revives and the elevator. */
   getLocal?: () => { pos: THREE.Vector3; downed: boolean; dead: boolean };
+  onHostChanged?: (hostId: string) => void;
+  onPeerOffline?: (playerId: string) => void;
+  onPeerOnline?: (playerId: string) => void;
+}
+
+/** Registers socket handlers and removes exactly those on shutdown (never other listeners). */
+export class Listeners {
+  private list: [string, (...args: never[]) => void][] = [];
+  constructor(private socket: { on: (ev: never, fn: never) => unknown; off: (ev: never, fn: never) => unknown }) {}
+  on<F extends (...args: never[]) => void>(ev: string, fn: F): void {
+    this.socket.on(ev as never, fn as never);
+    this.list.push([ev, fn]);
+  }
+  clear(): void {
+    for (const [ev, fn] of this.list) this.socket.off(ev as never, fn as never);
+    this.list = [];
+  }
 }
 
 export interface PlayerSnapshot { pos: THREE.Vector3; downed: boolean; dead: boolean }

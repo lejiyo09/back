@@ -286,3 +286,71 @@ export function receiverSkinTexture(size: number, seed: number): { normalMap: TH
   set.map.dispose();
   return { normalMap: set.normalMap, roughnessMap: set.roughnessMap };
 }
+
+/** Poured concrete (Level 1): grey, mottled, water stains, form-tie holes. Tile = 2 m. */
+export function concreteTexture(size: number, seed: number, anisotropy: number): PBRSet {
+  const n = new TileNoise(new SeededRandom(seed ^ 0xc0c0));
+  const L = makeLayers(size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size, v = y / size;
+    const i = y * size + x;
+    const mottle = n.fbm(u, v, 4, 5);
+    const pores = n.value(u, v, size >= 512 ? 256 : 128) > 0.86 ? 1 : 0;
+    const stain = clamp01((n.fbm(u, v, 2, 4) - 0.55) * 3);
+    const tu = (u * 2) % 1, tv = (v * 2) % 1;
+    const tie = Math.hypot(tu - 0.5, tv - 0.5) < 0.02 ? 1 : 0; // form-tie holes on a 1 m grid
+    const k = 0.62 + mottle * 0.25 - stain * 0.18 - pores * 0.12 - tie * 0.35;
+    L.albedo[i * 3] = clamp01(0.56 * k);
+    L.albedo[i * 3 + 1] = clamp01(0.56 * k);
+    L.albedo[i * 3 + 2] = clamp01(0.54 * k);
+    L.height[i] = mottle * 0.4 - pores * 0.4 - tie * 0.8;
+    L.rough[i] = clamp01(0.88 - stain * 0.45); // wet stains are glossy
+  }
+  return finish(L, 1.6, anisotropy);
+}
+
+/** Old brick wall for the alley (Ending A). Tile = 1 m (≈ 13 courses). */
+export function brickTexture(size: number, seed: number, anisotropy: number): PBRSet {
+  const n = new TileNoise(new SeededRandom(seed ^ 0xb21c));
+  const rng = new SeededRandom(seed ^ 0x77);
+  const L = makeLayers(size);
+  const rows = 13, cols = 4;
+  const tint: number[] = Array.from({ length: rows * cols * 2 }, () => 0.8 + rng.next() * 0.35);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size, v = y / size;
+    const i = y * size + x;
+    const row = Math.floor(v * rows);
+    const off = row % 2 ? 0.5 / cols : 0;
+    const bu = ((u + off) * cols) % 1, bv = (v * rows) % 1;
+    const mortar = bu < 0.04 || bv < 0.12;
+    const t = tint[(row * cols * 2 + Math.floor(((u + off) % 1) * cols)) % tint.length];
+    const grime = n.fbm(u, v, 6, 4);
+    if (mortar) {
+      L.albedo[i * 3] = 0.42; L.albedo[i * 3 + 1] = 0.4; L.albedo[i * 3 + 2] = 0.37;
+      L.height[i] = 0.1; L.rough[i] = 0.95;
+    } else {
+      const k = t * (0.75 + grime * 0.35);
+      L.albedo[i * 3] = clamp01(0.42 * k); L.albedo[i * 3 + 1] = clamp01(0.2 * k); L.albedo[i * 3 + 2] = clamp01(0.15 * k);
+      L.height[i] = 0.7 + grime * 0.3; L.rough[i] = 0.7;
+    }
+  }
+  return finish(L, 2.4, anisotropy);
+}
+
+/** Wet asphalt. Tile = 3 m. */
+export function asphaltTexture(size: number, seed: number, anisotropy: number): PBRSet {
+  const n = new TileNoise(new SeededRandom(seed ^ 0xa5f));
+  const L = makeLayers(size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size, v = y / size;
+    const i = y * size + x;
+    const grit = n.value(u, v, size >= 512 ? 256 : 128);
+    const patch = n.fbm(u, v, 3, 4);
+    const puddle = clamp01((n.fbm(u, v, 2, 3) - 0.6) * 5);
+    const k = 0.18 + grit * 0.12 + patch * 0.06;
+    L.albedo[i * 3] = k; L.albedo[i * 3 + 1] = k; L.albedo[i * 3 + 2] = k * 1.05;
+    L.height[i] = grit * 0.6 * (1 - puddle);
+    L.rough[i] = clamp01(0.55 - puddle * 0.5 + grit * 0.1);
+  }
+  return finish(L, 1.2, anisotropy);
+}

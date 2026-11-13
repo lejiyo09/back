@@ -1,34 +1,38 @@
 import type * as THREE from 'three';
-import type { InteractionConfirmed, PlayerNetState, WorldSnapshot } from '@shared/GameTypes';
+import type { EntityNetState, InteractionConfirmed, PlayerHit, PlayerNetState, WorldSnapshot } from '@shared/GameTypes';
 import type { World } from '../world/World';
 import type { NetworkManager } from './NetworkManager';
-import { EventDedup, newEventId, type AuthorityCallbacks, type GameAuthority } from './GameAuthority';
+import { EventDedup, Listeners, newEventId, type AuthorityCallbacks, type GameAuthority } from './GameAuthority';
 
 /** Non-host client: sends requests, applies whatever the host confirms. */
 export class RemoteAuthority implements GameAuthority {
   readonly mode = 'client' as const;
+  readonly simulates = false;
   private world?: World;
   private dedup = new EventDedup();
   private pendingSnapshot?: WorldSnapshot;
   private pendingEvents: InteractionConfirmed[] = [];
+  private listeners: Listeners;
 
   constructor(private net: NetworkManager, cb: AuthorityCallbacks) {
-    const s = net.socket;
-    s.on('player:state', (id, st) => cb.onRemoteState?.(id, st));
-    s.on('world:sync', (snap) => {
+    const L = (this.listeners = new Listeners(net.socket as never));
+    L.on('player:state', (id: string, st: PlayerNetState) => cb.onRemoteState?.(id, st));
+    L.on('world:sync', (snap: WorldSnapshot) => {
       if (this.world) this.world.applySnapshot(snap);
       else this.pendingSnapshot = snap;
     });
-    s.on('interaction:confirmed', (msg) => {
+    L.on('interaction:confirmed', (msg: InteractionConfirmed) => {
       if (this.world) this.apply(msg);
       else this.pendingEvents.push(msg);
     });
-    s.on('session:peer-joined', (p) => cb.onPeerJoined?.(p.id, p.name));
-    s.on('session:peer-left', (id) => cb.onPeerLeft?.(id));
-    s.on('session:ended', (reason) => cb.onSessionEnded?.(reason));
-    s.on('entity:state', (list) => cb.onEntityStates?.(list));
-    s.on('player:hit', (hit) => cb.onHit?.(hit));
-    s.on('disconnect', () => cb.onSessionEnded?.('서버와의 연결이 끊어졌습니다.'));
+    L.on('session:peer-joined', (p: { id: string; name: string }) => cb.onPeerJoined?.(p.id, p.name));
+    L.on('session:peer-left', (id: string) => cb.onPeerLeft?.(id));
+    L.on('session:peer-offline', (id: string) => cb.onPeerOffline?.(id));
+    L.on('session:peer-online', (id: string) => cb.onPeerOnline?.(id));
+    L.on('session:host-changed', (hostId: string) => cb.onHostChanged?.(hostId));
+    L.on('session:ended', (reason: string) => cb.onSessionEnded?.(reason));
+    L.on('entity:state', (list: EntityNetState[]) => cb.onEntityStates?.(list));
+    L.on('player:hit', (hit: PlayerHit) => cb.onHit?.(hit));
   }
 
   get localPlayerId(): string {
@@ -48,7 +52,7 @@ export class RemoteAuthority implements GameAuthority {
     this.pendingEvents.splice(0).forEach((m) => this.apply(m));
   }
 
-  update(): void { /* entity snapshots from host land here next milestone */ }
+  update(): void { /* entity snapshots arrive via onEntityStates */ }
 
   requestInteraction(targetId: string, _pos: THREE.Vector3): void {
     this.net.socket.emit('interaction:request', { eventId: newEventId(this.localPlayerId), targetId });
@@ -58,14 +62,12 @@ export class RemoteAuthority implements GameAuthority {
     this.net.socket.volatile.emit('player:state', state);
   }
 
-  readonly simulates = false;
   entityRequest(): void { /* host simulates entities */ }
   publishEntities(): void { /* host only */ }
   deliverHit(): void { /* host only */ }
 
   shutdown(): void {
-    const s = this.net.socket;
-    for (const ev of ['player:state', 'world:sync', 'interaction:confirmed', 'session:peer-joined', 'session:peer-left', 'session:ended', 'entity:state', 'player:hit', 'disconnect'] as const) s.off(ev);
+    this.listeners.clear();
     this.world = undefined;
   }
 }

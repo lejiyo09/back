@@ -9,6 +9,7 @@ import { ReceiverModel } from './Receiver';
 import { ReceiverAI, type AIHooks, type AITarget } from './ReceiverAI';
 import { RevealDirector, type RevealMode } from '../horror/RevealDirector';
 import { receiverSkinTexture } from '../rendering/Textures';
+import { radioVoice } from '../audio/SoundSynth';
 
 export interface EntityManagerOptions {
   scene: THREE.Scene;
@@ -22,6 +23,9 @@ export interface EntityManagerOptions {
   ignoreColliders: RAPIER.Collider[];
   revealMode: RevealMode;
   enabled: boolean;
+  /** names for mimicry: the local player and teammates */
+  names?: () => { local: string; others: string[] };
+  subtitle?: (text: string | null, who: string) => void;
 }
 
 interface Pose { p: THREE.Vector3; yaw: number; state: AIState; speed: number; head: number; attack: number }
@@ -30,7 +34,10 @@ interface Pose { p: THREE.Vector3; yaw: number; state: AIState; speed: number; h
 const ALERT: Record<AIState, number> = {
   idle: 0.1, patrol: 0.12, observe: 0.55, investigate: 0.3, stalk: 0.6, chase: 1, attack: 1, search: 0.45, retreat: 0.2,
   hidden: 0, apparition: 0.05, lurk: 0.45,
+  ambush: 0, // a trap gives nothing away
 };
+
+const MIMIC_SOLO = ['…녹음 중인가?', '…이쪽이야.', '…거기 누구 있어요?', '…나야. 문 열어.', '…돌아와.'];
 
 /**
  * Owns hostile entities. On the authority it runs ReceiverAI + the Reveal Director;
@@ -61,6 +68,14 @@ export class EntityManager {
   glitch = 0;
   /** set for one frame when the big reveal lands (Game adds camera shake) */
   revealHit = false;
+  /** accessibility: 0.3..1 scales stingers, glitching and mimicry */
+  scareIntensity = 1;
+  private drone: THREE.Audio;
+  private bodyGlitch = { value: 0 };
+  private bodyTime = { value: 0 };
+  private mimicTimer = 40;
+  private mimicClear = 0;
+  private lastSpeed = 0;
   /** Scare Director hallucination — same body, never real */
   private phantom: { model: ReceiverModel; until: number; pos: THREE.Vector3; yaw: number } | null = null;
   private phantomModel: ReceiverModel | null = null;
@@ -76,6 +91,7 @@ export class EntityManager {
       normalMap: skinTex.normalMap, roughnessMap: skinTex.roughnessMap,
     }));
     this.skin.normalScale.set(1.6, 1.6);
+    this.addBodyGlitch(this.skin);
     this.flesh = new THREE.MeshStandardMaterial({ color: 0x3a0806, emissive: 0x140000, roughness: 0.22, side: THREE.BackSide });
     this.teeth = o.world.baked.apply(new THREE.MeshStandardMaterial({ color: 0xc4b996, roughness: 0.4 }));
     this.model = new ReceiverModel({ skin: this.skin, flesh: this.flesh, teeth: this.teeth });
@@ -85,10 +101,65 @@ export class EntityManager {
     this.breath.position.y = 2.3;
     this.staticLoop = o.audio.attachLoop(this.model.root, 'rStatic', 0, 1.2, 1.6);
     this.staticLoop.position.y = 2;
+    this.drone = o.audio.loop('drone', 0);
 
     if (o.simulate && o.enabled) {
       this.ai = new ReceiverAI(o.physics, o.world, new THREE.Vector3(0, 0, 0), o.seed, o.hooks, o.ignoreColliders);
       this.director = new RevealDirector(this.ai, o.world, o.seed, o.revealMode);
+    }
+  }
+
+  /**
+   * "Corrupted transmission": the body's surface jitters along its normals and
+   * whole horizontal slices slip sideways — stronger the closer and angrier it is.
+   */
+  private addBodyGlitch(mat: THREE.MeshStandardMaterial): void {
+    const prev = mat.onBeforeCompile;
+    const glitch = this.bodyGlitch, time = this.bodyTime;
+    mat.onBeforeCompile = (shader, renderer) => {
+      prev.call(mat, shader, renderer);
+      shader.uniforms.uBodyGlitch = glitch;
+      shader.uniforms.uBodyTime = time;
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform float uBodyGlitch;\nuniform float uBodyTime;')
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+          {
+            float fr = floor(uBodyTime * 14.0);
+            float cell = fract(sin(dot(floor(position * 18.0), vec3(12.9898, 78.233, 37.719)) + fr) * 43758.5453);
+            transformed += objectNormal * (cell - 0.5) * 0.035 * uBodyGlitch;
+            float slice = fract(sin(floor(position.y * 9.0) * 91.7 + fr * 3.1) * 43758.5453);
+            transformed.x += step(0.93, slice) * (slice - 0.96) * 2.2 * uBodyGlitch;
+          }`);
+    };
+    mat.customProgramCacheKey = () => 'baked-light-v1-glitch';
+  }
+
+  /** 0..1 how badly it is jamming the local player's flashlight/recorder. */
+  interference(viewer: THREE.Vector3): number {
+    const P = this.pose;
+    if (!this.present || P.state === 'apparition') return 0;
+    const d = P.p.distanceTo(viewer.clone().setY(0));
+    const k = P.state === 'ambush' ? 0.25 : 1; // a trap barely shows on the dial
+    return THREE.MathUtils.clamp(1 - d / 11, 0, 1) * k;
+  }
+
+  /**
+   * Host migration: take over (or hand off) the simulation. A new host spawns the
+   * AI where the replica last showed it, already in the hunting phase.
+   */
+  setAuthority(simulate: boolean): void {
+    if (simulate === this.o.simulate) return;
+    this.o.simulate = simulate;
+    if (simulate) {
+      if (!this.o.enabled) return;
+      this.ai = new ReceiverAI(this.o.physics, this.o.world, this.pose.p.clone(), this.o.seed ^ 0x51, this.o.hooks, this.o.ignoreColliders);
+      this.director = new RevealDirector(this.ai, this.o.world, this.o.seed, 'skip');
+      if (this.pose.state !== 'hidden') this.ai.appear(this.pose.p.clone(), this.pose.yaw, 'search');
+    } else {
+      this.ai?.dispose();
+      this.ai = null;
+      this.director = null;
+      this.buffer = [];
     }
   }
 
@@ -164,12 +235,13 @@ export class EntityManager {
 
   // ── Hallucinations (local only) ────────────────────────────
 
-  spawnPhantom(pos: THREE.Vector3, yaw: number, seconds: number): void {
+  spawnPhantom(pos: THREE.Vector3, yaw: number, seconds: number, duck = 0): void {
     if (!this.phantomModel) {
       this.phantomModel = new ReceiverModel({ skin: this.skin, flesh: this.flesh, teeth: this.teeth });
       this.o.scene.add(this.phantomModel.root);
     }
     this.phantomModel.root.visible = true;
+    this.phantomModel.duck = duck;
     this.phantom = { model: this.phantomModel, until: this.clock + seconds, pos: pos.clone(), yaw };
   }
 
@@ -229,11 +301,14 @@ export class EntityManager {
     const prevState = this.lastState;
     this.lastState = P.state;
     this.model.root.visible = visible;
+    this.bodyTime.value = this.clock;
+    if (this.mimicClear > 0) { this.mimicClear -= dt; if (this.mimicClear <= 0) this.o.subtitle?.(null, ''); }
     if (!visible) {
       lighting.disturbance = null;
       this.glitch = Math.max(0, this.glitch - dt * 1.6);
       this.breath.setVolume(0);
       this.staticLoop.setVolume(0);
+      this.drone.setVolume(this.drone.getVolume() * (1 - Math.min(1, dt * 0.5)));
       return 0;
     }
 
@@ -257,10 +332,10 @@ export class EntityManager {
       this.o.audio.play('staticBurst', 0.18, 0.7);
       this.glitch = Math.max(this.glitch, 0.35);
     }
-    if (stateChanged && P.state === 'chase' && prevState === 'lurk') {
-      // stage 3 lands: the full stinger
-      this.o.audio.play('rScreech', 1.0, 0.85);
-      this.o.audio.play('staticBurst', 1.0);
+    if (stateChanged && P.state === 'chase' && (prevState === 'lurk' || prevState === 'ambush')) {
+      // stage 3 / an ambush springs: the full stinger
+      this.o.audio.play('rScreech', this.scareIntensity, 0.85);
+      this.o.audio.play('staticBurst', this.scareIntensity);
       this.glitch = 1;
       this.revealHit = true;
     } else if (stateChanged && P.state === 'chase') {
@@ -282,8 +357,8 @@ export class EntityManager {
     }
 
     const alert = ALERT[P.state];
-    // breathing: silent at a distance on purpose; loud when it is right behind you
-    const breathVol = P.state === 'lurk' ? 1.4 : P.state === 'apparition' ? 0 : P.state === 'chase' ? 0.9 : 0.5;
+    // breathing: silent at a distance on purpose; loud when it is right behind you; barely there in an ambush
+    const breathVol = P.state === 'lurk' ? 1.4 : P.state === 'apparition' ? 0 : P.state === 'ambush' ? 0.12 : P.state === 'chase' ? 0.9 : 0.5;
     this.breath.setVolume(breathVol);
     const sv = this.staticLoop.getVolume();
     const staticTarget = P.state === 'apparition' ? 0.08 : alert * 0.7;
@@ -295,6 +370,40 @@ export class EntityManager {
     const threat = THREE.MathUtils.clamp(1 - dist / 12, 0, 1) * (visibleNow ? 1 : 0.45) * (0.4 + alert * 0.6);
     const target = inSight && P.state !== 'apparition' ? THREE.MathUtils.clamp(1 - dist / 16, 0, 1) * (0.25 + alert * 0.5) : 0;
     this.glitch = Math.max(target, this.glitch - dt * 1.6);
+
+    // dread drone: rises with the hunt, never fully explains itself
+    const hunting = { chase: 0.6, attack: 0.6, stalk: 0.38, observe: 0.32, lurk: 0.3, search: 0.2, investigate: 0.18, ambush: 0.06 } as Record<string, number>;
+    const droneTarget = (hunting[P.state] ?? (dist < 25 ? 0.08 : 0)) * (0.5 + 0.5 * this.scareIntensity);
+    const dv = this.drone.getVolume();
+    this.drone.setVolume(dv + (droneTarget - dv) * Math.min(1, dt * (droneTarget > dv ? 0.8 : 0.4)));
+
+    // body glitch + a jolt on every lunge
+    const burst = P.state === 'chase' && P.speed > 6.2 && this.lastSpeed <= 6.2;
+    this.lastSpeed = P.speed;
+    if (burst) { this.o.audio.playAt('rStep0', P.p.clone().setY(0.1), 2.6, 0.7); this.glitch = Math.max(this.glitch, 0.6); }
+    const bodyTarget = (P.attack > 0 ? 1 : P.state === 'chase' ? 0.55 : P.state === 'lurk' || P.state === 'observe' ? 0.3 : P.state === 'apparition' ? 0.12 : 0.05)
+      * this.scareIntensity * (0.6 + Math.max(0, Math.sin(this.clock * 3.7)) * 0.8);
+    this.bodyGlitch.value += (bodyTarget - this.bodyGlitch.value) * Math.min(1, dt * 8);
+
+    // mimicry: unseen, a voice calls from where it is — yours, or a teammate's
+    this.mimicTimer -= dt;
+    const unseenNearish = !inSight && dist > 5 && dist < 17;
+    if (this.mimicTimer <= 0 && this.scareIntensity >= 0.4 &&
+      ['stalk', 'search', 'investigate', 'idle', 'patrol', 'ambush'].includes(P.state) && unseenNearish) {
+      this.mimicTimer = 30 + Math.random() * 25;
+      const names = this.o.names?.();
+      const lines = [...MIMIC_SOLO];
+      if (names?.others.length) {
+        const n = names.others[Math.floor(Math.random() * names.others.length)];
+        lines.push(`…${n}, 여기야!`, `…${n}? 도와줘…`);
+      }
+      if (names?.local) lines.push(`…${names.local}?`);
+      const line = lines[Math.floor(Math.random() * lines.length)];
+      const voice = radioVoice(this.o.audio.listener.context, 1.4 + line.length * 0.06, Math.floor(Math.random() * 1000), 0.92 + Math.random() * 0.16);
+      this.o.audio.playBufferAt(voice, head, 2.2, occluded(head));
+      this.o.subtitle?.(`(어딘가에서) ${line}`, '목소리');
+      this.mimicClear = 2.8;
+    }
 
     if ((P.state === 'chase' || P.state === 'stalk' || P.state === 'attack') && dist < 16) {
       this.heartbeatTimer -= dt;

@@ -12,6 +12,7 @@ export class Flashlight {
   on = false;
   private smoothDir = new THREE.Vector3(0, 0, -1);
   private flicker = 0;
+  private jam = 0;
 
   constructor(shadowSize: number) {
     this.light = new THREE.SpotLight(0xfff4e0, 0, 22, THREE.MathUtils.degToRad(33), 0.9, 1.6);
@@ -32,7 +33,8 @@ export class Flashlight {
   }
 
   /** `hitDistance`: distance along the view ray to the first surface (Infinity if none). */
-  update(dt: number, camera: THREE.Camera, battery: number, t: number, hitDistance = Infinity): void {
+  /** @param interference 0..1 — something nearby is jamming the bulb */
+  update(dt: number, camera: THREE.Camera, battery: number, t: number, hitDistance = Infinity, interference = 0): void {
     const dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
     this.smoothDir.lerp(dir, 1 - Math.exp(-dt * 14)).normalize();
@@ -55,6 +57,11 @@ export class Flashlight {
         if (this.flicker < 0.08) intensity *= 0.15 + Math.random() * 0.3;
       }
       intensity *= 1 + Math.sin(t * 31) * 0.01;
+      // interference: the bulb stutters and dies for a moment, more often the closer it is
+      this.jam -= dt;
+      if (this.jam <= -0.05 && Math.random() < interference * interference * dt * 4) this.jam = 0.05 + Math.random() * 0.3 * interference;
+      if (this.jam > 0) intensity *= 0.04;
+      else if (interference > 0.3) intensity *= 1 - Math.random() * 0.25 * interference;
     }
     this.light.intensity = intensity;
     const hd = Math.min(hitDistance, 12);
