@@ -202,3 +202,6 @@ kbd {
 /* offline readiness */
 .offline-status { font-size: 12px; opacity: 0.75; min-height: 1.2em; text-align: center; letter-spacing: 0.02em; }
 .mp.disabled { opacity: 0.45; }
+
+#menu .credits { font-size: 11px; opacity: 0.6; }
+#menu .credits a { color: inherit; }

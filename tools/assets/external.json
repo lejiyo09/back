@@ -1,0 +1,27 @@
+{
+  "forklift": {
+    "group": "external", "name": "Factory Floor Forklift", "authors": ["1DesignTool (StoicSoft)"],
+    "url": "https://assets.stoicsoft.com/1designtool/3d/models/factory-floor-forklift/a5b62fe24d/model.glb",
+    "source": "https://1designtool.com/3d/models/factory-floor-forklift",
+    "license": "1DesignTool 3D Library License (free commercial use, no attribution; no standalone redistribution)",
+    "licenseUrl": "https://1designtool.com/3d/license",
+    "redistribute": false
+  },
+  "oil_rig_valves": {
+    "group": "external", "name": "Oil Rig Valves", "authors": ["1DesignTool (StoicSoft)"],
+    "url": "https://assets.stoicsoft.com/1designtool/3d/models/oil-rig-valves/b869502095/model.glb",
+    "source": "https://1designtool.com/3d/models/oil-rig-valves",
+    "license": "1DesignTool 3D Library License (free commercial use, no attribution; no standalone redistribution)",
+    "licenseUrl": "https://1designtool.com/3d/license",
+    "redistribute": false
+  },
+  "whisperer": {
+    "group": "monsters/whisperer", "name": "The Whisperer", "authors": ["Polyfork"],
+    "url": "https://polyfork.dev/cdn/whisperer-base.glb",
+    "source": "https://polyfork.dev/asset/whisperer-base",
+    "license": "CC BY 4.0 — \"The Whisperer by Polyfork (https://polyfork.dev/asset/whisperer-base), CC BY 4.0\" — modified (scaled, recoloured, simplified, head split)",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "redistribute": true,
+    "simplifyLow": 0.55
+  }
+}

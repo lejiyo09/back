@@ -3,10 +3,11 @@
 모든 외부 에셋은 **다운로드·라이선스 확인을 마친 것만** 게임에 포함한다. 이 파일은 `node tools/assets/write-manifest.mjs`로 catalog.json에서 자동 생성된다.
 
 ## 요약
-- 외부 3D 모델: **84개** — 전부 [Poly Haven](https://polyhaven.com) **CC0 1.0** (상업적 사용 가능, 표기 의무 없음 — 그래도 아래에 제작자 표기)
+- 소품 3D 모델: **84개** — 전부 [Poly Haven](https://polyhaven.com) **CC0 1.0** (상업적 사용 가능, 표기 의무 없음 — 그래도 아래에 제작자 표기)
 - 최적화: gltf-transform (dedup · prune · weld · simplify: 저사양 ≤3k / 고사양 ≤8k tris · WebP 텍스처 512/1024 · quantize · meshopt)
 - 저사양(quality=low/medium) → `_512.glb`, 고사양(high) → `_1k.glb`
-- 괴물 모델: 외부 모델 **미사용** — 원본 절차적 모델(코드로 생성, 프로젝트 자체 제작)
+- 상호작용/괴물 외부 모델: **3개** (아래 "외부 모델" 표) — 1DesignTool 지게차·밸브, Polyfork The Whisperer
+- Level 3~10 괴물 변종, Pallet Maw, Pipe Crawler: 원본 절차적 모델 (프로젝트 자체 제작)
 
 ## 조사했지만 넣지 않은 에셋 (사유)
 | 후보 | 결과 | 사유 |
@@ -19,6 +20,18 @@
 | ambientCG | 접근 가능 | 현재 PBR 텍스처는 절차적 셰이더 사용, 추후 바닥/벽 재질용 후보 |
 
 > 유료 괴물 팩을 구매해 `client/public/assets/models/monsters/<name>/`에 GLB로 넣고 라이선스 원문을 주면 AssetManager로 바로 연결할 수 있다.
+
+## 외부 모델 (상호작용 파트·괴물)
+
+| 모델 | 제작자 | 출처 | 라이선스 | 저장소 포함 | 폴리곤 (원본 → high / medium / low) | 크기 high / medium / low | 클립 |
+|---|---|---|---|---|---|---|---|
+| Factory Floor Forklift (`forklift`) | 1DesignTool (StoicSoft) | [link](https://1designtool.com/3d/models/factory-floor-forklift) | [1DesignTool 3D Library License (free commercial use, no attribution; no standalone redistribution)](https://1designtool.com/3d/license) | 아니오 — 빌드 시 다운로드 (단독 재배포 금지 조항) | 1684 → 1684 / 1684 / 1684 | 87 KB / 83 KB / 83 KB | scene-motion |
+| Oil Rig Valves (`oil_rig_valves`) | 1DesignTool (StoicSoft) | [link](https://1designtool.com/3d/models/oil-rig-valves) | [1DesignTool 3D Library License (free commercial use, no attribution; no standalone redistribution)](https://1designtool.com/3d/license) | 아니오 — 빌드 시 다운로드 (단독 재배포 금지 조항) | 2988 → 2988 / 2988 / 2988 | 79 KB / 70 KB / 70 KB | - |
+| The Whisperer (`whisperer`) | Polyfork | [link](https://polyfork.dev/asset/whisperer-base) | [CC BY 4.0 — "The Whisperer by Polyfork (https://polyfork.dev/asset/whisperer-base), CC BY 4.0" — modified (scaled, recoloured, simplified, head split)](https://creativecommons.org/licenses/by/4.0/) | 예 (CC BY 4.0, 출처 표기) | 4806 → 4806 / 4806 / 2643 | 334 KB / 230 KB / 205 KB | Idle, Walk, Run |
+
+- **The Whisperer**: The Whisperer by Polyfork (https://polyfork.dev/asset/whisperer-base), CC BY 4.0 — 수정: 2.7m로 축소, 색 어둡게, 머리 메시를 좌우로 분리(열리는 머리 연출), 저사양용 단순화. 게임 안 크레딧에도 표기.
+- **1DesignTool 지게차·밸브**: 1DesignTool 3D Library License — 개인·상업 프로젝트 사용, 수정, 게임에 포함해 배포 가능, 출처 표기 불필요. 모델 파일만 따로 재배포/다른 사이트 업로드/모델 팩 배포 금지 → **공개 저장소에는 넣지 않고** `npm run build` 때 원본 주소에서 받아 배포 빌드에만 포함 (`.gitignore`: `client/public/assets/models/external/`). 다운로드 실패 시 기존 절차적 지게차/벽 밸브로 동작.
+- 세 모델 모두 GLB 안에 라이선스 메타데이터가 없어, 배포 페이지의 라이선스 원문으로 확인함 (2026-11-14).
 
 ## level-00
 | 모델 | 제작자 | 출처 | 라이선스 | 폴리곤(원본 → 512 / 1K) | 512 / 1K |

@@ -2357,5 +2357,128 @@
    0,
    -0.022
   ]
+ },
+ "forklift": {
+  "group": "external",
+  "name": "Factory Floor Forklift",
+  "authors": [
+   "1DesignTool (StoicSoft)"
+  ],
+  "source": "https://1designtool.com/3d/models/factory-floor-forklift",
+  "license": "1DesignTool 3D Library License (free commercial use, no attribution; no standalone redistribution)",
+  "licenseUrl": "https://1designtool.com/3d/license",
+  "redistribute": false,
+  "scene": true,
+  "clips": [
+   "scene-motion"
+  ],
+  "files": {
+   "high": "external/forklift_high.glb",
+   "medium": "external/forklift_medium.glb",
+   "low": "external/forklift_low.glb"
+  },
+  "trisOriginal": 1684,
+  "tris": {
+   "high": 1684,
+   "medium": 1684,
+   "low": 1684
+  },
+  "bytes": {
+   "high": 88812,
+   "medium": 84764,
+   "low": 84764
+  },
+  "size": [
+   1.52,
+   2.35,
+   3.524
+  ],
+  "min": [
+   -0.76,
+   0,
+   -1.765
+  ]
+ },
+ "oil_rig_valves": {
+  "group": "external",
+  "name": "Oil Rig Valves",
+  "authors": [
+   "1DesignTool (StoicSoft)"
+  ],
+  "source": "https://1designtool.com/3d/models/oil-rig-valves",
+  "license": "1DesignTool 3D Library License (free commercial use, no attribution; no standalone redistribution)",
+  "licenseUrl": "https://1designtool.com/3d/license",
+  "redistribute": false,
+  "scene": true,
+  "clips": [],
+  "files": {
+   "high": "external/oil_rig_valves_high.glb",
+   "medium": "external/oil_rig_valves_medium.glb",
+   "low": "external/oil_rig_valves_low.glb"
+  },
+  "trisOriginal": 2988,
+  "tris": {
+   "high": 2988,
+   "medium": 2988,
+   "low": 2988
+  },
+  "bytes": {
+   "high": 80824,
+   "medium": 71208,
+   "low": 71208
+  },
+  "size": [
+   4.165,
+   1.911,
+   1.291
+  ],
+  "min": [
+   -2.082,
+   0,
+   -0.646
+  ]
+ },
+ "whisperer": {
+  "group": "monsters/whisperer",
+  "name": "The Whisperer",
+  "authors": [
+   "Polyfork"
+  ],
+  "source": "https://polyfork.dev/asset/whisperer-base",
+  "license": "CC BY 4.0 — \"The Whisperer by Polyfork (https://polyfork.dev/asset/whisperer-base), CC BY 4.0\" — modified (scaled, recoloured, simplified, head split)",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "redistribute": true,
+  "scene": true,
+  "clips": [
+   "Idle",
+   "Walk",
+   "Run"
+  ],
+  "files": {
+   "high": "monsters/whisperer/whisperer_high.glb",
+   "medium": "monsters/whisperer/whisperer_medium.glb",
+   "low": "monsters/whisperer/whisperer_low.glb"
+  },
+  "trisOriginal": 4806,
+  "tris": {
+   "high": 4806,
+   "medium": 4806,
+   "low": 2643
+  },
+  "bytes": {
+   "high": 341596,
+   "medium": 235804,
+   "low": 210056
+  },
+  "size": [
+   2,
+   1.912,
+   0.43
+  ],
+  "min": [
+   -1,
+   -0.956,
+   -0.215
+  ]
  }
 }

@@ -63,6 +63,7 @@ const SCALE = 1.2;
  * a face should be. Only at the very end does the head split open.
  */
 export class ReceiverModel {
+  readonly kind = 'receiver';
   readonly root = new THREE.Group();
   private body = new THREE.Group();
   private hips = new THREE.Group();

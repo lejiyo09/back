@@ -9,7 +9,8 @@
     "dev": "concurrently -n server,client -c magenta,cyan \"npm run dev -w server\" \"npm run dev -w client\"",
     "dev:client": "npm run dev -w client",
     "dev:server": "npm run dev -w server",
-    "build": "npm run build -w client",
+    "build": "node tools/assets/fetch-external.mjs || echo \"[external] skipped\"; npm run build -w client",
+    "assets:external": "node tools/assets/fetch-external.mjs",
     "typecheck": "npm run typecheck -w client && npm run typecheck -w server",
     "start": "npm run start -w server"
   },

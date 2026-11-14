@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 
 /** One entry of public/assets/models/catalog.json (written by tools/assets/fetch-polyhaven.mjs). */
 export interface CatalogEntry {
@@ -9,9 +10,16 @@ export interface CatalogEntry {
   authors: string[];
   source: string;
   license: string;
-  tris: number;
+  tris: number | Record<string, number>;
   bytes: Record<string, number>;
+  /** external models kept as a scene graph (named parts, bones, clips) in quality tiers */
+  scene?: boolean;
+  files?: Partial<Record<SceneTier, string>>;
+  clips?: string[];
 }
+
+export type SceneTier = 'low' | 'medium' | 'high';
+export interface SceneAsset { scene: THREE.Group; animations: THREE.AnimationClip[] }
 
 interface Template {
   /** meshes flattened with their transform relative to the model root */
@@ -37,7 +45,9 @@ export class AssetManager {
   private failed = new Set<string>();
   private materialHook?: (m: THREE.Material) => void;
 
-  constructor(private base = 'assets/models/', private tier: TextureTier = '512') {
+  private scenes = new Map<string, Promise<{ scene: THREE.Group; animations: THREE.AnimationClip[] } | null>>();
+
+  constructor(private base = 'assets/models/', private tier: TextureTier = '512', private sceneTier: SceneTier = 'medium') {
     this.loader.setMeshoptDecoder(MeshoptDecoder);
   }
 
@@ -78,7 +88,7 @@ export class AssetManager {
     const pending = this.loading.get(id);
     if (pending) return pending;
     const entry = this.catalog[id];
-    if (!entry) { this.failed.add(id); return Promise.resolve(null); }
+    if (!entry || entry.scene) { this.failed.add(id); return Promise.resolve(null); }
     const url = `${this.base}${entry.group}/${id}_${this.tier}.glb`;
     const p = this.loader.loadAsync(url).then((gltf) => {
       const root = gltf.scene;
@@ -102,6 +112,32 @@ export class AssetManager {
     });
     this.loading.set(id, p);
     return p;
+  }
+
+  /**
+   * Scene-graph models (forklift, valve manifold, Whisperer): loaded once per
+   * quality tier, then each call returns an independent copy that shares
+   * geometry and materials (skinned meshes get their own skeleton). Node names
+   * and pivots are preserved so callers can drive individual parts.
+   * Returns null if the model is not in the catalog or failed to load.
+   */
+  async loadScene(id: string): Promise<SceneAsset | null> {
+    const entry = this.catalog[id];
+    const file = entry?.files?.[this.sceneTier] ?? entry?.files?.medium ?? entry?.files?.high;
+    if (!entry?.scene || !file) return null;
+    if (!this.scenes.has(id)) {
+      this.scenes.set(id, this.loader.loadAsync(`${this.base}${file}`).then((g) => {
+        g.scene.traverse((o) => {
+          if (!(o instanceof THREE.Mesh)) return;
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          mats.forEach((m) => this.materialHook?.(m));
+        });
+        return { scene: g.scene, animations: g.animations };
+      }).catch((e) => { console.warn(`[assets] ${id} failed to load`, e); return null; }));
+    }
+    const base = await this.scenes.get(id)!;
+    if (!base) return null;
+    return { scene: cloneSkinned(base.scene) as THREE.Group, animations: base.animations };
   }
 
   /** Size of a loaded model (metres) or null. */
@@ -173,6 +209,12 @@ export class AssetManager {
 
   dispose(): void {
     for (const g of new Set(Object.values(this.catalog).map((e) => e.group))) this.unload(g);
+    for (const p of this.scenes.values()) void p.then((a) => a?.scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      o.geometry.dispose();
+      (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+    }));
+    this.scenes.clear();
   }
 
   /** Stats for the debug overlay / changelog. */

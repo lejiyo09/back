@@ -23,7 +23,8 @@ function offlineServiceWorker() {
       const hash = createHash('sha1');
       for (const f of files) if (!f.endsWith('sw.js')) hash.update(f + statSync(f).size + (f.endsWith('.json') || f.endsWith('.html') ? readFileSync(f, 'utf8') : ''));
       const core = rel.filter((f) => !f.endsWith('.glb'));
-      const packs = { '512': rel.filter((f) => f.endsWith('_512.glb')), '1k': rel.filter((f) => f.endsWith('_1k.glb')) };
+      // low/medium quality play with the 512 prop tier + low/medium scene models; high/ultra with 1k + high
+      const packs = { '512': rel.filter((f) => /_(512|low|medium)\.glb$/.test(f)), '1k': rel.filter((f) => /_(1k|high)\.glb$/.test(f)) };
       const sw = readFileSync(new URL('./sw-template.js', import.meta.url), 'utf8')
         .replace('__VERSION__', hash.digest('hex').slice(0, 12))
         .replace('__CORE__', JSON.stringify(core))

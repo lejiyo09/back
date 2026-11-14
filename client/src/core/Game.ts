@@ -220,7 +220,9 @@ export class Game {
     if (theme) this.fogLit = new THREE.Color(theme.surface.fog);
     // real models (CC0) for this level: low/medium → 512px textures, high/ultra → 1K
     o.onProgress('모델 불러오는 중', 0.45);
-    this.assets = new AssetManager('assets/models/', preset.textureSize >= 1024 ? '1k' : '512');
+    // scene models: low/medium/high quality → low/medium/high tier (high & ultra share the high tier)
+    const q = URL_FLAGS.quality && URL_FLAGS.quality in QUALITY_PRESETS ? URL_FLAGS.quality : o.settings.quality;
+    this.assets = new AssetManager('assets/models/', preset.textureSize >= 1024 ? '1k' : '512', q === 'low' ? 'low' : q === 'medium' ? 'medium' : 'high');
     this.assets.setMaterialHook((m) => this.world.baked.apply(m as THREE.MeshStandardMaterial));
     if (URL_FLAGS.props) await this.assets.loadCatalog();
     await this.assets.loadGroups(dressingGroups(this.levelIndex), (p) => o.onProgress('모델 불러오는 중', 0.45 + p * 0.25));
@@ -249,6 +251,10 @@ export class Game {
     this.names.forEach((n, id) => this.remotes.setName(id, n));
 
     // The Receiver — simulated here in single-player / on the host, replicated on clients.
+    // its body: The Whisperer (Level 0–2's Receiver) unless the player chose the original look
+    const wantWhisperer = !theme && o.settings.monsterLook !== 'classic';
+    const creature = wantWhisperer ? await this.assets.loadScene('whisperer') : null;
+    const creaturePhantom = creature ? await this.assets.loadScene('whisperer') : null;
     this.entities = new EntityManager({
       scene: this.scene,
       world: this.world,
@@ -261,6 +267,7 @@ export class Game {
       // Level 1: you already know what it is — no reveal, it simply arrives after a while
       revealMode: this.levelIndex >= 1 || URL_FLAGS.ai === 'hunt' ? 'skip' : URL_FLAGS.ai === 'now' ? 'fast' : 'normal',
       spawnDelay: this.levelIndex >= 1 ? (URL_FLAGS.ai === 'now' || URL_FLAGS.ai === 'hunt' ? 4 : theme ? theme.monster.spawnDelay : this.levelIndex === 2 ? 25 : 30) : undefined,
+      creature: creature ? { main: creature, phantom: creaturePhantom } : undefined,
       monster: theme ? { scale: theme.monster.scale, skin: theme.monster.skin, accessory: theme.monster.accessory, tuning: theme.monster.tuning } : undefined,
       ignoreColliders: [this.player.collider],
       names: () => ({
@@ -302,7 +309,11 @@ export class Game {
       });
     }
     if (this.levelIndex === 1 || this.levelIndex === 2) {
+      // real models for the forklift (Level 1) and one valve manifold per steam line (Level 2)
+      const forklift = this.levelIndex === 1 ? await this.assets.loadScene('forklift') : null;
+      const valves = this.levelIndex === 2 ? await Promise.all([...this.world.relays.keys()].map(() => this.assets.loadScene('oil_rig_valves'))) : undefined;
       this.facilities = new Facilities({
+        forklift, valves,
         level: this.levelIndex, world: this.world, physics: this.physics, assets: this.assets, entities: this.entities,
         authority: () => this.authority, scene: this.scene, audio: this.audio, hud: this.hud, camera: this.camera,
         feet: () => this.player.feet, alive: () => !this.dead && !this.downed && this.endingSeq === -1,

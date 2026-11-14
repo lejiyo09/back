@@ -3,3 +3,6 @@ dist/
 *.log
 .DS_Store
 .asset-cache/
+
+# 1DesignTool models: licence forbids standalone redistribution — generated at build time (tools/assets/fetch-external.mjs)
+client/public/assets/models/external/

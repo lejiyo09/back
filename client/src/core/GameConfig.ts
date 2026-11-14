@@ -31,6 +31,8 @@ export interface Settings {
   subtitles: boolean;
   /** expanded = Level 0–10 continuous; classic = Level 0–2 with endings A–D */
   campaign: 'expanded' | 'classic';
+  /** main creature's look: the Whisperer model or the original procedural Receiver */
+  monsterLook: 'whisperer' | 'classic';
   playerName: string;
 }
 
@@ -44,6 +46,7 @@ const DEFAULTS: Settings = {
   scareIntensity: 1,
   subtitles: true,
   campaign: 'expanded',
+  monsterLook: 'whisperer',
   playerName: '',
 };
 

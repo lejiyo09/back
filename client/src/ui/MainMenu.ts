@@ -53,6 +53,7 @@ export class MainMenu {
         </div>
         <footer>
           <span>v${GAME_VERSION} · Level 0–10</span>
+          <span class="credits">괴물 외형: <a href="https://polyfork.dev/asset/whisperer-base" target="_blank" rel="noopener">The Whisperer</a> by <a href="https://polyfork.dev" target="_blank" rel="noopener">Polyfork</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> (수정) · 소품: Poly Haven CC0 · 지게차·밸브: 1DesignTool</span>
           <span class="controls">WASD 이동 · Shift 달리기 · Ctrl 웅크리기 · Space 점프 · E 상호작용 · F 손전등 · Tab 소지품 · Esc 메뉴</span>
         </footer>
       </div>

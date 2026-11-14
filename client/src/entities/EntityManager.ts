@@ -6,6 +6,8 @@ import type { PhysicsWorld } from '../physics/PhysicsWorld';
 import type { World } from '../world/World';
 import type { AudioManager, SoundKey } from '../audio/AudioManager';
 import { ReceiverModel } from './Receiver';
+import { WhispererModel, type CreatureModel } from './Whisperer';
+import type { SceneAsset } from '../core/AssetManager';
 import { ReceiverAI, type AIHooks, type AITarget, type MonsterTuning } from './ReceiverAI';
 import { RevealDirector, type RevealMode } from '../horror/RevealDirector';
 import { receiverSkinTexture } from '../rendering/Textures';
@@ -30,6 +32,8 @@ export interface EntityManagerOptions {
   subtitle?: (text: string | null, who: string) => void;
   /** Levels 3+: this level's creature — silhouette, colour and AI tuning */
   monster?: { scale: number; skin: number; accessory: string; tuning: Partial<MonsterTuning> };
+  /** the main creature's body from an external model (The Whisperer); the procedural Receiver otherwise */
+  creature?: { main: SceneAsset; phantom: SceneAsset | null };
 }
 
 interface Pose { p: THREE.Vector3; yaw: number; state: AIState; speed: number; head: number; attack: number }
@@ -51,7 +55,7 @@ const MIMIC_SOLO = ['…녹음 중인가?', '…이쪽이야.', '…거기 누�
 export class EntityManager {
   ai: ReceiverAI | null = null;
   director: RevealDirector | null = null;
-  private model: ReceiverModel;
+  private model: CreatureModel;
   private skin: THREE.MeshStandardMaterial;
   private flesh: THREE.MeshStandardMaterial;
   private teeth: THREE.MeshStandardMaterial;
@@ -81,8 +85,9 @@ export class EntityManager {
   private mimicClear = 0;
   private lastSpeed = 0;
   /** Scare Director hallucination — same body, never real */
-  private phantom: { model: ReceiverModel; until: number; pos: THREE.Vector3; yaw: number } | null = null;
-  private phantomModel: ReceiverModel | null = null;
+  private phantom: { model: CreatureModel; until: number; pos: THREE.Vector3; yaw: number } | null = null;
+  private phantomModel: CreatureModel | null = null;
+  private whisperSkin: THREE.MeshStandardMaterial | null = null;
   private clock = 0;
 
   constructor(private o: EntityManagerOptions) {
@@ -98,7 +103,7 @@ export class EntityManager {
     this.addBodyGlitch(this.skin);
     this.flesh = new THREE.MeshStandardMaterial({ color: 0x3a0806, emissive: 0x140000, roughness: 0.22, side: THREE.BackSide });
     this.teeth = o.world.baked.apply(new THREE.MeshStandardMaterial({ color: 0xc4b996, roughness: 0.4 }));
-    this.model = new ReceiverModel({ skin: this.skin, flesh: this.flesh, teeth: this.teeth });
+    this.model = this.makeBody(o.creature?.main ?? null);
     if (o.monster) {
       this.skin.color.setHex(o.monster.skin);
       this.model.decorate(o.monster.accessory, o.monster.scale);
@@ -117,6 +122,24 @@ export class EntityManager {
       this.director = new RevealDirector(this.ai, o.world, o.seed, o.revealMode);
       if (o.spawnDelay !== undefined) this.director.setDelay(o.spawnDelay);
     }
+  }
+
+  /**
+   * The creature's body: The Whisperer when its model loaded (darkened, glitching,
+   * with the split head), the procedural Receiver otherwise. Only the look differs.
+   */
+  private makeBody(asset: SceneAsset | null): CreatureModel {
+    if (asset) {
+      try {
+        if (!this.whisperSkin) {
+          // its painted gradient kept, pushed down into a dead, wet grey so it sits in the Backrooms light
+          this.whisperSkin = this.o.world.baked.apply(new THREE.MeshStandardMaterial({ color: 0x6a625c, vertexColors: true, roughness: 0.5, metalness: 0 }));
+          this.addBodyGlitch(this.whisperSkin);
+        }
+        return new WhispererModel(asset, { skin: this.whisperSkin, flesh: this.flesh, teeth: this.teeth });
+      } catch (e) { console.warn('[creature] Whisperer body failed, using the Receiver', e); }
+    }
+    return new ReceiverModel({ skin: this.skin, flesh: this.flesh, teeth: this.teeth });
   }
 
   /** level mechanics: hide the body (Observer off-camera, Undertow under water) — sound stays */
@@ -257,7 +280,7 @@ export class EntityManager {
 
   spawnPhantom(pos: THREE.Vector3, yaw: number, seconds: number, duck = 0): void {
     if (!this.phantomModel) {
-      this.phantomModel = new ReceiverModel({ skin: this.skin, flesh: this.flesh, teeth: this.teeth });
+      this.phantomModel = this.makeBody(this.o.creature?.phantom ?? null);
       if (this.o.monster) this.phantomModel.decorate(this.o.monster.accessory, this.o.monster.scale);
       this.o.scene.add(this.phantomModel.root);
     }
