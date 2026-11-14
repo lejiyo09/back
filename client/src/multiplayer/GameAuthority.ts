@@ -95,7 +95,7 @@ export function resolveRevive(targetId: string, requester: PlayerSnapshot | unde
 /** Entities only ever open doors. */
 export function resolveEntityInteraction(world: World, targetId: string, pos: THREE.Vector3): number | null {
   const door = world.doors.get(targetId);
-  if (!door || door.state !== 0) return null;
+  if (!door || door.state !== 0 || world.doorBlocked?.(targetId)) return null;
   return door.swingAwayFrom(pos);
 }
 

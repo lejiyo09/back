@@ -60,6 +60,8 @@ export class NetworkManager {
       });
     });
     this.socket.on('session:host-changed', (hostId) => { if (this.session) this.session.hostId = hostId; });
+    // Wi-Fi off: the browser knows at once — don't wait for the heartbeat to time out
+    window.addEventListener('offline', () => { if (this.session && this.socket.connected) this.socket.io.engine?.close(); });
   }
 
   connect(timeoutMs = 6000): Promise<void> {

@@ -45,6 +45,13 @@ function worldBox(cx: number, cy: number, cz: number, sx: number, sy: number, sz
   return g;
 }
 
+/** Level 2: each steam valve's line pressure (bar) — open the highest first (deterministic per seed) */
+export function valvePressure(seed: number, i: number): number {
+  const a = 3 + ((seed >>> 3) % 40) / 10, b = 6.2 + ((seed >>> 9) % 30) / 10;
+  const hiFirst = (seed >>> 5) & 1;
+  return (i === 0) === !!hiFirst ? b : a;
+}
+
 export type WorldEvent =
   | { type: 'door'; door: Door; state: number; byPlayerId: string }
   | { type: 'item'; item: Item; byPlayerId: string }
@@ -115,6 +122,13 @@ export class World {
   }
   /** the key a device needs that the team does not have yet (null = usable) */
   missingKey(relayId: string): string | null {
+    // Level 2: valves open in order of pressure, highest first
+    if (this.level.index === 2) {
+      const i = Number(relayId.split('-')[1]);
+      const mine = valvePressure(this.level.seed, i);
+      for (const r of this.relays.values()) if (!r.active && r.id !== relayId && valvePressure(this.level.seed, r.index) > mine) return 'order';
+      return null;
+    }
     const need = this.level.deviceNeeds?.[relayId];
     return need && !this.hasKey(need) ? need : null;
   }
@@ -549,7 +563,7 @@ export class World {
     for (const spot of L.relays) {
       const dev = THEMES[L.index]?.devices[Number(spot.id.split('-')[1])];
       const r = new RelayPanel(spot.id, spot, L, physics, metal, (m) => this.baked.apply(m), L.ceiling,
-        L.index === 2 ? ['VALVE', '증기 압력 밸브', 'STEAM — B4'] : dev ? [...dev.lines] : undefined);
+        L.index === 2 ? ['VALVE', `압력 ${valvePressure(L.seed, Number(spot.id.split('-')[1])).toFixed(1)} bar`, '높은 압력부터 개방'] : dev ? [...dev.lines] : undefined);
       this.relays.set(r.id, r);
       this.register(r);
       this.group.add(r.root);
@@ -605,6 +619,14 @@ export class World {
       if (!silent) this.onEvent?.({ type: 'power' });
     }
   }
+
+  /** level extras (carts, switches, forklift) add their own interactables */
+  addInteractable(i: Interactable): void { this.register(i); }
+  /** level extras state carried in snapshots (keys prefixed 'fx:') */
+  extraFlags?: () => Record<string, number>;
+  onExtraFlags?: (flags: Record<string, number>) => void;
+  /** Level 1: a door with a cart pushed against it cannot be opened by the creature */
+  doorBlocked?: (doorId: string) => boolean;
 
   private register(i: Interactable): void {
     this.byId.set(i.id, i);
@@ -684,6 +706,7 @@ export class World {
     this.relays.forEach((r, id) => { flags[id] = r.active ? 1 : 0; });
     this.sealed.forEach((id) => { flags[`mut:seal:${id}`] = 1; });
     this.lightStates.forEach((v, i) => { flags[`mut:light:${i}`] = v; });
+    Object.assign(flags, this.extraFlags?.() ?? {});
     return { doors, items, flags };
   }
 
@@ -692,9 +715,11 @@ export class World {
     for (const [id, v] of Object.entries(s.items)) this.items.get(id)?.setCollected(!!v);
     for (const [id, v] of Object.entries(s.flags ?? {})) {
       if (id.startsWith('mut:')) { this.applyInteraction(id, v, 'world'); continue; }
+      if (id.startsWith('fx:')) continue;
       this.relays.get(id)?.setActive(!!v);
     }
     for (const id of [...this.sealed]) if (!s.flags?.[`mut:seal:${id}`]) this.setSealed(id, false);
+    if (s.flags) this.onExtraFlags?.(s.flags);
     this.refreshPower(true);
     if (s.flags?.elevator) this.elevator.open = true;
     if (s.flags?.ending) this.elevator.ending = s.flags.ending;

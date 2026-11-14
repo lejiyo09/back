@@ -55,8 +55,10 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(http, {
   maxHttpBufferSize: 64 * 1024,
   // WebSocket only — no long-polling fallback
   transports: ['websocket'],
-  pingInterval: 5000,
-  pingTimeout: 5000,
+  // a level load on a slow device can block the page for several seconds — do not
+  // mistake that for a dropped connection (a real drop closes the socket anyway)
+  pingInterval: 10000,
+  pingTimeout: 20000,
 });
 rooms = attachNetworkHandler(io, undefined, {
   playerGraceMs: Number(process.env.LS_PLAYER_GRACE_MS) || undefined,

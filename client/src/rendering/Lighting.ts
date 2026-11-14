@@ -4,6 +4,8 @@ import type { BakedLighting } from './BakedLighting';
 
 interface Fixture {
   data: LightFixture;
+  /** Level 1 zone switch: lit even during a blackout */
+  zoneLit?: boolean;
   pos: THREE.Vector3;
   level: number; // current brightness 0..1
 }
@@ -130,7 +132,18 @@ export class Lighting {
         b *= 1 - (1 - dip) * this.flickerIntensity;
       }
     }
-    return Math.max(0, b * this.power * this.surge);
+    return Math.max(0, b * (f.zoneLit ? 1 : this.power) * this.surge);
+  }
+
+  /** Level 1: a zone switch keeps the fixtures within r metres of p on through a blackout */
+  setZone(p: THREE.Vector3, r: number, on: boolean): void {
+    for (const f of this.fixtures) if (Math.hypot(f.pos.x - p.x, f.pos.z - p.z) < r) f.zoneLit = on;
+    this.poolTimer = 0;
+  }
+
+  /** is this point inside a lit zone (for fog/exposure while the floor is dark)? */
+  zoneLitNear(p: THREE.Vector3, r = 6): boolean {
+    return this.fixtures.some((f) => f.zoneLit && Math.hypot(f.pos.x - p.x, f.pos.z - p.z) < r);
   }
 
   /** Room Mutation: a fixture dies (0), comes back (1) or starts failing (2). */

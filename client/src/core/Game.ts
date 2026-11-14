@@ -37,6 +37,7 @@ import { THEMES } from '../world/levels/Themes';
 import { LevelMechanics } from './LevelMechanics';
 import { RoomMutation } from './RoomMutation';
 import { Lurkers } from './Lurkers';
+import { Facilities } from './Facilities';
 
 export interface GameOptions {
   canvas: HTMLCanvasElement;
@@ -119,6 +120,8 @@ export class Game {
   mutation: RoomMutation | null = null;
   /** Levels 1–2: Pallet Maws / Pipe Crawlers */
   lurkers: Lurkers | null = null;
+  /** Levels 1–2: carts, forklift, zone switches, valve order */
+  facilities: Facilities | null = null;
   // Level 2
   private heatWarned = false;
   private heatK = 0;
@@ -296,6 +299,18 @@ export class Game {
         feet: () => this.player.feet, crouching: () => this.player.crouching, speed: () => this.player.horizontalSpeed,
         noise: () => this.player.status.noise, alive: () => !this.dead && !this.downed && this.endingSeq === -1 && !this.chapterDone,
         hit: (dmg, from) => this.onHit(dmg, from), toast: (t) => this.hud.toast(t),
+      });
+    }
+    if (this.levelIndex === 1 || this.levelIndex === 2) {
+      this.facilities = new Facilities({
+        level: this.levelIndex, world: this.world, physics: this.physics, assets: this.assets, entities: this.entities,
+        authority: () => this.authority, scene: this.scene, audio: this.audio, hud: this.hud, camera: this.camera,
+        feet: () => this.player.feet, alive: () => !this.dead && !this.downed && this.endingSeq === -1,
+        heal: (hp, bat) => { this.player.status.health = Math.min(SURVIVAL.MAX_HEALTH, this.player.status.health + hp); this.player.status.addBattery(bat); this.audio.play('pickup', 0.8); },
+        envDamage: (n) => this.envDamage(n),
+        emitNoise: (r) => this.player.status.emitNoise(r),
+        steam: (p, d) => this.spawnSteamPuff(p, d),
+        name: (id) => this.names.get(id) ?? '다른 생존자',
       });
     }
     if (this.levelIndex === 0) {
@@ -616,7 +631,7 @@ export class Game {
       this.renderer.renderer.compile(this.scene, this.camera);
     } else if (e.type === 'custom') {
       if (e.targetId === `revive:${this.authority.localPlayerId}` && this.downed) this.revivedByTeammate(e.byPlayerId);
-      if (e.targetId.startsWith('mech:')) { this.mech?.onCustom(e.targetId, e.byPlayerId); this.lurkers?.onCustom(e.targetId); }
+      if (e.targetId.startsWith('mech:')) { this.mech?.onCustom(e.targetId, e.byPlayerId); this.lurkers?.onCustom(e.targetId); this.facilities?.onCustom(e.targetId, e.byPlayerId); }
     }
   }
 
@@ -789,6 +804,7 @@ export class Game {
     this.mech?.update(dt);
     if (this.endingSeq === -1) this.mutation?.update(dt);
     this.lurkers?.update(dt);
+    this.facilities?.update(dt);
     this.updateLevel1(dt);
     this.updateLevel2(dt);
     this.updateFinalSequence(dt);
@@ -799,7 +815,8 @@ export class Game {
     } else if (this.recorder.on) this.recorder.toggle();
     this.scares.update(dt);
 
-    const light = this.world.baked.sample(viewer.x, viewer.z) * this.world.lighting.power * this.world.lighting.surge;
+    const zone = this.world.blackout && this.world.lighting.zoneLitNear(viewer) ? 0.8 : 0;
+    const light = this.world.baked.sample(viewer.x, viewer.z) * Math.max(this.world.lighting.power, zone) * this.world.lighting.surge;
     this.audio.update(dt, light, viewer);
 
     // fog + gentle eye adaptation follow the local light level
@@ -876,7 +893,7 @@ export class Game {
         if (this.holdTarget !== focusId) { this.holdTarget = focusId; this.holdProgress = 0; }
         this.holdProgress += dt;
         if (this.holdProgress >= hold) {
-          this.authority.requestInteraction(focusId, this.camera.position.clone());
+          if (!this.facilities?.interact(focusId)) this.authority.requestInteraction(focusId, this.camera.position.clone());
           this.holdTarget = null;
           this.holdProgress = 0;
         }
@@ -908,6 +925,8 @@ export class Game {
     } else if (f.id.startsWith('freq-') && this.session.mode !== 'single' &&
       this.remotes.targets().some((t) => !t.dead && !this.world.elevator.contains(t.feet.clone().setY(1)))) {
       this.hud.toast('모든 생존자가 엘리베이터 안에 있어야 한다');
+    } else if (this.facilities?.interact(f.id)) {
+      // handled by the level's facilities (cart push, valve order…)
     } else if (this.world.relays.has(f.id) && this.mech?.lockedToast(f.id)) {
       // locked device: needs an item the team has not found yet
     } else {
@@ -927,7 +946,7 @@ export class Game {
     if (this.levelIndex === 2) {
       if (el.ending) return '';
       if (el.open) return this.session.mode === 'single' ? '무전실에서 선택하라 — 녹음, 또는 송신 차단' : '모두 무전실에 모인 뒤 선택하라';
-      return `신호의 근원을 찾아라 — 증기 밸브 (${n}/${LEVEL2.RELAY_COUNT})`;
+      return `신호의 근원을 찾아라 — 증기 밸브, 압력이 높은 것부터 (${n}/${LEVEL2.RELAY_COUNT})`;
     }
     if (el.ending) return '';
     if (el.open) return this.session.mode === 'single' ? '엘리베이터에 타서 주파수를 선택하라' : '모든 생존자가 탑승한 뒤 주파수를 선택하라';
@@ -1435,6 +1454,7 @@ export class Game {
     this.endingScene?.dispose();
     this.mech?.dispose();
     this.lurkers?.dispose();
+    this.facilities?.dispose();
     this.world?.dispose();
     this.assets?.dispose();
     this.physics?.dispose();

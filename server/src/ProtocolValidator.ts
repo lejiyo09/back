@@ -45,11 +45,12 @@ export function isInteractionConfirmed(r: unknown): r is InteractionConfirmed {
 export function isWorldSnapshot(s: unknown): s is WorldSnapshot {
   if (!s || typeof s !== 'object') return false;
   const o = s as Record<string, unknown>;
-  const okMap = (m: unknown) =>
+  const okMap = (m: unknown, limit = 8, size = 512) =>
     !!m && typeof m === 'object' &&
-    Object.keys(m).length <= 512 &&
-    Object.entries(m as Record<string, unknown>).every(([k, v]) => isId(k) && isNum(v, 8) && Number.isInteger(v));
-  return okMap(o.doors) && okMap(o.items) && okMap(o.flags);
+    Object.keys(m).length <= size &&
+    Object.entries(m as Record<string, unknown>).every(([k, v]) => isId(k) && isNum(v, limit) && Number.isInteger(v));
+  // flags also carry level state such as cart positions (cm) and mutated lights
+  return okMap(o.doors) && okMap(o.items) && okMap(o.flags, 1e5, 1024);
 }
 
 export function isEntityStates(list: unknown): list is EntityNetState[] {
