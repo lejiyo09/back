@@ -1,6 +1,7 @@
 import { SURVIVAL } from '@shared/Constants';
 import type { NoteText } from '../world/Notes';
 import type { RecorderView } from '../player/Recorder';
+import { keyOf, keyText } from '../core/Keybinds';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector(sel) as T;
 
@@ -61,7 +62,7 @@ export class HUD {
         <div class="paper"><h3></h3><p></p><div class="hint"><kbd>E</kbd> 또는 <kbd>Esc</kbd> 닫기</div></div>
       </div>
       <div class="inventory overlay hidden">
-        <div class="panel"><h3>소지품</h3><ul></ul><div class="hint">Tab을 떼면 닫힘</div></div>
+        <div class="panel"><h3>소지품</h3><ul></ul><div class="hint inv-hint"></div></div>
       </div>
       <div class="pause overlay hidden">
         <div class="panel">
@@ -124,7 +125,7 @@ export class HUD {
   /** first-time hint at the bottom of the screen (non-blocking) */
   hint(text: string): void {
     if (!this.hintEl) { this.hintEl = document.createElement('div'); this.hintEl.className = 'tut-hint'; this.root.appendChild(this.hintEl); }
-    this.hintEl.textContent = text;
+    this.hintEl.textContent = keyText(text);
     this.hintEl.classList.add('in');
     clearTimeout(this.hintTimer);
     this.hintTimer = setTimeout(() => this.hintEl?.classList.remove('in'), 6000);
@@ -149,7 +150,7 @@ export class HUD {
   setBanner(text: string | null): void {
     const b = $('.banner', this.root);
     b.classList.toggle('hidden', !text);
-    if (text) b.textContent = text;
+    if (text) b.textContent = keyText(text);
   }
 
   /** 0..1 progress of a held interaction; null hides the ring. */
@@ -162,6 +163,7 @@ export class HUD {
 
   /** Objective line; flashes for a few seconds when it changes, otherwise stays faint. */
   setObjective(text: string): void {
+    text = keyText(text);
     const el = $('.text', this.objective);
     this.objective.classList.toggle('hidden', !text);
     if (el.textContent === text) return;
@@ -212,7 +214,7 @@ export class HUD {
     }
     const bars = Math.round(v.strength * 5);
     $('.rec-bars', this.recorder).textContent = v.on ? '▮'.repeat(bars) + '▯'.repeat(5 - bars) : '';
-    $('.rec-state', this.recorder).textContent = !v.on ? 'OFF · R' : v.playing ? `▶ ${v.playing}` : v.voiceNear ? 'VOICE DETECTED' : 'SCAN';
+    $('.rec-state', this.recorder).textContent = !v.on ? `OFF · ${keyOf('recorder')}` : v.playing ? `▶ ${v.playing}` : v.voiceNear ? 'VOICE DETECTED' : 'SCAN';
   }
 
   showDowned(show: boolean, secondsLeft = 0, reviving = false): void {
@@ -272,6 +274,7 @@ export class HUD {
   setPrompt(text: string | null): void {
     if (text) {
       this.prompt.classList.add('show');
+      $('kbd', this.prompt).textContent = keyOf('interact');
       ($('span', this.prompt)).textContent = text;
     } else this.prompt.classList.remove('show');
   }
@@ -293,7 +296,7 @@ export class HUD {
   toast(text: string, ms = 2600): void {
     const el = document.createElement('div');
     el.className = 'toast';
-    el.textContent = text;
+    el.textContent = keyText(text);
     this.toasts.appendChild(el);
     setTimeout(() => el.classList.add('out'), ms);
     setTimeout(() => el.remove(), ms + 600);
@@ -302,6 +305,7 @@ export class HUD {
   showNote(n: NoteText): void {
     $('h3', this.note).textContent = n.title;
     $('p', this.note).textContent = n.body;
+    $('.hint kbd', this.note).textContent = keyOf('interact');
     this.note.classList.remove('hidden');
     this.noteOpen = true;
   }
@@ -313,7 +317,9 @@ export class HUD {
 
   showInventory(show: boolean, items: string[] = []): void {
     this.inventory.classList.toggle('hidden', !show);
-    if (show) $('ul', this.inventory).innerHTML = items.map((i) => `<li>${i}</li>`).join('');
+    if (!show) return;
+    $('ul', this.inventory).innerHTML = items.map((i) => `<li>${keyText(i)}</li>`).join('');
+    $('.inv-hint', this.inventory).textContent = `${keyOf('inventory')}을(를) 떼면 닫힘`;
   }
 
   showPause(show: boolean, info = ''): void {

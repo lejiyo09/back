@@ -1,4 +1,5 @@
 import { QUALITY_PRESETS, type QualityLevel, type Settings } from '../core/GameConfig';
+import { ACTIONS, Keybinds, RESERVED, keyName, type Action } from '../core/Keybinds';
 
 const QUALITY_LABEL: Record<QualityLevel, string> = { low: 'Low (저사양)', medium: 'Medium', high: 'High', ultra: 'Ultra' };
 
@@ -38,6 +39,11 @@ export function buildSettingsPanel(settings: Settings, onChange: (s: Settings, k
         <option value="whisperer" ${settings.monsterLook !== 'classic' ? 'selected' : ''}>The Whisperer (외부 모델)</option>
         <option value="classic" ${settings.monsterLook === 'classic' ? 'selected' : ''}>기존 Receiver (절차적 모델)</option>
       </select><small>외형만 바뀌고 행동은 같습니다. 다음 게임부터 적용.</small></label>
+      <fieldset class="keybinds">
+        <legend>조작 키 <small>버튼을 누른 뒤 원하는 키를 누르세요 · Esc 취소 · 이미 쓰는 키면 서로 바뀝니다</small></legend>
+        <div class="kb-grid">${ACTIONS.map((a) => `<span>${a.label}</span><button type="button" class="kb" data-a="${a.id}"></button>`).join('')}</div>
+        <button type="button" class="ghost" data-act="kb-reset">기본값으로</button>
+      </fieldset>
       <button class="primary" data-act="close">닫기</button>
     </div>`;
   el.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-k]').forEach((input) => {
@@ -50,7 +56,31 @@ export function buildSettingsPanel(settings: Settings, onChange: (s: Settings, k
       onChange(settings, k);
     });
   });
-  el.querySelector('[data-act="close"]')!.addEventListener('click', (e) => { e.stopPropagation(); onClose(); });
+  // key rebinding: click a key, then press the new one (capture phase so the game never sees it)
+  const kbButtons = el.querySelectorAll<HTMLButtonElement>('.kb');
+  const paint = () => kbButtons.forEach((b) => { b.textContent = keyName(Keybinds.get(b.dataset.a as Action)); b.classList.remove('wait'); });
+  paint();
+  let capture: ((e: KeyboardEvent) => void) | null = null;
+  const stopCapture = () => { if (capture) window.removeEventListener('keydown', capture, true); capture = null; };
+  kbButtons.forEach((b) => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    stopCapture();
+    paint();
+    b.textContent = '키를 누르세요…';
+    b.classList.add('wait');
+    capture = (ev: KeyboardEvent) => {
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      if (ev.code === 'Escape' || !ev.code) { stopCapture(); paint(); return; }
+      if (RESERVED.has(ev.code)) { b.textContent = `${keyName(ev.code)} — 쓸 수 없는 키`; return; }
+      Keybinds.set(b.dataset.a as Action, ev.code);
+      stopCapture();
+      paint();
+    };
+    window.addEventListener('keydown', capture, true);
+  }));
+  el.querySelector('[data-act="kb-reset"]')!.addEventListener('click', (e) => { e.stopPropagation(); stopCapture(); Keybinds.reset(); paint(); });
+  el.querySelector('[data-act="close"]')!.addEventListener('click', (e) => { e.stopPropagation(); stopCapture(); onClose(); });
   el.addEventListener('click', (e) => e.stopPropagation());
   return el;
 }

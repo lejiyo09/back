@@ -47,7 +47,7 @@ export const THEMES: Record<number, LevelTheme> = {
       { key: 'archive-key', name: '보관소 열쇠', hint: '녹슨 열쇠. 꼬리표에 “A-13”.', color: card(0xb08d3c) },
       { key: 'index-card', name: '색인 카드', hint: '문서 번호가 적힌 카드. 0413-77.', color: card(0xe8e0c8) },
       { key: 'magnetic-tape', name: '자기 테이프', hint: '라벨이 지워진 테이프. 무언가 녹음돼 있다.', model: 'cassette_player', color: card(0x333333) },
-      { key: 'old-recorder', name: '낡은 녹음기', hint: '테이프를 재생하면 그것이 반응한다. (G: 소리 미끼)', color: card(0x6a5a40) },
+      { key: 'old-recorder', name: '낡은 녹음기', hint: '테이프를 재생하면 그것이 반응한다. ({lure}: 소리 미끼)', color: card(0x6a5a40) },
     ],
     devices: [
       { needs: 'archive-key', lines: ['INDEX', '열람실 잠금장치', 'A-13'] },
@@ -85,7 +85,7 @@ export const THEMES: Record<number, LevelTheme> = {
       { key: 'master-key', name: '마스터 키', hint: '모든 객실 문을 연다고 적혀 있다.', color: card(0xd4af37) },
       { key: 'room-key', name: '객실 열쇠 1313', hint: '번호판이 계속 바뀐다. 지금은 1313.', color: card(0xc0a060) },
       { key: 'guest-book', name: '숙박부', hint: '모든 페이지에 네 이름이 적혀 있다.', model: 'binder_notebook', color: card(0x5a1a14) },
-      { key: 'hotel-bell', name: '호텔 벨', hint: '울리면 벨보이가 온다. (G: 벨을 던져 유인)', color: card(0xc8a040) },
+      { key: 'hotel-bell', name: '호텔 벨', hint: '울리면 벨보이가 온다. ({lure}: 벨을 던져 유인)', color: card(0xc8a040) },
     ],
     devices: [
       { needs: 'master-key', lines: ['LOBBY', '프런트 금고', 'MASTER'] },
@@ -200,7 +200,7 @@ export const THEMES: Record<number, LevelTheme> = {
       { key: 'train-key', name: '열차 키', hint: '운전실 열쇠.', color: card(0xa0a0a0) },
       { key: 'transit-card', name: '교통 카드', hint: '잔액: 0원. 그래도 개찰구는 열린다.', color: card(0x3070c0) },
       { key: 'signal-controller', name: '신호 제어기', hint: '선로 신호를 바꿀 수 있다.', model: 'vintage_radio_transceiver', color: card(0x606050) },
-      { key: 'emergency-flare', name: '비상 신호탄', hint: '불빛을 따라 그것이 간다. (G: 신호탄 던지기)', model: 'signal_flashlight', color: card(0xd03020) },
+      { key: 'emergency-flare', name: '비상 신호탄', hint: '불빛을 따라 그것이 간다. ({lure}: 신호탄 던지기)', model: 'signal_flashlight', color: card(0xd03020) },
     ],
     devices: [
       { needs: 'transit-card', lines: ['GATE', '개찰구', 'TRANSIT'] },
@@ -272,7 +272,7 @@ export const THEMES: Record<number, LevelTheme> = {
     surface: { wall: 'concrete', floor: 'tile', ceil: 'tile', wallColor: 0x5a6068, floorColor: 0x3a3e44, ceilColor: 0x4a4e54, fog: 0x14181e },
     blackouts: [50, 80, 10, 14],
     keys: [
-      { key: 'camera-remote', name: '카메라 리모컨', hint: 'C: 가장 가까운 CCTV로 본다. 그것은 화면에만 보인다.', color: card(0x303030) },
+      { key: 'camera-remote', name: '카메라 리모컨', hint: '{cctv}: 가장 가까운 CCTV로 본다. 그것은 화면에만 보인다.', color: card(0x303030) },
       { key: 'surveillance-tape', name: '감시 테이프', hint: '테이프 속 복도에 네가 서 있다.', model: 'vintage_video_camera', color: card(0x202020) },
       { key: 'server-key', name: '서버 키', hint: '서버실 랙을 연다.', model: 'circuit_board', color: card(0x208040) },
       { key: 'signal-decoder', name: '신호 해독기', hint: '마지막 신호를 해독할 수 있다.', model: 'retro_multimeter', color: card(0xc06020) },
@@ -282,7 +282,7 @@ export const THEMES: Record<number, LevelTheme> = {
       { needs: 'server-key', lines: ['SERVER', '서버 랙', 'RACK-9'] },
       { needs: 'signal-decoder', lines: ['SIGNAL', '송신 해독기', 'DECODE'] },
     ],
-    objective: '감시를 끊어라 — 장치 세 개 (C: CCTV)',
+    objective: '감시를 끊어라 — 장치 세 개 ({cctv}: CCTV)',
     exitKind: 'stairs',
     monster: { name: 'THE OBSERVER', scale: 1.05, skin: 0x101418, accessory: 'eyes', spawnDelay: 25,
       tuning: { PATROL_SPEED: 1.5, CHASE_SPEED: 5.0, VISION_RANGE: 30, ATTACK_DAMAGE: 30 },

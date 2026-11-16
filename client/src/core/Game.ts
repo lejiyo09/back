@@ -1005,7 +1005,7 @@ export class Game {
       this.world.recorder?.setCollected(true);
       this.recorder.pickUp();
       this.audio.play('pickup', 0.8);
-      this.hud.toast('녹음기를 주웠다 — R 로 켜기');
+      this.hud.toast('녹음기를 주웠다 — {recorder} 로 켜기');
     } else if (f.id === 'elevator-call' && !this.world.elevator.powered) {
       this.audio.play('click', 0.4, 0.6);
       this.hud.toast('아무 반응이 없다. 전원이 들어오지 않는다.');
@@ -1039,7 +1039,7 @@ export class Game {
     if (el.open) return this.session.mode === 'single' ? '엘리베이터에 타서 주파수를 선택하라' : '모든 생존자가 탑승한 뒤 주파수를 선택하라';
     if (el.powered) return '엘리베이터를 찾아 호출하라';
     if (!this.recorder.has) return n ? `전력 패널을 찾아 작동시켜라 (${n}/${OBJECTIVE.RELAY_COUNT})` : '주변을 조사하라';
-    return `녹음기(R)로 신호를 따라가 전력 패널을 작동시켜라 (${n}/${OBJECTIVE.RELAY_COUNT})`;
+    return `녹음기({recorder})로 신호를 따라가 전력 패널을 작동시켜라 (${n}/${OBJECTIVE.RELAY_COUNT})`;
   }
 
   /** Blackout → power returns. */

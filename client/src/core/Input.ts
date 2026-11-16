@@ -1,24 +1,47 @@
+import { Keybinds } from './Keybinds';
+
 /** Keyboard state + edge-triggered presses. Uses KeyboardEvent.code (layout independent, works with Korean IME). */
 export class Input {
   private down = new Set<string>();
   private pressed = new Set<string>();
   enabled = true;
+  /** rebinding: physical code → default code the game reads; blocked = defaults moved elsewhere */
+  private map = new Map<string, string>();
+  private blocked = new Set<string>();
+  private offBinds: () => void;
 
   constructor() {
+    this.applyBindings();
+    this.offBinds = Keybinds.onChange(() => { this.applyBindings(); this.clear(); });
     window.addEventListener('keydown', this.onDown);
     window.addEventListener('keyup', this.onUp);
     window.addEventListener('blur', this.clear);
   }
 
+  private applyBindings(): void {
+    const t = Keybinds.translation();
+    this.map = t.map;
+    this.blocked = t.blocked;
+  }
+
+  private code(physical: string): string | null {
+    const m = this.map.get(physical);
+    if (m) return m;
+    return this.blocked.has(physical) ? null : physical;
+  }
+
   private onDown = (e: KeyboardEvent) => {
     if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
-    if (['Tab', 'Space', 'ControlLeft', 'ControlRight', 'KeyF'].includes(e.code) && this.enabled) e.preventDefault();
-    if (!this.down.has(e.code)) this.pressed.add(e.code);
-    this.down.add(e.code);
+    const code = this.code(e.code);
+    if (code === null) return;
+    if ((['Tab', 'Space', 'ControlLeft', 'ControlRight', 'KeyF'].includes(code) || this.map.has(e.code)) && this.enabled) e.preventDefault();
+    if (!this.down.has(code)) this.pressed.add(code);
+    this.down.add(code);
   };
 
   private onUp = (e: KeyboardEvent) => {
-    this.down.delete(e.code);
+    const code = this.code(e.code);
+    if (code !== null) this.down.delete(code);
   };
 
   clear = () => {
@@ -49,6 +72,7 @@ export class Input {
   }
 
   dispose(): void {
+    this.offBinds();
     window.removeEventListener('keydown', this.onDown);
     window.removeEventListener('keyup', this.onUp);
     window.removeEventListener('blur', this.clear);
