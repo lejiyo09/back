@@ -19,6 +19,22 @@ export interface CatalogEntry {
 }
 
 export type SceneTier = 'low' | 'medium' | 'high';
+/**
+ * Glass in the source models uses physical transmission, which makes three.js
+ * render the whole scene a second time into a texture every frame (Level 6 ran
+ * at a third of its speed). Plain alpha-blended glass looks the same at prop size.
+ */
+function cheapenGlass(m: THREE.Material): void {
+  const p = m as THREE.MeshPhysicalMaterial;
+  if (!p.isMeshPhysicalMaterial || !(p.transmission > 0)) return;
+  p.transmission = 0;
+  p.thickness = 0;
+  p.transparent = true;
+  p.opacity = Math.min(p.opacity, 0.35);
+  p.depthWrite = false;
+  p.needsUpdate = true;
+}
+
 export interface SceneAsset { scene: THREE.Group; animations: THREE.AnimationClip[] }
 
 interface Template {
@@ -97,7 +113,7 @@ export class AssetManager {
       root.traverse((o) => {
         if (!(o instanceof THREE.Mesh)) return;
         const mats = Array.isArray(o.material) ? o.material : [o.material];
-        mats.forEach((m) => this.materialHook?.(m));
+        mats.forEach((m) => { cheapenGlass(m); this.materialHook?.(m); });
         parts.push({ geometry: o.geometry, material: mats[0], matrix: o.matrixWorld.clone() });
       });
       const t: Template = { parts, box: new THREE.Box3().setFromObject(root) };
@@ -130,7 +146,7 @@ export class AssetManager {
         g.scene.traverse((o) => {
           if (!(o instanceof THREE.Mesh)) return;
           const mats = Array.isArray(o.material) ? o.material : [o.material];
-          mats.forEach((m) => this.materialHook?.(m));
+          mats.forEach((m) => { cheapenGlass(m); this.materialHook?.(m); });
         });
         return { scene: g.scene, animations: g.animations };
       }).catch((e) => { console.warn(`[assets] ${id} failed to load`, e); return null; }));
