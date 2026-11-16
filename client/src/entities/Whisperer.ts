@@ -263,8 +263,159 @@ export class WhispererModel implements CreatureModel {
   }
 
   /** per-level variants are the Receiver's job; here only size and a tint */
-  decorate(_kind: string, overall = 1): void {
+  /**
+   * A group riding on a bone, with its axes and scale matching the creature's
+   * own frame in the rest pose (+y up, +z forward, 1 unit = 1 m at design
+   * height) — so accessories can be placed by eye and still follow the animation.
+   */
+  private anchor(bone: string): THREE.Group | null {
+    const b = this.bones.get(bone);
+    if (!b) return null;
+    this.root.updateMatrixWorld(true);
+    const bq = new THREE.Quaternion(), bs = new THREE.Vector3(), bp = new THREE.Vector3();
+    b.matrixWorld.decompose(bp, bq, bs);
+    const rq = new THREE.Quaternion(), rs = new THREE.Vector3(), rp = new THREE.Vector3();
+    this.root.matrixWorld.decompose(rp, rq, rs);
+    const g = new THREE.Group();
+    g.quaternion.copy(bq).invert().multiply(rq);
+    g.scale.setScalar(rs.x / bs.x);
+    b.add(g);
+    return g;
+  }
+
+  /** the faceless head's centre and size in the head anchor's frame */
+  private headBox(anchor: THREE.Group): { c: THREE.Vector3; s: THREE.Vector3 } {
+    this.root.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    for (const h of this.halves) box.expandByObject(h);
+    if (box.isEmpty()) return { c: new THREE.Vector3(0, 0.12, 0.04), s: new THREE.Vector3(0.24, 0.3, 0.26) };
+    const inv = anchor.matrixWorld.clone().invert();
+    const lb = box.clone().applyMatrix4(inv);
+    return { c: lb.getCenter(new THREE.Vector3()), s: lb.getSize(new THREE.Vector3()) };
+  }
+
+  /**
+   * Levels 3–10: the same body, dressed for the level it haunts. Accessories ride
+   * on the bones (head, chest, back, hands) and so move with every clip.
+   */
+  decorate(kind: string, overall = 1): void {
     this.root.scale.setScalar(overall);
+    if (!kind) return;
+    const geo = <T extends THREE.BufferGeometry>(g: T) => { this.extraGeos.push(g); return g; };
+    const mat = (c: number, o: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, ...o });
+    const add = (parent: THREE.Object3D | null, g: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0) => {
+      if (!parent) return null;
+      const mesh = new THREE.Mesh(geo(g), m);
+      mesh.position.set(x, y, z); mesh.rotation.set(rx, ry, rz); mesh.castShadow = true;
+      parent.add(mesh); return mesh;
+    };
+    const rnd = (k: number) => Math.abs((Math.sin(k * 91.7) * 43758.5) % 1);
+    const head = this.anchor('Head');
+    const chest = this.anchor('Spine2') ?? this.anchor('Spine1');
+    const back = this.anchor('Spine1') ?? chest;
+    const hand = this.anchor('RightHand') ?? this.anchor('RightForeArm');
+    const fore = this.anchor('RightForeArm');
+    const foreL = this.anchor('LeftForeArm');
+    const hb = head ? this.headBox(head) : { c: new THREE.Vector3(), s: new THREE.Vector3(0.24, 0.3, 0.26) };
+    const top = hb.c.y + hb.s.y / 2 - 0.05, front = hb.c.z + hb.s.z / 2;
+    if (kind === 'pages') {
+      // THE INDEXER: index cards and torn pages pinned into its back, shoulders and arms; a card over the blank face
+      const paper = mat(0xd8cdb0, { side: THREE.DoubleSide, roughness: 0.95 });
+      const ink = mat(0xb8ac8c, { side: THREE.DoubleSide, roughness: 0.95 });
+      for (let i = 0; i < 26; i++) {
+        const g = new THREE.PlaneGeometry(0.12 + rnd(i) * 0.08, 0.16 + rnd(i + 3) * 0.07);
+        const on = i < 14 ? chest : i < 20 ? back : i % 2 ? fore : foreL;
+        add(on, g, i % 3 ? paper : ink, (rnd(i + 7) - 0.5) * 0.34, (rnd(i + 11) - 0.3) * 0.4, -0.1 - rnd(i + 5) * 0.06, -0.5 + rnd(i) * 1, rnd(i + 2) * 0.8 + Math.PI, rnd(i + 9) * 1.4);
+      }
+      add(head, new THREE.PlaneGeometry(hb.s.x * 0.7, hb.s.y * 0.55), paper, hb.c.x, hb.c.y, front + 0.012, 0, 0, 0.12);
+    } else if (kind === 'bell') {
+      // THE BELLMAN: a bellhop's red jacket with brass buttons, a pillbox cap, a service bell lodged in the throat
+      const brass = mat(0xb08a3a, { metalness: 0.85, roughness: 0.3 });
+      const red = mat(0x6a1612, { roughness: 0.7, side: THREE.DoubleSide });
+      add(chest, new THREE.CylinderGeometry(0.2, 0.24, 0.5, 18, 1, true), red, 0, -0.05, 0, 0, 0, 0);
+      for (let i = 0; i < 5; i++) add(chest, new THREE.SphereGeometry(0.016, 8, 6), brass, 0.06, 0.14 - i * 0.08, 0.235);
+      for (const s of [-1, 1]) add(chest, new THREE.BoxGeometry(0.1, 0.03, 0.12), brass, s * 0.22, 0.2, 0);
+      add(head, new THREE.CylinderGeometry(hb.s.x * 0.42, hb.s.x * 0.46, 0.08, 18), red, hb.c.x, top + 0.02, hb.c.z, -0.15, 0, 0.12);
+      add(head, new THREE.CylinderGeometry(hb.s.x * 0.47, hb.s.x * 0.47, 0.012, 18), brass, hb.c.x, top - 0.015, hb.c.z, -0.15, 0, 0.12);
+      add(head, new THREE.SphereGeometry(0.11, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), brass, hb.c.x, hb.c.y - hb.s.y * 0.6, front - 0.02, Math.PI * 0.9, 0, 0);
+    } else if (kind === 'curtain') {
+      // CURTAIN WALKER: a hospital privacy curtain hung from its shoulders, rings still on, dragging past the knees
+      const cloth = mat(0xa9b8b0, { side: THREE.DoubleSide, roughness: 0.9 });
+      const g = new THREE.CylinderGeometry(0.22, 0.4, 1.5, 22, 10, true, Math.PI * 0.12, Math.PI * 1.76);
+      const pos = g.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); const k = 1 + Math.sin(Math.atan2(pos.getZ(i), pos.getX(i)) * 9) * 0.07 * (0.75 - y); pos.setX(i, pos.getX(i) * k); pos.setZ(i, pos.getZ(i) * k); }
+      g.computeVertexNormals();
+      add(chest, g, cloth, 0, -0.62, -0.02, 0, Math.PI, 0);
+      const ring = mat(0x9a9a9a, { metalness: 0.85, roughness: 0.3 });
+      for (let i = 0; i < 8; i++) { const a = Math.PI * 0.2 + i * 0.2; add(chest, new THREE.TorusGeometry(0.02, 0.005, 6, 12), ring, Math.cos(a) * 0.22, 0.13, -Math.sin(a) * 0.16, Math.PI / 2, 0, 0); }
+      // a strip of the same cloth bound over the face
+      add(head, new THREE.CylinderGeometry(hb.s.x * 0.56, hb.s.x * 0.56, hb.s.y * 0.22, 16, 1, true), cloth, hb.c.x, hb.c.y + hb.s.y * 0.05, hb.c.z, 0, 0, 0);
+    } else if (kind === 'drowned') {
+      // THE DROWNED: waterlogged, weed and silt hanging off its arms and shoulders, hair plastered down
+      const weed = mat(0x23331f, { side: THREE.DoubleSide, roughness: 0.4 });
+      const silt = mat(0x2c2a22, { roughness: 1 });
+      for (let i = 0; i < 18; i++) {
+        const on = i % 3 === 0 ? chest : i % 3 === 1 ? fore : foreL;
+        add(on, new THREE.PlaneGeometry(0.035, 0.3 + rnd(i) * 0.4), weed, (rnd(i + 1) - 0.5) * 0.22, -0.15 - rnd(i + 2) * 0.15, (rnd(i + 4) - 0.5) * 0.2, 0.1, rnd(i) * 3, 0.15);
+      }
+      for (let i = 0; i < 22; i++) {
+        const a = rnd(i + 30) * Math.PI * 2;
+        add(head, new THREE.PlaneGeometry(0.025, hb.s.y * (0.6 + rnd(i) * 0.6)), weed, hb.c.x + Math.cos(a) * hb.s.x * 0.45, top - hb.s.y * 0.35, hb.c.z + Math.sin(a) * hb.s.z * 0.45 - 0.02, 0.05, -a, 0);
+      }
+      for (let i = 0; i < 6; i++) add(chest, new THREE.SphereGeometry(0.04 + rnd(i) * 0.04, 8, 6), silt, (rnd(i + 8) - 0.5) * 0.3, (rnd(i + 9) - 0.5) * 0.3, 0.12 + rnd(i) * 0.04);
+    } else if (kind === 'lantern') {
+      // THE CONDUCTOR: a long black coat, a peaked cap with a brass badge, a railway lantern in the long hand
+      const coat = mat(0x14161c, { side: THREE.DoubleSide, roughness: 0.75 });
+      const g = new THREE.CylinderGeometry(0.21, 0.38, 1.35, 20, 6, true, Math.PI * 0.08, Math.PI * 1.84);
+      g.computeVertexNormals();
+      add(chest, g, coat, 0, -0.55, 0, 0, Math.PI, 0);
+      for (const s of [-1, 1]) add(chest, new THREE.BoxGeometry(0.12, 0.3, 0.02), coat, s * 0.1, 0.05, 0.22, 0.1, s * 0.25, 0);
+      add(head, new THREE.CylinderGeometry(hb.s.x * 0.5, hb.s.x * 0.52, 0.09, 18), coat, hb.c.x, top + 0.025, hb.c.z, -0.2, 0, 0);
+      add(head, new THREE.BoxGeometry(hb.s.x * 0.9, 0.014, 0.1), mat(0x0c0c10, { roughness: 0.4 }), hb.c.x, top - 0.01, front + 0.02, -0.2, 0, 0);
+      add(head, new THREE.CircleGeometry(0.022, 12), mat(0xb08a3a, { metalness: 0.9, roughness: 0.3 }), hb.c.x, top + 0.03, front - 0.005, -0.2, 0, 0);
+      if (hand) {
+        const lamp = new THREE.Group();
+        lamp.position.set(0, -0.12, 0);
+        hand.add(lamp);
+        add(lamp, new THREE.TorusGeometry(0.05, 0.006, 6, 14, Math.PI), mat(0x2a2a2a, { metalness: 0.7 }), 0, 0, 0, 0, 0, 0);
+        add(lamp, new THREE.CylinderGeometry(0.07, 0.085, 0.03, 10), mat(0x2a2a2a, { metalness: 0.7 }), 0, -0.07, 0);
+        add(lamp, new THREE.CylinderGeometry(0.06, 0.06, 0.16, 10, 1, true), mat(0xffc070, { emissive: 0xff9a30, emissiveIntensity: 1.2, transparent: true, opacity: 0.85, side: THREE.DoubleSide }), 0, -0.16, 0);
+        add(lamp, new THREE.CylinderGeometry(0.085, 0.075, 0.035, 10), mat(0x2a2a2a, { metalness: 0.7 }), 0, -0.26, 0);
+      }
+    } else if (kind === 'fins') {
+      // THE UNDERTOW: a ridge of translucent fins down the spine and forearms, gill slits at the neck
+      const fin = mat(0x1a2a30, { side: THREE.DoubleSide, roughness: 0.25, transparent: true, opacity: 0.85 });
+      const finGeo = (h: number) => { const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.quadraticCurveTo(h * 0.3, h * 0.6, -h * 0.25, h); sh.lineTo(-h * 0.4, 0); return new THREE.ShapeGeometry(sh); };
+      for (let i = 0; i < 8; i++) add(i < 5 ? chest : back, finGeo(0.16 + (i % 3) * 0.06), fin, 0, 0.18 - (i % 5) * 0.09, -0.15, 0, Math.PI / 2, 0.3);
+      for (const f of [fore, foreL]) for (let i = 0; i < 4; i++) add(f, finGeo(0.1), fin, 0, -0.05 - i * 0.07, -0.04, 0, Math.PI / 2, 0.5);
+      const gill = mat(0x3a0e0c, { roughness: 0.3 });
+      for (const s of [-1, 1]) for (let i = 0; i < 3; i++) add(head, new THREE.BoxGeometry(0.006, 0.05, 0.02), gill, hb.c.x + s * hb.s.x * 0.48, hb.c.y - hb.s.y * 0.35 - i * 0.025, hb.c.z, 0, 0, s * 0.3);
+    } else if (kind === 'eyes') {
+      // THE OBSERVER: a cluster of camera lenses pushed out through the blank face, glowing red
+      const lens = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.05, metalness: 0.4, emissive: 0xff1a0a, emissiveIntensity: 1.1 });
+      const rim = mat(0x30353a, { metalness: 0.75, roughness: 0.35 });
+      for (let i = 0; i < 17; i++) {
+        const a = i * 2.4, r = (0.012 + (i % 6) * 0.017) * (hb.s.x / 0.28);
+        const sz = 0.017 + (i % 4) * 0.005;
+        add(head, new THREE.CylinderGeometry(sz, sz * 1.2, 0.04, 12), rim, hb.c.x + Math.cos(a) * r, hb.c.y + Math.sin(a) * r * 1.2, front - 0.005, Math.PI / 2, 0, 0);
+        add(head, new THREE.SphereGeometry(sz * 0.85, 12, 8), lens, hb.c.x + Math.cos(a) * r, hb.c.y + Math.sin(a) * r * 1.2, front + 0.016);
+      }
+      // a coil of cable from the back of the skull into the spine
+      const cable = mat(0x101214, { roughness: 0.5 });
+      const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(hb.c.x, hb.c.y, hb.c.z - hb.s.z * 0.45), new THREE.Vector3(0.05, hb.c.y - 0.15, hb.c.z - hb.s.z * 0.8), new THREE.Vector3(-0.02, hb.c.y - 0.35, hb.c.z - hb.s.z * 0.6)]);
+      add(head, new THREE.TubeGeometry(curve, 16, 0.014, 6), cable, 0, 0, 0);
+    } else if (kind === 'antenna') {
+      // RECEIVER PRIME: antennae and wire growing out of the skull and spine, red beacons at their tips
+      const wire = mat(0x3a3530, { metalness: 0.75, roughness: 0.35 });
+      const beacon = new THREE.MeshBasicMaterial({ color: 0xff2010 });
+      for (let i = 0; i < 6; i++) {
+        const len = 0.55 + i * 0.12, tilt = -0.35 + i * 0.13, lean = (i - 2.5) * 0.22;
+        const x = hb.c.x + (i - 2.5) * 0.045, y = top - 0.02;
+        add(head, new THREE.CylinderGeometry(0.007, 0.015, len, 6), wire, x + Math.sin(-lean) * len / 2, y + Math.cos(lean) * len / 2, hb.c.z + Math.sin(tilt) * len / 2, tilt, 0, lean);
+        add(head, new THREE.SphereGeometry(0.026, 8, 6), beacon, x + Math.sin(-lean) * len, y + Math.cos(lean) * len, hb.c.z + Math.sin(tilt) * len);
+      }
+      for (let i = 0; i < 5; i++) add(chest, new THREE.CylinderGeometry(0.006, 0.011, 0.55, 6), wire, (i - 2) * 0.07, 0.3, -0.16, -0.6, 0, (i - 2) * 0.3);
+    }
   }
 
   dispose(): void {

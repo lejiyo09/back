@@ -108,6 +108,7 @@ export class EntityManager {
     this.model = this.makeBody(o.creature?.main ?? null);
     if (o.monster) {
       this.skin.color.setHex(o.monster.skin);
+      if (this.whisperSkin) this.tintWhisperer(o.monster.skin, o.monster.accessory);
       this.model.decorate(o.monster.accessory, o.monster.scale);
     }
     this.model.root.visible = false;
@@ -142,6 +143,17 @@ export class EntityManager {
       } catch (e) { console.warn('[creature] Whisperer body failed, using the Receiver', e); }
     }
     return new ReceiverModel({ skin: this.skin, flesh: this.flesh, teeth: this.teeth });
+  }
+
+  /** Levels 3–10 on the Whisperer body: the level's skin colour over its painted gradient, wet for the water levels */
+  private tintWhisperer(skin: number, accessory: string): void {
+    const m = this.whisperSkin!;
+    const target = new THREE.Color(skin);
+    const lum = target.r * 0.3 + target.g * 0.59 + target.b * 0.11;
+    target.multiplyScalar(Math.min(3, 0.42 / Math.max(0.02, lum)));   // keep the hue, lift it to a visible value
+    m.color.set(0x6a625c).lerp(target, 0.65);
+    m.roughness = accessory === 'drowned' || accessory === 'fins' ? 0.16 : accessory === 'curtain' ? 0.7 : 0.5;
+    m.metalness = accessory === 'drowned' ? 0.1 : 0;
   }
 
   /** level mechanics: hide the body (Observer off-camera, Undertow under water) — sound stays */

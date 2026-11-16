@@ -35,10 +35,10 @@ export function buildSettingsPanel(settings: Settings, onChange: (s: Settings, k
         <option value="expanded" ${settings.campaign !== 'classic' ? 'selected' : ''}>확장 캠페인 — Level 0~10 (엔딩 E/F)</option>
         <option value="classic" ${settings.campaign === 'classic' ? 'selected' : ''}>클래식 — Level 0~2 (엔딩 A~D)</option>
       </select><small>Level 2의 선택은 확장 캠페인에서 Level 10의 결말로 이어집니다.</small></label>
-      <label>괴물 외형 (Level 0~2) <select data-k="monsterLook">
+      <label>괴물 외형 <select data-k="monsterLook">
         <option value="whisperer" ${settings.monsterLook !== 'classic' ? 'selected' : ''}>The Whisperer (외부 모델)</option>
         <option value="classic" ${settings.monsterLook === 'classic' ? 'selected' : ''}>기존 Receiver (절차적 모델)</option>
-      </select><small>외형만 바뀌고 행동은 같습니다. 다음 게임부터 적용.</small></label>
+      </select><small>외형만 바뀌고 행동은 같습니다. Level 3~10은 같은 몸에 레벨별 옷·장신구. 다음 게임부터 적용.</small></label>
       <fieldset class="keybinds">
         <legend>조작 키 <small>버튼을 누른 뒤 원하는 키를 누르세요 · Esc 취소 · 이미 쓰는 키면 서로 바뀝니다</small></legend>
         <div class="kb-grid">${ACTIONS.map((a) => `<span>${a.label}</span><button type="button" class="kb" data-a="${a.id}"></button>`).join('')}</div>

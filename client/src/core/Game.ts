@@ -293,7 +293,7 @@ export class Game {
 
     // The Receiver — simulated here in single-player / on the host, replicated on clients.
     // its body: The Whisperer (Level 0–2's Receiver) unless the player chose the original look
-    const wantWhisperer = !theme && o.settings.monsterLook !== 'classic';
+    const wantWhisperer = o.settings.monsterLook !== 'classic';
     const creature = wantWhisperer ? await this.assets.loadScene('whisperer') : null;
     const creaturePhantom = creature ? await this.assets.loadScene('whisperer') : null;
     this.entities = new EntityManager({
