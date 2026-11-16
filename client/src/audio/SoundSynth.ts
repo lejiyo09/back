@@ -180,22 +180,39 @@ export function distantThud(ctx: Ctx, variant: number): AudioBuffer {
 
 // ── The Receiver ──────────────────────────────────────────────
 
-/** Slow, wet, rasping breath — 3.2 s loop (in, hold, long out). */
+/**
+ * The Receiver's breath — 4 s loop. A strained, wheezing inhale with an
+ * ingressive creak, a held beat, then a long wet exhale: vocal fry (irregular
+ * pulses at ~40 Hz) through an open, slack throat, a phlegm rattle and saliva
+ * clicks. Starts and ends in silence, so it loops cleanly.
+ */
 export function receiverBreath(ctx: Ctx): AudioBuffer {
+  const sr = ctx.sampleRate;
   const noise = rngFrom(4040);
-  let bp1 = 0, bp2 = 0;
-  const b = buffer(ctx, 3.2, (t) => {
+  const wobble = rngFrom(4041);
+  const fry = glottis(sr, 4042);
+  const throat = tract(sr), whistle = resonator(sr), airIn = tract(sr);
+  const wet = clicks(sr, 4043);
+  let rattle = 0, rTarget = 0;
+  const bell = (t: number, a: number, b: number) => (t > a && t < b ? Math.sin(((t - a) / (b - a)) * Math.PI) : 0);
+  return normalize(buffer(ctx, 4, (t, i) => {
     const n = noise();
-    // crude band-pass around a throat formant
-    bp1 += (n - bp1) * 0.25;
-    bp2 += (bp1 - bp2) * 0.25;
-    const band = bp1 - bp2;
-    const inhale = t < 0.9 ? Math.sin((t / 0.9) * Math.PI) : 0;
-    const exhale = t > 1.3 && t < 3.0 ? Math.sin(((t - 1.3) / 1.7) * Math.PI) : 0;
-    const rattle = 0.6 + 0.4 * Math.sin(t * 2 * Math.PI * 23) * Math.sin(t * 2 * Math.PI * 3.1);
-    return band * (inhale * 0.7 + exhale * rattle) * 3;
-  });
-  return normalize(b, 0.8);
+    if (i % 400 === 0) rTarget = Math.abs(wobble());
+    rattle += (rTarget - rattle) * 0.004;
+    // inhale 0.05–1.15: airy throat + a narrow, wandering wheeze + creak pulled inward
+    const inh = bell(t, 0.05, 1.15) ** 0.8;
+    const wheezeF = 1500 + 500 * Math.sin(t * 2.6) + 120 * Math.sin(t * 31);
+    const inhale = airIn(n, [[850, 260, 0.9], [1350, 300, 0.6], [2700, 400, 0.35]]) * 1.1
+      + whistle(n, wheezeF, 60) * 0.55
+      + fry(31 + 8 * Math.sin(t * 5), 0.35, 0.6, 0.35) * 0.05 * (t > 0.5 ? 1 : 0);
+    // exhale 1.45–3.85: slack fry voice + breath through the same tract, rattling
+    const exh = bell(t, 1.45, 3.85) ** 0.7;
+    const decay = 1 - Math.max(0, (t - 1.45) / 2.4) * 0.6;
+    const f0 = 44 - (t - 1.45) * 5 + rattle * 10;
+    const src = fry(f0, 0.28, 0.5, 0.45) * 0.14 * (0.4 + rattle) * decay + n * (0.5 + 0.3 * rattle);
+    const exhale = throat(src, [[560, 140, 1], [980, 180, 0.6], [2450, 260, 0.25], [3500, 400, 0.12]]) * (0.55 + 0.45 * Math.sin(2 * Math.PI * 23 * t) * rattle);
+    return inhale * inh * 0.7 + exhale * exh + wet(exh * 9 + inh * 3) * 0.18 * (inh + exh);
+  }), 0.8);
 }
 
 /** Radio static with crackles and a faint buried carrier tone. Seamless 2 s loop. */
@@ -231,16 +248,34 @@ export function receiverStep(ctx: Ctx, variant: number): AudioBuffer {
   }), 0.9);
 }
 
-/** Attack wind-up: a rising, distorted, radio-like shriek (kept short, not deafening). */
+/**
+ * Attack shriek: a human-ish scream (pitch tearing up from ~260 to ~800 Hz,
+ * rough vibrato, open "ah" formants), doubled an octave down with fry, driven
+ * into distortion, with a radio carrier ring-modulating through it and static
+ * tearing the tail — the Receiver screaming through its own signal.
+ */
 export function receiverScreech(ctx: Ctx): AudioBuffer {
+  const sr = ctx.sampleRate;
   const noise = rngFrom(31337);
-  let phase = 0;
-  return normalize(buffer(ctx, 0.75, (t, _i, sr) => {
-    const f = 380 + t * 1400 + Math.sin(t * 90) * 60;
-    phase += (2 * Math.PI * f) / sr;
-    const tone = Math.tanh(Math.sin(phase) * 4 + Math.sin(phase * 1.5) * 2) * 0.5;
-    const env = Math.min(1, t * 8) * (t > 0.55 ? Math.max(0, 1 - (t - 0.55) / 0.2) : 1);
-    return (tone + noise() * 0.35) * env;
+  const g1 = glottis(sr, 31338), g2 = glottis(sr, 31339);
+  const mouth = tract(sr), chest = tract(sr);
+  let ring = 0;
+  const L = 1.15;
+  return normalize(buffer(ctx, L, (t) => {
+    const rise = 1 - Math.exp(-t * 7);
+    const crack = t > 0.82 ? (t - 0.82) * 1.6 : 0;
+    const f0 = (260 + 560 * rise) * (1 - crack * 0.5) * (1 + 0.035 * Math.sin(2 * Math.PI * 7.5 * t));
+    const n = noise();
+    const voice = g1(f0, 0.06, 0.25, 0.45) + n * 0.25;
+    const open = 0.75 + 0.25 * rise;
+    const ah = mouth(voice, [[900 * open, 130, 1], [1450, 160, 0.75], [2900, 220, 0.5], [4200, 400, 0.25]]);
+    const low = chest(g2(f0 / 2, 0.2, 0.4, 0.4) + n * 0.1, [[480, 120, 1], [1100, 180, 0.4]]);
+    let s = Math.tanh((ah * 1.4 + low * 0.7) * 3);
+    ring += (2 * Math.PI * (1100 + 300 * Math.sin(t * 13))) / sr;
+    s = s * (0.72 + 0.28 * Math.sin(ring));
+    const tear = t > 0.6 ? n * 0.5 * (Math.sin(t * 2 * Math.PI * 21) > 0 ? 1 : 0.2) * (t - 0.6) : 0;
+    const env = Math.min(1, t / 0.04) * (t > L - 0.25 ? Math.max(0, (L - t) / 0.25) : 1);
+    return (s + tear) * env;
   }), 0.75);
 }
 
@@ -283,6 +318,75 @@ function bandpass(f: number, q: number, sr: number) {
     x2 = x1; x1 = x; y2 = y1; y1 = y;
     return y;
   };
+}
+
+// ── Creature voices: source–filter synthesis ─────────────────
+// A glottal pulse train (with jitter/shimmer for roughness, very low f0 for
+// vocal fry) or turbulent breath noise, shaped by a bank of time-varying
+// formant resonators — the same model that makes speech, bent toward throats
+// that are too wet, too strained or not quite human.
+
+/** Two-pole resonator whose centre and bandwidth may change every sample. */
+function resonator(sr: number) {
+  let y1 = 0, y2 = 0;
+  return (x: number, f: number, bw: number) => {
+    const r = Math.exp((-Math.PI * bw) / sr);
+    const y = (1 - r) * x + 2 * r * Math.cos((2 * Math.PI * f) / sr) * y1 - r * r * y2;
+    y2 = y1; y1 = y;
+    return y;
+  };
+}
+
+/** Vocal tract: parallel formants [freq, bandwidth, gain]. */
+function tract(sr: number, n = 4) {
+  const rs = Array.from({ length: n }, () => resonator(sr));
+  return (x: number, fs: [number, number, number][]) => {
+    let y = 0;
+    for (let k = 0; k < fs.length && k < n; k++) y += rs[k](x, fs[k][0], fs[k][1]) * fs[k][2];
+    return y;
+  };
+}
+
+/**
+ * Glottis: Rosenberg flow pulses, radiated (differentiated). `jitter` randomises
+ * each period, `shimmer` each pulse's strength; `oq` is the open quotient
+ * (low = pressed/harsh, high = breathy).
+ */
+function glottis(sr: number, seed: number) {
+  const rnd = rngFrom(seed);
+  let ph = 0, per = 1, amp = 1, prev = 0;
+  return (f0: number, jitter = 0.01, shimmer = 0.05, oq = 0.6) => {
+    ph += (f0 / sr) / per;
+    if (ph >= 1) { ph -= 1; per = 1 + rnd() * jitter; amp = Math.max(0.1, 1 + rnd() * shimmer); }
+    const tp = oq * 0.66;
+    const g = ph < tp ? 0.5 * (1 - Math.cos((Math.PI * ph) / tp)) : ph < oq ? Math.cos((Math.PI / 2) * (ph - tp) / (oq - tp)) : 0;
+    const y = (g - prev) * amp;
+    prev = g;
+    return y * 20;
+  };
+}
+
+/** Wet clicks: sparse, tiny decaying bursts (saliva, phlegm). */
+function clicks(sr: number, seed: number) {
+  const rnd = rngFrom(seed);
+  let e = 0, f = 0, ph = 0;
+  return (rate: number) => {
+    if (Math.abs(rnd()) < rate / sr) { e = 0.6 + Math.abs(rnd()) * 0.4; f = 1800 + Math.abs(rnd()) * 3200; }
+    e *= 0.993;
+    ph += (2 * Math.PI * f) / sr;
+    return Math.sin(ph) * e * e;
+  };
+}
+
+/** Linear crossfade of the tail into the head so a buffer loops without a seam. */
+function seamless(ctx: Ctx, b: AudioBuffer, seconds: number): AudioBuffer {
+  const d = b.getChannelData(0);
+  const n = Math.floor(b.sampleRate * seconds);
+  const r = ctx.createBuffer(1, d.length - n, b.sampleRate);
+  const out = r.getChannelData(0);
+  out.set(d.subarray(0, d.length - n));
+  for (let i = 0; i < n; i++) { const k = i / n; out[i] = d[i] * k + d[d.length - n + i] * (1 - k); }
+  return r;
 }
 
 const VOWELS: [number, number][] = [[730, 1090], [530, 1840], [270, 2290], [570, 840], [300, 870], [660, 1700]];
@@ -545,32 +649,54 @@ export function ventScrape(ctx: Ctx): AudioBuffer {
   }), 0.7);
 }
 
-/** Hound: a low, wet, rattling growl — rough noise pushed through a throat resonance and pulsed at ~28 Hz. Seamless 2.4 s loop. */
+/**
+ * Hound growl — seamless 2.4 s loop. Vocal fry (irregular pulses at 38–55 Hz)
+ * through a deep, wet "uh" throat, in two long swells; between them you hear
+ * the air drawn back in.
+ */
 export function houndGrowl(ctx: Ctx): AudioBuffer {
+  const sr = ctx.sampleRate;
   const noise = rngFrom(818181);
-  let lp = 0, bp1 = 0, bp2 = 0;
-  const L = 2.4;
-  return normalize(buffer(ctx, L, (t) => {
-    lp += (noise() - lp) * 0.12;
-    // resonant band around 140 Hz (two-pole state variable, cheap)
-    const f = 2 * Math.sin(Math.PI * 140 / 44100);
-    bp1 += f * (lp - bp1 - 0.2 * bp2); bp2 += f * bp1;
-    const pulse = 0.55 + 0.45 * Math.sin(2 * Math.PI * 28 * t + Math.sin(t * 3) * 2);
-    const swell = 0.6 + 0.4 * Math.sin(2 * Math.PI * t / L);
-    const tone = Math.sin(2 * Math.PI * 62 * t) * 0.25;
-    return (bp2 * 6 + tone) * pulse * swell;
-  }), 0.8);
+  const fry = glottis(sr, 818182);
+  const throat = tract(sr), air = tract(sr);
+  const wet = clicks(sr, 818183);
+  const L = 2.4, X = 0.3;
+  const b = buffer(ctx, L + X, (t) => {
+    const ph = (t / (L / 2)) % 1;                       // two breaths per loop
+    const out = ph < 0.82 ? Math.sin((ph / 0.82) * Math.PI) ** 0.6 : 0;
+    const inn = ph >= 0.82 ? Math.sin(((ph - 0.82) / 0.18) * Math.PI) : 0;
+    const f0 = 46 + 9 * Math.sin(t * 4.3) + 5 * Math.sin(t * 17);
+    const n = noise();
+    const v = fry(f0, 0.3, 0.55, 0.38) * 0.12;
+    const growl = throat(v + n * 0.18, [[420, 110, 1], [930, 150, 0.55], [2350, 240, 0.22]]);
+    const breath = air(n, [[700, 300, 0.7], [1600, 400, 0.4]]);
+    return growl * out * 1.1 + breath * (inn * 0.6 + out * 0.08) + wet(4) * 0.05 * out;
+  });
+  return normalize(seamless(ctx, b, X), 0.8);
 }
 
-/** Hound: a short snarl-and-snap for the lunge. */
+/**
+ * Hound lunge: a tightening snarl (voiced, pressed, lips drawn back), the
+ * jaws slamming shut — a hard tooth click and a bony knock — and a wet
+ * exhale through the teeth.
+ */
 export function houndSnap(ctx: Ctx): AudioBuffer {
+  const sr = ctx.sampleRate;
   const noise = rngFrom(919191);
-  let lp = 0;
-  return normalize(buffer(ctx, 0.55, (t) => {
-    lp += (noise() - lp) * 0.3;
-    const snarl = lp * Math.exp(-t * 5) * (0.6 + 0.4 * Math.sin(2 * Math.PI * 45 * t));
-    const snap = t > 0.32 && t < 0.36 ? noise() * (1 - (t - 0.32) / 0.04) * 1.6 : 0;
-    return snarl * 1.8 + snap;
+  const g = glottis(sr, 919192);
+  const mouth = tract(sr), teeth = tract(sr), hiss = resonator(sr);
+  let knock = 0;
+  return normalize(buffer(ctx, 0.75, (t) => {
+    const n = noise();
+    const snarlEnv = t < 0.33 ? (t / 0.33) ** 1.5 : Math.max(0, 1 - (t - 0.33) / 0.03);
+    const f0 = 95 + 150 * Math.min(1, t / 0.33);
+    const snarl = mouth(g(f0, 0.12, 0.4, 0.32) * 0.5 + n * 0.35, [[700, 150, 1], [1250, 180, 0.7], [2600, 300, 0.4]]);
+    const dt = t - 0.335;
+    const click = dt > 0 && dt < 0.006 ? teeth(n, [[3600, 500, 1], [5200, 700, 0.8]]) * 6 * (1 - dt / 0.006) : 0;
+    const click2 = dt > 0.018 && dt < 0.022 ? n * 0.6 : 0;
+    if (dt > 0) knock = Math.sin(2 * Math.PI * 140 * dt) * Math.exp(-dt * 45);
+    const tail = t > 0.4 ? hiss(n, 4200, 1500) * 0.5 * Math.exp(-(t - 0.4) * 9) : 0;
+    return Math.tanh(snarl * 2) * snarlEnv * 0.9 + click + click2 + knock * 0.8 + tail;
   }), 0.9);
 }
 
@@ -587,15 +713,32 @@ export function mothFlutter(ctx: Ctx): AudioBuffer {
   }), 0.6);
 }
 
-/** Smiler: a breathy, too-close chuckle — pitched clicks under a hiss, rising and falling. */
+/**
+ * Smiler: a breathy, too-close giggle — seven "heh"s from a voice that is
+ * mostly air, falling in pitch, the last one dragged out and sinking. A faint
+ * ring modulation keeps it from ever quite sounding like a person.
+ */
 export function smilerGiggle(ctx: Ctx): AudioBuffer {
-  const noise = rngFrom(31337);
-  let lp = 0;
-  return normalize(buffer(ctx, 1.8, (t) => {
-    lp += (noise() - lp) * 0.2;
-    const env = Math.min(1, t * 4) * Math.min(1, (1.8 - t) * 2);
-    const burst = Math.max(0, Math.sin(2 * Math.PI * 6.5 * t)) ** 4; // "heh-heh-heh"
-    const voice = Math.sin(2 * Math.PI * (210 + 40 * Math.sin(t * 2)) * t) * 0.35 + Math.sin(2 * Math.PI * 420 * t) * 0.12;
-    return (lp * 0.9 + voice) * burst * env;
+  const sr = ctx.sampleRate;
+  const noise = rngFrom(31341);
+  const g = glottis(sr, 31342);
+  const mouth = tract(sr);
+  const L = 1.9;
+  const starts = [0.04, 0.2, 0.35, 0.5, 0.65, 0.81, 1.0];
+  let ring = 0;
+  return normalize(buffer(ctx, L, (t) => {
+    let k = -1;
+    for (let j = starts.length - 1; j >= 0; j--) if (t >= starts[j]) { k = j; break; }
+    const last = k === starts.length - 1;
+    const len = last ? 0.8 : 0.11;
+    const u = k < 0 ? 2 : (t - starts[k]) / len;
+    const n = noise();
+    const env = u > 1 ? 0 : Math.min(1, u * 12) * (1 - u) ** (last ? 1.2 : 2);
+    const f0 = (250 - k * 12) * (1 - Math.min(1, u) * (last ? 0.45 : 0.12));
+    const src = g(f0, 0.03, 0.15, 0.75) * 0.6 + n * 0.55;
+    let s = mouth(src * env, [[560, 120, 1], [1800, 160, 0.7], [2600, 250, 0.4], [4300, 600, 0.35]]);
+    ring += (2 * Math.PI * 73) / sr;
+    s *= 0.85 + 0.15 * Math.sin(ring);
+    return s;
   }), 0.7);
 }
