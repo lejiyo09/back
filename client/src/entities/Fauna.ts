@@ -727,40 +727,9 @@ export class Fauna {
     body.position.y = 0.6;
     root.add(body);
     const cap = (r: number, len: number) => this.g(new THREE.CapsuleGeometry(r, len, 5, 10));
-    // ribcage forward, a waist you could close a hand around, narrow hips
-    const chest = new THREE.Mesh(this.g(new THREE.SphereGeometry(0.17, 16, 12)), skin);
-    chest.scale.set(1, 0.9, 1.45);
-    chest.position.set(0, 0, 0.2);
-    const waist = new THREE.Mesh(cap(0.085, 0.26), skin);
-    waist.rotation.x = Math.PI / 2;
-    waist.position.set(0, 0.02, -0.12);
-    const hips = new THREE.Mesh(this.g(new THREE.SphereGeometry(0.135, 14, 10)), skin);
-    hips.scale.set(1.15, 0.85, 1);
-    hips.position.set(0, 0.02, -0.36);
-    body.add(chest, waist, hips);
-    // shoulder blades and a spine pushing through the skin
-    for (const s of [-1, 1]) {
-      const blade = new THREE.Mesh(this.g(new THREE.SphereGeometry(0.075, 10, 8)), skin);
-      blade.scale.set(1, 0.35, 1.3);
-      blade.position.set(s * 0.085, 0.13, 0.26);
-      blade.rotation.z = s * 0.35;
-      body.add(blade);
-    }
-    const knob = this.g(new THREE.SphereGeometry(0.022, 6, 5));
-    for (let i = 0; i < 14; i++) {
-      const k = new THREE.Mesh(knob, skin);
-      const z = 0.4 - i * 0.06;
-      k.position.set(0, (z > 0 ? 0.15 : z > -0.25 ? 0.085 : 0.11) , z);
-      body.add(k);
-    }
-    const ribGeo = this.g(new THREE.TorusGeometry(0.16, 0.009, 4, 16, Math.PI));
-    for (let i = 0; i < 6; i++) {
-      const r = new THREE.Mesh(ribGeo, skin);
-      r.rotation.set(0, Math.PI / 2, Math.PI);
-      r.position.set(0, -0.005, 0.36 - i * 0.055);
-      r.scale.set(1 - i * 0.03, 1 - i * 0.05, 1);
-      body.add(r);
-    }
+    // one sculpted torso along the spine: deep ribcage, a waist you could close a hand
+    // around, narrow pelvis; ribs, vertebrae, shoulder blades and hip bones push through
+    body.add(new THREE.Mesh(this.g(houndTorso()), skin));
     // neck and head, carried low, jutting forward
     const neck = new THREE.Group();
     neck.position.set(0, 0.08, 0.42);
@@ -772,7 +741,23 @@ export class Fauna {
     const head = new THREE.Group();
     head.position.set(0, 0.05, 0.19);
     neck.add(head);
-    const skull = new THREE.Mesh(this.g(new THREE.SphereGeometry(0.105, 16, 12)), skin);
+    const skullGeo = this.g(new THREE.SphereGeometry(0.105, 22, 16));
+    {
+      // hollow temples, sharp cheekbones, a long jaw line — gaunt, not round
+      const p = skullGeo.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < p.count; i++) {
+        v.fromBufferAttribute(p, i);
+        const n = v.clone().normalize();
+        let k = 1;
+        k -= 0.14 * Math.exp(-((Math.abs(n.x) - 0.75) ** 2 + (n.y - 0.15) ** 2 + (n.z - 0.45) ** 2) * 12); // temples
+        k += 0.1 * Math.exp(-((Math.abs(n.x) - 0.6) ** 2 + (n.y + 0.15) ** 2 + (n.z - 0.65) ** 2) * 18); // cheekbones
+        k -= 0.08 * Math.exp(-((Math.abs(n.x) - 0.35) ** 2 + (n.y - 0.1) ** 2 + (n.z - 0.9) ** 2) * 25);  // sockets
+        p.setXYZ(i, v.x * k, v.y * k, v.z * k);
+      }
+      skullGeo.computeVertexNormals();
+    }
+    const skull = new THREE.Mesh(skullGeo, skin);
     skull.scale.set(0.9, 1.05, 1.2);
     skull.position.set(0, 0.03, -0.01);
     head.add(skull);
@@ -842,9 +827,15 @@ export class Fauna {
       hairStrips.push(s);
     }
     // limbs: long thin human arms in front, folded legs behind, knobbed joints
-    const limb = (len: number, r: number) => { const g = cap(r, len); g.translate(0, -len / 2 - r, 0); return g; };
-    const upperArm = limb(0.36, 0.036), foreArm = limb(0.36, 0.028), thigh = limb(0.36, 0.05), shin = limb(0.38, 0.032);
-    const joint = this.g(new THREE.SphereGeometry(0.042, 8, 6));
+    // limbs: turned profiles — thin shafts, knuckled joints, a little wasted muscle near the top
+    const limb = (len: number, rTop: number, rMid: number, rEnd: number, muscle: number) => this.g(new THREE.LatheGeometry([
+      new THREE.Vector2(0.001, 0.02), new THREE.Vector2(rTop * 0.8, 0.012), new THREE.Vector2(rTop, -0.02),
+      new THREE.Vector2(rTop * (1 + muscle), -len * 0.22), new THREE.Vector2(rMid, -len * 0.55), new THREE.Vector2(rMid * 0.9, -len * 0.82),
+      new THREE.Vector2(rEnd, -len * 0.95), new THREE.Vector2(rEnd * 0.85, -len - 0.01), new THREE.Vector2(0.001, -len - 0.02),
+    ], 10));
+    const upperArm = limb(0.43, 0.04, 0.026, 0.036, 0.25), foreArm = limb(0.42, 0.03, 0.02, 0.026, 0.3);
+    const thigh = limb(0.46, 0.055, 0.032, 0.042, 0.35), shin = limb(0.45, 0.035, 0.022, 0.03, 0.2);
+    const joint = this.g(new THREE.SphereGeometry(0.036, 8, 6));
     const palm = this.g(new THREE.BoxGeometry(0.075, 0.022, 0.1));
     const finger = this.g(new THREE.CapsuleGeometry(0.008, 0.1, 3, 5));
     finger.rotateX(Math.PI / 2);
@@ -1127,4 +1118,68 @@ export class Fauna {
       dispose: () => { fTex.dispose(); hTex.dispose(); },
     };
   }
+}
+
+/** uniform Catmull-Rom over samples at u = k/(n-1) */
+function crSample(vals: number[], u: number): number {
+  const n = vals.length - 1;
+  const x = Math.min(n - 1e-6, Math.max(0, u * n));
+  const i = Math.floor(x), t = x - i;
+  const p0 = vals[Math.max(0, i - 1)], p1 = vals[i], p2 = vals[Math.min(n, i + 1)], p3 = vals[Math.min(n, i + 2)];
+  return 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
+}
+
+/**
+ * The Hound's torso as one surface, pelvis (z −0.52) to the base of the neck (z +0.46):
+ * elliptical rings whose radii follow the body, with bone pushed out through the skin.
+ */
+function houndTorso(): THREE.BufferGeometry {
+  const U = 56, V = 28;
+  const RX = [0.05, 0.115, 0.12, 0.085, 0.07, 0.1, 0.15, 0.155, 0.13, 0.05];
+  const RY = [0.045, 0.09, 0.095, 0.07, 0.065, 0.1, 0.14, 0.15, 0.12, 0.05];
+  const YC = [0.02, 0.03, 0.035, 0.01, -0.005, 0.0, 0.02, 0.05, 0.07, 0.08];
+  const gauss = (x: number, c: number, w: number) => Math.exp(-(((x - c) / w) ** 2));
+  const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+  for (let i = 0; i <= U; i++) {
+    const u = i / U;
+    const z = -0.52 + u * 0.98;
+    const rx = crSample(RX, u), ry = crSample(RY, u), yc = crSample(YC, u);
+    for (let j = 0; j <= V; j++) {
+      const a = (j / V) * Math.PI * 2;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      let off = 0;
+      // ribs: ridges round the sides and belly of the chest
+      if (u > 0.5 && u < 0.9 && sa < 0.55) off += 0.014 * Math.pow(Math.max(0, Math.sin((u - 0.5) * Math.PI * 2 * 6.5)), 3) * (1 - Math.abs(sa) * 0.4) * gauss(u, 0.7, 0.2);
+      // vertebrae: a knobbed ridge along the top
+      if (sa > 0.8) off += (0.012 + 0.022 * Math.pow(Math.max(0, Math.sin(u * Math.PI * 2 * 14)), 4)) * (sa - 0.8) * 5;
+      // shoulder blades
+      off += 0.035 * gauss(u, 0.82, 0.07) * gauss(Math.abs(ca), 0.5, 0.22) * Math.max(0, sa);
+      // hip bones
+      off += 0.03 * gauss(u, 0.14, 0.06) * gauss(Math.abs(ca), 0.75, 0.2) * Math.max(0, sa + 0.3);
+      // a sunken belly under the ribs
+      if (sa < 0) off -= 0.02 * gauss(u, 0.42, 0.1) * -sa;
+      const sx = rx + off, sy = (ry + off) * (sa < 0 ? 0.85 : 1);
+      pos.push(ca * sx, yc + sa * sy, z);
+      uv.push(u * 3, j / V);
+    }
+  }
+  const ring = V + 1;
+  for (let i = 0; i < U; i++) for (let j = 0; j < V; j++) {
+    const a = i * ring + j, b = a + ring;
+    idx.push(a, a + 1, b, b, a + 1, b + 1);
+  }
+  // end caps
+  const cap = (iRing: number, z: number, flip: boolean) => {
+    const c = pos.length / 3;
+    pos.push(0, crSample(YC, iRing / U), z); uv.push(0, 0);
+    for (let j = 0; j < V; j++) { const a = iRing * ring + j; if (flip) idx.push(c, a + 1, a); else idx.push(c, a, a + 1); }
+  };
+  cap(0, -0.53, false);
+  cap(U, 0.47, true);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
 }
