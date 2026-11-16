@@ -7,7 +7,7 @@ export type SoundKey =
   | 'rBreath' | 'rStatic' | 'rStep0' | 'rStep1' | 'rStep2' | 'rScreech' | 'hit' | 'staticBurst' | 'heartbeat'
   | 'beep' | 'relay' | 'surge' | 'ding' | 'elevDoor' | 'knock' | 'whisper0' | 'whisper1'
   | 'drone' | 'rumble' | 'bang' | 'rain' | 'city' | 'drip' | 'splash0' | 'splash1' | 'machinery'
-  | 'steam' | 'grate0' | 'grate1' | 'vent';
+  | 'steam' | 'grate0' | 'grate1' | 'vent' | 'growl' | 'snap' | 'flutter' | 'giggle';
 
 /**
  * Web Audio + three.js positional audio (design doc 10). One listener on the
@@ -66,6 +66,10 @@ export class AudioManager {
     this.buffers.set('grate0', Synth.grateClang(ctx, 0));
     this.buffers.set('grate1', Synth.grateClang(ctx, 1));
     this.buffers.set('vent', Synth.ventScrape(ctx));
+    this.buffers.set('growl', Synth.houndGrowl(ctx));
+    this.buffers.set('snap', Synth.houndSnap(ctx));
+    this.buffers.set('flutter', Synth.mothFlutter(ctx));
+    this.buffers.set('giggle', Synth.smilerGiggle(ctx));
 
     for (let i = 0; i < 8; i++) this.oneShots.push(new THREE.Audio(this.listener));
     for (let i = 0; i < 6; i++) {

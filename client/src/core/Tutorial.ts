@@ -22,6 +22,8 @@ export interface HintState {
   lockedFocus: boolean;    // looking at a device the team cannot use yet
   hasKey: (key: string) => boolean;
   multiplayer: boolean;
+  /** the canon entity in view, if any */
+  fauna?: 'smiler' | 'hound' | 'faceling' | 'moth' | null;
 }
 
 interface Hint { id: string; text: string; when: (s: HintState) => boolean }
@@ -43,6 +45,10 @@ const HINTS: Hint[] = [
   { id: 'lure', text: '{lure} — 미끼를 던져 그것을 다른 쪽으로 보낼 수 있다 (20초마다)', when: (s) => (s.level === 3 && s.hasKey('old-recorder')) || (s.level === 4 && s.hasKey('hotel-bell')) || (s.level === 7 && s.hasKey('emergency-flare')) },
   { id: 'cctv', text: '{cctv} 길게 — CCTV로 본다. 그것은 화면에만 보인다', when: (s) => s.level === 9 && s.hasKey('camera-remote') },
   { id: 'watch', text: '그것은 보고 있는 동안 움직이지 못한다 — 눈을 떼지 마라', when: (s) => s.level === 5 && s.monsterPresent && s.time > 20 },
+  { id: 'smiler', text: '어둠 속의 미소 — 빛을 비추지 마라, 뛰지 마라. 손전등을 끄고 천천히 물러나라', when: (s) => s.fauna === 'smiler' },
+  { id: 'hound', text: '하운드 — 눈을 떼지 마라. 노려보는 동안은 다가오지 못한다. 등을 보이거나 뛰면 덤빈다', when: (s) => s.fauna === 'hound' },
+  { id: 'faceling', text: '얼굴 없는 사람들 — 대개 해치지 않는다. 다가가면 물러난다', when: (s) => s.fauna === 'faceling' },
+  { id: 'moth', text: '데스모스 — 빛과 소리에 끌린다. 손전등을 끄면 너를 놓친다', when: (s) => s.fauna === 'moth' },
   { id: 'revive', text: '쓰러진 동료에게 다가가 {interact}를 길게 — 일으켜 세운다', when: (s) => s.multiplayer && s.time > 60 },
 ];
 

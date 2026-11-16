@@ -530,3 +530,58 @@ export function ventScrape(ctx: Ctx): AudioBuffer {
     return (lp * 2.5 * drag + tap) * Math.min(1, t * 3) * Math.min(1, (2.6 - t) * 2);
   }), 0.7);
 }
+
+/** Hound: a low, wet, rattling growl — rough noise pushed through a throat resonance and pulsed at ~28 Hz. Seamless 2.4 s loop. */
+export function houndGrowl(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(818181);
+  let lp = 0, bp1 = 0, bp2 = 0;
+  const L = 2.4;
+  return normalize(buffer(ctx, L, (t) => {
+    lp += (noise() - lp) * 0.12;
+    // resonant band around 140 Hz (two-pole state variable, cheap)
+    const f = 2 * Math.sin(Math.PI * 140 / 44100);
+    bp1 += f * (lp - bp1 - 0.2 * bp2); bp2 += f * bp1;
+    const pulse = 0.55 + 0.45 * Math.sin(2 * Math.PI * 28 * t + Math.sin(t * 3) * 2);
+    const swell = 0.6 + 0.4 * Math.sin(2 * Math.PI * t / L);
+    const tone = Math.sin(2 * Math.PI * 62 * t) * 0.25;
+    return (bp2 * 6 + tone) * pulse * swell;
+  }), 0.8);
+}
+
+/** Hound: a short snarl-and-snap for the lunge. */
+export function houndSnap(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(919191);
+  let lp = 0;
+  return normalize(buffer(ctx, 0.55, (t) => {
+    lp += (noise() - lp) * 0.3;
+    const snarl = lp * Math.exp(-t * 5) * (0.6 + 0.4 * Math.sin(2 * Math.PI * 45 * t));
+    const snap = t > 0.32 && t < 0.36 ? noise() * (1 - (t - 0.32) / 0.04) * 1.6 : 0;
+    return snarl * 1.8 + snap;
+  }), 0.9);
+}
+
+/** Deathmoth: heavy wing beats (~9 Hz) — soft thumps of air with a papery rustle. Seamless 1 s loop. */
+export function mothFlutter(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(123457);
+  let lp = 0, hp = 0, prev = 0;
+  return normalize(buffer(ctx, 1, (t) => {
+    const n = noise();
+    lp += (n - lp) * 0.05;
+    hp = 0.9 * (hp + n - prev); prev = n;
+    const beat = Math.pow(Math.max(0, Math.sin(2 * Math.PI * 9 * t)), 3);
+    return lp * 3 * beat + hp * 0.12 * (0.4 + beat);
+  }), 0.6);
+}
+
+/** Smiler: a breathy, too-close chuckle — pitched clicks under a hiss, rising and falling. */
+export function smilerGiggle(ctx: Ctx): AudioBuffer {
+  const noise = rngFrom(31337);
+  let lp = 0;
+  return normalize(buffer(ctx, 1.8, (t) => {
+    lp += (noise() - lp) * 0.2;
+    const env = Math.min(1, t * 4) * Math.min(1, (1.8 - t) * 2);
+    const burst = Math.max(0, Math.sin(2 * Math.PI * 6.5 * t)) ** 4; // "heh-heh-heh"
+    const voice = Math.sin(2 * Math.PI * (210 + 40 * Math.sin(t * 2)) * t) * 0.35 + Math.sin(2 * Math.PI * 420 * t) * 0.12;
+    return (lp * 0.9 + voice) * burst * env;
+  }), 0.7);
+}

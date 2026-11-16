@@ -1,4 +1,4 @@
-import { ENDINGS, Progress, type EndingId } from '../core/Progress';
+import { ENDINGS, ENTITY_GUIDE, Progress, type EndingId } from '../core/Progress';
 import { THEMES } from '../world/levels/Themes';
 import { MAX_LEVEL } from '@shared/Levels';
 
@@ -18,11 +18,17 @@ export function buildRecordsPanel(onPlay: (level: number) => void, onClose: () =
     const name = THEMES[lv]?.code ?? LEVEL_NAMES[lv];
     return `<button data-level="${lv}" ${reached ? '' : 'disabled'}>Level ${lv}<small>${reached ? name : '???'}</small></button>`;
   }).join('');
+  const seen = p.entities ?? [];
+  const guide = Object.entries(ENTITY_GUIDE).map(([k, g]) => seen.includes(k)
+    ? `<li class="got"><b>${g.name}</b> <span class="canon">${g.canon}</span><small>${g.rule}<br>${g.where}</small></li>`
+    : `<li><b>???</b><small>아직 만나지 못한 개체</small></li>`).join('');
   el.innerHTML = `
     <div class="panel wide">
       <h2>기록</h2>
       <p class="sub">결말 ${p.endings.length} / 6 · 도달한 레벨 ${p.levels.length} / ${MAX_LEVEL + 1}</p>
       <ul class="endings">${endings}</ul>
+      <h3>개체 도감 <small>(${seen.length} / ${Object.keys(ENTITY_GUIDE).length} · Backrooms 위키 기준)</small></h3>
+      <ul class="endings guide">${guide}</ul>
       <h3>레벨 선택 <small>(도달한 레벨부터 싱글로 시작 — 녹음기는 들고 시작)</small></h3>
       <div class="levels">${levels}</div>
       <button class="primary" data-act="close">닫기</button>

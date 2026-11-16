@@ -37,6 +37,7 @@ import { THEMES } from '../world/levels/Themes';
 import { LevelMechanics } from './LevelMechanics';
 import { RoomMutation } from './RoomMutation';
 import { Lurkers } from './Lurkers';
+import { Fauna, faunaFor } from '../entities/Fauna';
 import { Facilities } from './Facilities';
 import { AdaptiveQuality } from './AdaptiveQuality';
 import { Tutorial } from './Tutorial';
@@ -125,6 +126,8 @@ export class Game {
   mutation: RoomMutation | null = null;
   /** Levels 1–2: Pallet Maws / Pipe Crawlers */
   lurkers: Lurkers | null = null;
+  /** canon Backrooms entities besides the main creature (Smilers, Hounds, Facelings, Deathmoths) */
+  fauna: Fauna | null = null;
   /** Levels 1–2: carts, forklift, zone switches, valve order */
   facilities: Facilities | null = null;
   readonly adaptive: AdaptiveQuality;
@@ -203,7 +206,10 @@ export class Game {
       onPeerJoined: (id, name) => { this.names.set(id, name); this.remotes?.setName(id, name); this.hud.toast(`${name} 님이 백룸에 들어왔습니다`); },
       onPeerLeft: (id) => { this.hud.toast(`${this.names.get(id) ?? '생존자'} 님이 세션을 떠났습니다`); this.remotes?.remove(id); this.remotes?.forgetName(id); },
       onSessionEnded: (reason) => this.goSolo(reason),
-      onEntityStates: (list) => this.entities?.applySnapshots(list),
+      onEntityStates: (list) => {
+        this.entities?.applySnapshots(list.filter((e) => !/^f\d+$/.test(e.id)));
+        this.fauna?.applySnapshots(list.filter((e) => /^f\d+$/.test(e.id)));
+      },
       getLocal: () => ({ pos: this.player.feet.clone(), downed: this.downed, dead: this.dead }),
       onHostChanged: (hostId) => this.onHostChanged(hostId),
       onPeerOffline: (id) => {
@@ -324,6 +330,20 @@ export class Game {
         feet: () => this.player.feet, crouching: () => this.player.crouching, speed: () => this.player.horizontalSpeed,
         noise: () => this.player.status.noise, alive: () => !this.dead && !this.downed && this.endingSeq === -1 && !this.chapterDone,
         hit: (dmg, from) => this.onHit(dmg * lurkerDamage(o.settings.difficulty), from), toast: (t) => this.hud.toast(t),
+      });
+    }
+    const faunaKinds = faunaFor(this.levelIndex);
+    if (faunaKinds.length) {
+      this.fauna = new Fauna({
+        level: this.levelIndex, world: this.world, scene: this.scene, audio: this.audio, seed: this.session.mapSeed,
+        simulate: this.authority.simulates,
+        lightAt: (x, z) => this.lightAt(x, z),
+        targets: () => this.aiTargets(),
+        hit: (targetId, damage, from) => {
+          const dmg = damage * lurkerDamage(o.settings.difficulty);
+          if (targetId === this.authority.localPlayerId) this.onHit(dmg, from);
+          else this.authority.deliverHit({ target: targetId, damage: dmg, from: [from.x, from.z] });
+        },
       });
     }
     if (this.levelIndex === 1 || this.levelIndex === 2) {
@@ -566,6 +586,7 @@ export class Game {
       : new RemoteAuthority(this.opts.net, this.authorityCallbacks);
     void this.authority.startSession(this.world);
     this.entities.setAuthority(mode === 'host');
+    this.fauna?.setAuthority(mode === 'host');
   }
 
   /**
@@ -579,6 +600,7 @@ export class Game {
     this.authority = new LocalAuthority();
     void this.authority.startSession(this.world);
     this.entities.setAuthority(true);
+    this.fauna?.setAuthority(true);
     this.remotes.clear();
     this.hud.setBanner(null);
     this.hud.toast(`연결이 끊겼습니다 (${reason}) — 같은 맵에서 혼자 계속합니다`, 6000);
@@ -696,6 +718,20 @@ export class Game {
       if (e.targetId === `revive:${this.authority.localPlayerId}` && this.downed) this.revivedByTeammate(e.byPlayerId);
       if (e.targetId.startsWith('mech:')) { this.mech?.onCustom(e.targetId, e.byPlayerId); this.lurkers?.onCustom(e.targetId); this.facilities?.onCustom(e.targetId, e.byPlayerId); }
     }
+  }
+
+  private seenFauna(): ReturnType<Fauna['nearVisible']> {
+    const k = this.fauna?.nearVisible(this.camera.position, this.camera.getWorldDirection(new THREE.Vector3())) ?? null;
+    if (k && !this.faunaSeen.has(k)) { this.faunaSeen.add(k); Progress.sawEntity(k); }
+    return k;
+  }
+  private faunaSeen = new Set<string>();
+
+  /** brightness at a floor point: baked light × mains power (lit zones during a blackout) × surge */
+  private lightAt(x: number, z: number): number {
+    const L = this.world.lighting;
+    const zone = this.world.blackout && L.zoneLitNear(new THREE.Vector3(x, 0, z)) ? 0.8 : 0;
+    return this.world.baked.sample(x, z) * Math.max(L.power, zone) * L.surge;
   }
 
   private aiTargets(): AITarget[] {
@@ -867,6 +903,7 @@ export class Game {
     this.mech?.update(dt);
     if (this.endingSeq === -1) this.mutation?.update(dt);
     this.lurkers?.update(dt);
+    if (this.endingSeq === -1 && !this.chapterDone) this.fauna?.update(dt, viewer);
     this.facilities?.update(dt);
     this.updateLevel1(dt);
     this.updateLevel2(dt);
@@ -916,7 +953,7 @@ export class Game {
         `pos ${viewer.x.toFixed(1)}, ${viewer.y.toFixed(2)}, ${viewer.z.toFixed(1)} · cell ${c.cx},${c.cy}${this.world.level.dark[c.cy]?.[c.cx] ? ' (dark)' : ''}\n` +
         `light ${light.toFixed(2)} · noise ${st.noise.toFixed(1)}m · ${this.player.grounded ? 'ground' : 'air'}\n` +
         `seed ${this.session.mapSeed} · ${this.session.mode} · peers ${this.remotes.count} · hp ${st.health.toFixed(0)}\n` +
-        this.entities.debugInfo(),
+        this.entities.debugInfo() + (this.fauna ? `\n${this.fauna.debugInfo()}` : ''),
       );
     } else this.hud.setDebug(null);
 
@@ -930,7 +967,7 @@ export class Game {
       this.entityPublishTimer -= dt;
       if (this.entityPublishTimer <= 0) {
         this.entityPublishTimer = 1 / RECEIVER.SNAPSHOT_HZ;
-        const list = this.entities.snapshots();
+        const list = [...this.entities.snapshots(), ...(this.fauna?.snapshots() ?? [])];
         if (list.length) this.authority.publishEntities(list);
       }
     }
@@ -956,6 +993,7 @@ export class Game {
           chased: this.entities.pose.state === 'chase', blackout: this.world.blackout,
           focus: f?.id ?? null, lockedFocus: !!f && this.world.relays.has(f.id) && !!this.world.missingKey(f.id) && this.levelIndex >= 3,
           hasKey: (k) => this.world.hasKey(k), multiplayer: this.session.mode !== 'single',
+          fauna: this.seenFauna(),
         };
       });
     }
@@ -1550,6 +1588,7 @@ export class Game {
     this.mech?.dispose();
     this.touch?.dispose();
     this.lurkers?.dispose();
+    this.fauna?.dispose();
     this.facilities?.dispose();
     this.world?.dispose();
     this.assets?.dispose();
