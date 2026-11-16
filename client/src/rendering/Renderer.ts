@@ -7,6 +7,10 @@ export class Renderer {
   readonly renderer: THREE.WebGLRenderer;
   private post?: PostProcessing;
   private pixelRatio = 1;
+  /** adaptive quality: multiplier on the preset's render scale (0.55 … 1) */
+  private scaleMul = 1;
+  /** adaptive quality's last resort: skip the post-processing chain */
+  bypassPost = false;
 
   constructor(private canvas: HTMLCanvasElement, private quality: QualityPreset) {
     this.renderer = new THREE.WebGLRenderer({
@@ -46,10 +50,18 @@ export class Renderer {
     if (this.post) this.post.glitch = v;
   }
 
+  get renderScale(): number { return this.scaleMul; }
+  setRenderScale(m: number, camera?: THREE.PerspectiveCamera): void {
+    const v = Math.min(1, Math.max(0.55, Math.round(m * 100) / 100));
+    if (v === this.scaleMul) return;
+    this.scaleMul = v;
+    this.resize(camera);
+  }
+
   resize(camera?: THREE.PerspectiveCamera): void {
     const w = this.canvas.clientWidth || window.innerWidth;
     const h = this.canvas.clientHeight || window.innerHeight;
-    this.pixelRatio = Math.min(window.devicePixelRatio || 1, this.quality.maxPixelRatio) * this.quality.renderScale;
+    this.pixelRatio = Math.min(window.devicePixelRatio || 1, this.quality.maxPixelRatio) * this.quality.renderScale * this.scaleMul;
     this.renderer.setPixelRatio(this.pixelRatio);
     this.renderer.setSize(w, h, false);
     this.post?.setSize(w, h, this.pixelRatio);
@@ -61,7 +73,7 @@ export class Renderer {
 
   render(scene: THREE.Scene, camera: THREE.Camera, time: number): void {
     this.renderer.info.reset();
-    if (this.post) this.post.render(time);
+    if (this.post && !this.bypassPost) this.post.render(time);
     else this.renderer.render(scene, camera);
   }
 

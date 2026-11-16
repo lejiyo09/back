@@ -5,6 +5,7 @@ import {
 } from '../Level0Layout';
 import { THEMES } from './Themes';
 import { themeNoteIndex } from '../Notes';
+import { storyLogIndex } from './StoryLogs';
 
 type Cell = [number, number];
 type Dir = 'h' | 'v';
@@ -263,11 +264,16 @@ export function generateThemed(index: number, seed: number): Level0Data {
     relays.push({ id, cx: c[0], cy: c[1], side: objRng.pick(wallSides(c[0], c[1]).length ? wallSides(c[0], c[1]) : ['n']) });
     deviceNeeds[id] = dv.needs;
   });
+  // two recordings: one on the way, one near the last device / the exit
+  const logA = atQuantile(0.2, 0.45, false, placed);
+  placed.push(logA);
+  const logB = atQuantile(0.7, 1.0, false, placed);
+  const logSpots = [logA, logB].map(([cx, cy], k) => ({ id: `log-${storyLogIndex(index, k)}`, cx, cy, logIndex: storyLogIndex(index, k) }));
   const notes: NoteSpot[] = T.notes.map((_, k) => ({ ...mkSpotFrom(itemRng, `note-${k}`, take(1)[0] ?? [5, 5]), noteIndex: themeNoteIndex(index, k) }));
 
   return {
     index, theme: index, ceiling: L.ceiling, exitKind: T.exitKind, crates, supplies, water, grates: [], machines: [], steam: [],
     seed, w: W, h: H, hEdges, vEdges, pillars, lights, dark, doors, batteries, notes, spawn, recorder: null, relays,
-    logSpots: [], exit, correctFrequency: 0, keys, deviceNeeds, rail,
+    logSpots, exit, correctFrequency: 0, keys, deviceNeeds, rail,
   };
 }

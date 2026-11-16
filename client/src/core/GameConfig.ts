@@ -33,6 +33,8 @@ export interface Settings {
   campaign: 'expanded' | 'classic';
   /** main creature's look: the Whisperer model or the original procedural Receiver */
   monsterLook: 'whisperer' | 'classic';
+  /** lower the render resolution automatically when the frame rate drops */
+  autoQuality: boolean;
   playerName: string;
 }
 
@@ -47,6 +49,7 @@ const DEFAULTS: Settings = {
   subtitles: true,
   campaign: 'expanded',
   monsterLook: 'whisperer',
+  autoQuality: true,
   playerName: '',
 };
 

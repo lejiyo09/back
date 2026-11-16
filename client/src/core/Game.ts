@@ -38,6 +38,7 @@ import { LevelMechanics } from './LevelMechanics';
 import { RoomMutation } from './RoomMutation';
 import { Lurkers } from './Lurkers';
 import { Facilities } from './Facilities';
+import { AdaptiveQuality } from './AdaptiveQuality';
 
 export interface GameOptions {
   canvas: HTMLCanvasElement;
@@ -122,6 +123,8 @@ export class Game {
   lurkers: Lurkers | null = null;
   /** Levels 1–2: carts, forklift, zone switches, valve order */
   facilities: Facilities | null = null;
+  readonly adaptive: AdaptiveQuality;
+  private postOffWarned = false;
   // Level 2
   private heatWarned = false;
   private heatK = 0;
@@ -163,6 +166,11 @@ export class Game {
     this.session = new GameSession(opts.sessionId, opts.mode, opts.seed);
     this.preset = QUALITY_PRESETS[URL_FLAGS.quality && URL_FLAGS.quality in QUALITY_PRESETS ? URL_FLAGS.quality : opts.settings.quality];
     this.renderer = new Renderer(opts.canvas, this.preset);
+    this.adaptive = new AdaptiveQuality(this.renderer);
+    this.adaptive.onChange = (scale, postOff) => {
+      if (postOff && !this.postOffWarned) { this.postOffWarned = true; this.hud.toast('성능을 위해 화면 효과를 줄였습니다 (설정 → 자동 화질 조정)', 4500); }
+      void scale;
+    };
     this.controls = new PointerLockControls(this.camera, opts.canvas);
     this.loop = new GameLoop((dt) => this.fixedUpdate(dt), (dt, a) => this.frame(dt, a));
     for (const p of opts.players ?? []) {
@@ -500,6 +508,7 @@ export class Game {
     this.exposure = s.brightness;
     this.hud.subtitlesEnabled = s.subtitles;
     this.entities.scareIntensity = s.scareIntensity;
+    this.adaptive.enabled = s.autoQuality !== false;
   }
 
   private onResize = () => this.renderer.resize(this.camera);
@@ -860,7 +869,7 @@ export class Game {
       const c = worldToCell(this.world.level, viewer.x, viewer.z);
       const info = this.renderer.renderer.info.render;
       this.hud.setDebug(
-        `${this.loop.fps.toFixed(0)} fps · draw ${info.calls} · tris ${(info.triangles / 1000).toFixed(1)}k\n` +
+        `${this.loop.fps.toFixed(0)} fps · draw ${info.calls} · tris ${(info.triangles / 1000).toFixed(1)}k · res ${Math.round(this.renderer.renderScale * 100)}%${this.renderer.bypassPost ? ' (no post)' : ''}\n` +
         `pos ${viewer.x.toFixed(1)}, ${viewer.y.toFixed(2)}, ${viewer.z.toFixed(1)} · cell ${c.cx},${c.cy}${this.world.level.dark[c.cy]?.[c.cx] ? ' (dark)' : ''}\n` +
         `light ${light.toFixed(2)} · noise ${st.noise.toFixed(1)}m · ${this.player.grounded ? 'ground' : 'air'}\n` +
         `seed ${this.session.mapSeed} · ${this.session.mode} · peers ${this.remotes.count} · hp ${st.health.toFixed(0)}\n` +
@@ -883,6 +892,7 @@ export class Game {
       }
     }
 
+    this.adaptive.frame(dt, this.input.enabled && !this.ended && this.endingSeq === -1);
     const cctv = this.mech?.beginRender() ?? false;
     this.renderer.render(this.scene, this.camera, this.time);
     if (cctv) this.mech!.endRender();
@@ -1104,7 +1114,7 @@ export class Game {
     const stats = [
       `시간 ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`,
       `사망 ${this.deaths}`,
-      `녹음 ${this.recorder.heard.size}/${this.recorder.logs.length}`,
+      `녹음 ${this.recorder.heard.size}/${this.logTotal()}`,
       `문서 ${this.notesRead.size}/${NOTES.length}`,
       `주파수 ${OBJECTIVE.FREQUENCIES[this.endingFreq]} MHz`,
       `Seed ${this.session.mapSeed}`,
@@ -1144,6 +1154,11 @@ export class Game {
     if (!this.opts.onContinue) return {};
     if (this.session.mode === 'client') return { waiting };
     return { continueLabel: label, onContinue: () => this.opts.onContinue?.() };
+  }
+
+  /** recordings that exist so far in this run: 7 in Levels 0–2, all 23 in the Expanded Campaign's later levels */
+  private logTotal(): number {
+    return this.levelIndex >= 3 ? this.recorder.logs.length : 7;
   }
 
   get level(): number {
@@ -1352,7 +1367,7 @@ export class Game {
       stats: [
         `총 시간 ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`,
         `사망 ${this.deaths}`,
-        `녹음 ${this.recorder.heard.size}/${this.recorder.logs.length}`,
+        `녹음 ${this.recorder.heard.size}/${this.logTotal()}`,
         `선택 ${loop ? '녹음' : '송신 차단'}`,
         `Seed ${this.session.mapSeed}`,
       ],
@@ -1414,7 +1429,7 @@ export class Game {
         stats: [
           `총 시간 ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`,
           `사망 ${this.deaths}`,
-          `녹음 ${this.recorder.heard.size}/${this.recorder.logs.length}`,
+          `녹음 ${this.recorder.heard.size}/${this.logTotal()}`,
           `Seed ${this.session.mapSeed}`,
         ],
         ...this.continueOption('계속 — Level 2', '호스트가 Level 2로 계속할지 정하는 중…'),
@@ -1428,7 +1443,7 @@ export class Game {
     return [
       `손전등 — 배터리 ${Math.ceil(st.battery)}%${this.flashlight.on ? ' (켜짐)' : ''}`,
       `찾은 배터리 — ${this.batteriesFound}개`,
-      this.recorder.has ? `신호 녹음기 — 녹음 ${this.recorder.heard.size}/${this.recorder.logs.length}` : '',
+      this.recorder.has ? `신호 녹음기 — 녹음 ${this.recorder.heard.size}/${this.logTotal()}` : '',
       `문서 — ${this.notesRead.size} / ${NOTES.length}`,
       this.recorder.has ? '' : `<span class="dim">신호 녹음기 — 아직 찾지 못했다</span>`,
       `<span class="dim">목표 — ${this.objectiveText()}</span>`,

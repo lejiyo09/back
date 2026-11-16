@@ -4,6 +4,7 @@ import type { AudioManager } from '../audio/AudioManager';
 import { radioVoice } from '../audio/SoundSynth';
 import type { World } from '../world/World';
 import { cellCenter } from '../world/Level0Layout';
+import { allStoryLogs } from '../world/levels/StoryLogs';
 
 export interface LogLine { at: number; text: string }
 export interface RecorderLog { title: string; lines: LogLine[]; duration: number; pitch: number }
@@ -112,7 +113,8 @@ export class Recorder {
   onSubtitle?: (text: string | null, title?: string) => void;
 
   constructor(private audio: AudioManager, private world: World) {
-    this.logs = buildLogs(OBJECTIVE.FREQUENCIES[world.level.correctFrequency]);
+    // 01–07 (Levels 0–2) + 08–23 (two per level of the Expanded Campaign)
+    this.logs = [...buildLogs(OBJECTIVE.FREQUENCIES[world.level.correctFrequency]), ...allStoryLogs()];
     this.logSpots = world.level.logSpots.map((s) => {
       const c = cellCenter(world.level, s.cx, s.cy);
       return { pos: new THREE.Vector3(c.x, 0, c.z), index: s.logIndex };
