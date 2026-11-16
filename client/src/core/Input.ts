@@ -37,6 +37,12 @@ export class Input {
     return this.enabled;
   }
 
+  /** On-screen (touch) controls press virtual keys through the same path as the keyboard. */
+  setVirtual(code: string, down: boolean): void {
+    if (down) { if (!this.down.has(code)) this.pressed.add(code); this.down.add(code); }
+    else this.down.delete(code);
+  }
+
   /** Drop queued presses (call when gameplay focus changes: pause, menus). */
   flushPresses(): void {
     this.pressed.clear();

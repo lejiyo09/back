@@ -48,13 +48,25 @@ const HINTS: Hint[] = [
 
 const KEY = 'lost-signal.hints.v1';
 
+/** the same hints, worded for the on-screen controls */
+const TOUCH_TEXT: Record<string, string> = {
+  move: '왼쪽 엄지: 이동 (끝까지 밀면 달리기) · 오른쪽: 드래그로 둘러보기 · E 버튼: 조사',
+  flashlight: '손전등 버튼 — 배터리가 닳는다',
+  recorder: '녹음기 버튼 — 신호가 강해지는 쪽으로 가라 (켜 두면 소리가 난다)',
+  noise: '스틱을 끝까지 밀면 달린다 — 멀리까지 들린다. 웅크리기 버튼으로 조용히',
+  tab: '소지품 버튼을 누르고 있으면 소지품과 목표',
+  lure: '미끼 버튼 — 그것을 다른 쪽으로 보낼 수 있다 (20초마다)',
+  cctv: 'CCTV 버튼을 누르고 있으면 감시 카메라로 본다. 그것은 화면에만 보인다',
+  revive: '쓰러진 동료에게 다가가 E 버튼을 길게 — 일으켜 세운다',
+};
+
 export class Tutorial {
   private seen: Set<string>;
   private timer = 0;
   private cooldown = 0;
   enabled = true;
 
-  constructor(private show: (text: string) => void) {
+  constructor(private show: (text: string) => void, private touch = false) {
     let saved: string[] = [];
     try { saved = JSON.parse(localStorage.getItem(KEY) ?? '[]'); } catch { /* storage unavailable */ }
     this.seen = new Set(saved);
@@ -71,7 +83,7 @@ export class Tutorial {
     if (!h) return;
     this.seen.add(h.id);
     try { localStorage.setItem(KEY, JSON.stringify([...this.seen])); } catch { /* ignore */ }
-    this.show(h.text);
+    this.show(this.touch && TOUCH_TEXT[h.id] ? TOUCH_TEXT[h.id] : h.text);
     this.cooldown = 7; // never two hints on top of each other
   }
 

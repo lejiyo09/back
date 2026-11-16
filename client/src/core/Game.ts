@@ -41,6 +41,7 @@ import { Facilities } from './Facilities';
 import { AdaptiveQuality } from './AdaptiveQuality';
 import { Tutorial } from './Tutorial';
 import { Progress } from './Progress';
+import { TouchControls, isTouchDevice } from '../ui/TouchControls';
 import { tuneForDifficulty, lurkerDamage } from './Difficulty';
 
 export interface GameOptions {
@@ -128,7 +129,10 @@ export class Game {
   facilities: Facilities | null = null;
   readonly adaptive: AdaptiveQuality;
   private postOffWarned = false;
-  private tutorial = new Tutorial((t) => this.hud.hint(t));
+  private tutorial = new Tutorial((t) => this.hud.hint(t), isTouchDevice());
+  /** phones / tablets: on-screen stick, look pad and buttons */
+  private touch: TouchControls | null = null;
+  private touchPauseGuard = 0;
   // Level 2
   private heatWarned = false;
   private heatK = 0;
@@ -410,6 +414,26 @@ export class Game {
     this.renderer.resize(this.camera);
     window.addEventListener('resize', this.onResize);
     this.setupPointerLock();
+    if (isTouchDevice()) {
+      const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+      this.touch = new TouchControls(this.input, (dx, dy) => {
+        if (!this.input.enabled) return;
+        euler.setFromQuaternion(this.camera.quaternion);
+        const k = 0.0055 * this.opts.settings.mouseSensitivity;
+        euler.y -= dx * k;
+        euler.x = THREE.MathUtils.clamp(euler.x - dy * k, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
+        this.camera.quaternion.setFromEuler(euler);
+      }, () => {
+        this.input.enabled = false;
+        this.input.clear();
+        this.touch?.setVisible(false);
+        this.hud.hideNote();
+        this.hud.showPause(true, this.pauseInfo());
+        // the tap that paused also produces a click on the pause screen under the finger: ignore it
+        this.touchPauseGuard = performance.now() + 500;
+      });
+      this.touch.setVisible(false);
+    }
 
     o.onProgress('셰이더 컴파일', 0.95);
     await nextFrame();
@@ -428,13 +452,14 @@ export class Game {
       // arriving from the previous level: no title page, play on immediately (click re-captures the mouse)
       this.input.enabled = true;
       this.hud.showPause(false);
-      this.hud.toast('화면을 클릭하면 마우스 시점이 고정됩니다', 4000);
+      if (this.touch) this.touch.setVisible(true);
+      else this.hud.toast('화면을 클릭하면 마우스 시점이 고정됩니다', 4000);
       const th = THEMES[this.levelIndex];
       const t = th ? [th.code, th.intro] : this.levelIndex === 1 ? ['HABITABLE ZONE', '콘크리트와 안개. 불빛이 하나씩 꺼진다.'] : ['PIPE DREAMS', '뜨거운 배관, 증기, 쇠 냄새. 신호가 더 아래에서 들린다.'];
       setTimeout(() => this.hud.titleCard(`LEVEL ${this.levelIndex}`, t[0], t[1]), 600);
     } else {
       this.input.enabled = false;
-      this.hud.showPause(true, '<p class="big">화면을 클릭하여 시작</p><p>노란 벽지, 젖은 카펫, 끊이지 않는 형광등 소리.<br>당신은 Level 0에 noclip 되었다.</p>');
+      this.hud.showPause(true, this.touch ? '<p class="big">화면을 터치하여 시작</p><p>왼쪽: 이동 (끝까지 밀면 달리기) · 오른쪽: 드래그로 둘러보기</p><p>노란 벽지, 젖은 카펫, 끊이지 않는 형광등 소리.<br>당신은 Level 0에 noclip 되었다.</p>' : '<p class="big">화면을 클릭하여 시작</p><p>노란 벽지, 젖은 카펫, 끊이지 않는 형광등 소리.<br>당신은 Level 0에 noclip 되었다.</p>');
     }
     if (this.session.mode !== 'single') this.hud.toast(`협동 세션 · ${this.session.players.size}명`);
   }
@@ -468,9 +493,20 @@ export class Game {
     this.hud.toast('마우스 고정을 쓸 수 없는 환경입니다 — 마우스를 누른 채 끌어서 둘러보세요', 6000);
   }
 
+  /** touch devices have no pointer lock: starting / resuming just shows the on-screen controls */
+  private resumeTouch(): void {
+    this.everLocked = true;
+    this.input.enabled = true;
+    this.input.flushPresses();
+    this.hud.showPause(false);
+    this.touch?.setVisible(true);
+    void this.audio.resume();
+  }
+
   private setupPointerLock(): void {
     const tryLock = () => {
       if (this.ended) return;
+      if (this.touch) { if (performance.now() > this.touchPauseGuard) this.resumeTouch(); return; }
       if (this.dragLook) { this.enableDragLook(); return; }
       try { Promise.resolve(this.controls.lock()).catch(() => this.enableDragLook()); } catch { this.enableDragLook(); }
       setTimeout(() => { if (!this.controls.isLocked && !this.ended && !this.dragLook) this.enableDragLook(); }, 600);
@@ -900,6 +936,14 @@ export class Game {
     }
 
     this.adaptive.frame(dt, this.input.enabled && !this.ended && this.endingSeq === -1);
+    if (this.touch) {
+      const lv = this.levelIndex, w = this.world;
+      if (this.endingSeq !== -1 || this.chapterDone) this.touch.setVisible(false);
+      this.touch.setContext({
+        lure: (lv === 3 && w.hasKey('old-recorder')) || (lv === 4 && w.hasKey('hotel-bell')) || (lv === 7 && w.hasKey('emergency-flare')),
+        cctv: lv === 9 && w.hasKey('camera-remote'),
+      });
+    }
     if (this.input.enabled && !this.dead && !this.downed && this.endingSeq === -1 && !this.hud.noteOpen) {
       this.tutorial.update(dt, () => {
         const f = this.interaction.focus;
@@ -1504,6 +1548,7 @@ export class Game {
     this.recorder?.dispose();
     this.endingScene?.dispose();
     this.mech?.dispose();
+    this.touch?.dispose();
     this.lurkers?.dispose();
     this.facilities?.dispose();
     this.world?.dispose();

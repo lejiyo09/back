@@ -225,3 +225,22 @@ kbd {
 .records .levels button small { font-size: 11px; color: var(--dim); }
 .records .panel { max-height: 92vh; overflow-y: auto; }
 .records .levels button small { text-align: left; }
+
+/* touch controls (phones / tablets) */
+.touch { position: fixed; inset: 0; z-index: 30; pointer-events: none; user-select: none; -webkit-user-select: none; touch-action: none; }
+.touch.hidden { display: none; }
+.touch .t-stick { position: absolute; left: 0; top: 0; width: 45%; height: 100%; pointer-events: auto; touch-action: none; }
+.touch .t-look { position: absolute; right: 0; top: 0; width: 55%; height: 100%; pointer-events: auto; touch-action: none; }
+.touch .t-base { position: absolute; left: 18%; top: 72%; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.18); opacity: 0.55; }
+.touch .t-base.on { opacity: 1; }
+.touch .t-knob { position: absolute; left: 31px; top: 31px; width: 50px; height: 50px; border-radius: 50%; background: rgba(230,220,180,0.55); }
+.touch .t-btns { position: absolute; right: 14px; bottom: 16px; display: grid; grid-template-columns: repeat(3, 64px); gap: 9px; pointer-events: none; direction: rtl; }
+.touch button { pointer-events: auto; touch-action: none; width: 64px; height: 52px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.28);
+  background: rgba(10,9,6,0.45); color: #efe6c8; font-size: 12px; padding: 0; direction: ltr; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.touch button.t-big { height: 64px; font-size: 22px; font-weight: 700; border-color: rgba(201,180,88,0.8); }
+.touch button.t-big small { font-size: 10px; font-weight: normal; }
+.touch button.down, .touch button.active { background: rgba(201,180,88,0.45); }
+.touch button.hidden { display: none; }
+.touch .t-pause { position: absolute; right: 14px; top: 12px; width: 44px; height: 40px; font-size: 16px; }
+@media (max-height: 420px) { .touch .t-btns { grid-template-columns: repeat(4, 58px); } .touch button { width: 58px; height: 46px; } }
