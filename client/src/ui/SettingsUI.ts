@@ -23,6 +23,12 @@ export function buildSettingsPanel(settings: Settings, onChange: (s: Settings, k
         <small>갑작스러운 비명·화면 왜곡·목소리 흉내의 세기.</small></label>
       <label class="row"><input type="checkbox" data-k="headBob" ${settings.headBob ? 'checked' : ''}> 카메라 흔들림 (헤드 밥)</label>
       <label class="row"><input type="checkbox" data-k="subtitles" ${settings.subtitles ? 'checked' : ''}> 자막</label>
+      <label class="row"><input type="checkbox" data-k="hints" ${settings.hints !== false ? 'checked' : ''}> 튜토리얼 힌트</label>
+      <label>난이도 <select data-k="difficulty">
+        <option value="easy" ${settings.difficulty === 'easy' ? 'selected' : ''}>쉬움 — 괴물이 느리고 덜 아프다</option>
+        <option value="normal" ${!settings.difficulty || settings.difficulty === 'normal' ? 'selected' : ''}>보통</option>
+        <option value="hard" ${settings.difficulty === 'hard' ? 'selected' : ''}>어려움 — 더 빠르고, 더 멀리 보고, 더 아프다</option>
+      </select><small>다음 게임부터 적용 (멀티에서는 호스트의 난이도).</small></label>
       <label class="row"><input type="checkbox" data-k="autoQuality" ${settings.autoQuality !== false ? 'checked' : ''}> 자동 화질 조정 (느려지면 해상도를 낮춤)</label>
       <label>캠페인 <select data-k="campaign">
         <option value="expanded" ${settings.campaign !== 'classic' ? 'selected' : ''}>확장 캠페인 — Level 0~10 (엔딩 E/F)</option>

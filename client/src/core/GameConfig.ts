@@ -35,6 +35,10 @@ export interface Settings {
   monsterLook: 'whisperer' | 'classic';
   /** lower the render resolution automatically when the frame rate drops */
   autoQuality: boolean;
+  /** first-time hints */
+  hints: boolean;
+  /** creature tuning: easy / normal / hard */
+  difficulty: 'easy' | 'normal' | 'hard';
   playerName: string;
 }
 
@@ -50,6 +54,8 @@ const DEFAULTS: Settings = {
   campaign: 'expanded',
   monsterLook: 'whisperer',
   autoQuality: true,
+  hints: true,
+  difficulty: 'normal',
   playerName: '',
 };
 

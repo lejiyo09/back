@@ -205,3 +205,9 @@ kbd {
 
 #menu .credits { font-size: 11px; opacity: 0.6; }
 #menu .credits a { color: inherit; }
+
+/* first-time hints */
+#hud .tut-hint { position: absolute; left: 50%; bottom: 150px; transform: translate(-50%, 8px); max-width: min(620px, 88vw); padding: 9px 14px;
+  background: rgba(10,9,6,0.72); border: 1px solid rgba(201,180,88,0.55); color: #efe6c8; font-size: 14px; line-height: 1.5; text-align: center;
+  opacity: 0; transition: opacity 0.5s, transform 0.5s; pointer-events: none; }
+#hud .tut-hint.in { opacity: 1; transform: translate(-50%, 0); }

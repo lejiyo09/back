@@ -39,6 +39,8 @@ import { RoomMutation } from './RoomMutation';
 import { Lurkers } from './Lurkers';
 import { Facilities } from './Facilities';
 import { AdaptiveQuality } from './AdaptiveQuality';
+import { Tutorial } from './Tutorial';
+import { tuneForDifficulty, lurkerDamage } from './Difficulty';
 
 export interface GameOptions {
   canvas: HTMLCanvasElement;
@@ -125,6 +127,7 @@ export class Game {
   facilities: Facilities | null = null;
   readonly adaptive: AdaptiveQuality;
   private postOffWarned = false;
+  private tutorial = new Tutorial((t) => this.hud.hint(t));
   // Level 2
   private heatWarned = false;
   private heatK = 0;
@@ -276,6 +279,7 @@ export class Game {
       revealMode: this.levelIndex >= 1 || URL_FLAGS.ai === 'hunt' ? 'skip' : URL_FLAGS.ai === 'now' ? 'fast' : 'normal',
       spawnDelay: this.levelIndex >= 1 ? (URL_FLAGS.ai === 'now' || URL_FLAGS.ai === 'hunt' ? 4 : theme ? theme.monster.spawnDelay : this.levelIndex === 2 ? 25 : 30) : undefined,
       creature: creature ? { main: creature, phantom: creaturePhantom } : undefined,
+      tuning: tuneForDifficulty(theme?.monster.tuning ?? {}, o.settings.difficulty),
       monster: theme ? { scale: theme.monster.scale, skin: theme.monster.skin, accessory: theme.monster.accessory, tuning: theme.monster.tuning } : undefined,
       ignoreColliders: [this.player.collider],
       names: () => ({
@@ -313,7 +317,7 @@ export class Game {
         level: this.levelIndex, world: this.world, authority: () => this.authority, scene: this.scene, audio: this.audio, camera: this.camera,
         feet: () => this.player.feet, crouching: () => this.player.crouching, speed: () => this.player.horizontalSpeed,
         noise: () => this.player.status.noise, alive: () => !this.dead && !this.downed && this.endingSeq === -1 && !this.chapterDone,
-        hit: (dmg, from) => this.onHit(dmg, from), toast: (t) => this.hud.toast(t),
+        hit: (dmg, from) => this.onHit(dmg * lurkerDamage(o.settings.difficulty), from), toast: (t) => this.hud.toast(t),
       });
     }
     if (this.levelIndex === 1 || this.levelIndex === 2) {
@@ -509,6 +513,7 @@ export class Game {
     this.hud.subtitlesEnabled = s.subtitles;
     this.entities.scareIntensity = s.scareIntensity;
     this.adaptive.enabled = s.autoQuality !== false;
+    this.tutorial.enabled = s.hints !== false;
   }
 
   private onResize = () => this.renderer.resize(this.camera);
@@ -893,6 +898,21 @@ export class Game {
     }
 
     this.adaptive.frame(dt, this.input.enabled && !this.ended && this.endingSeq === -1);
+    if (this.input.enabled && !this.dead && !this.downed && this.endingSeq === -1 && !this.hud.noteOpen) {
+      this.tutorial.update(dt, () => {
+        const f = this.interaction.focus;
+        return {
+          level: this.levelIndex, time: this.time, dark: light < 0.25, flashlightOn: this.flashlight.on,
+          battery: this.player.status.battery, health: this.player.status.health,
+          hasRecorder: this.recorder.has, recorderOn: this.recorder.on,
+          running: this.player.horizontalSpeed > PLAYER.WALK_SPEED * 1.2, crouching: this.player.crouching,
+          monsterPresent: this.entities.present && this.entities.pose.state !== 'apparition',
+          chased: this.entities.pose.state === 'chase', blackout: this.world.blackout,
+          focus: f?.id ?? null, lockedFocus: !!f && this.world.relays.has(f.id) && !!this.world.missingKey(f.id) && this.levelIndex >= 3,
+          hasKey: (k) => this.world.hasKey(k), multiplayer: this.session.mode !== 'single',
+        };
+      });
+    }
     const cctv = this.mech?.beginRender() ?? false;
     this.renderer.render(this.scene, this.camera, this.time);
     if (cctv) this.mech!.endRender();

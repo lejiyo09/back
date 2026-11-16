@@ -119,6 +119,17 @@ export class HUD {
     setTimeout(() => el.remove(), 7000);
   }
 
+  private hintEl: HTMLElement | null = null;
+  private hintTimer: ReturnType<typeof setTimeout> | undefined;
+  /** first-time hint at the bottom of the screen (non-blocking) */
+  hint(text: string): void {
+    if (!this.hintEl) { this.hintEl = document.createElement('div'); this.hintEl.className = 'tut-hint'; this.root.appendChild(this.hintEl); }
+    this.hintEl.textContent = text;
+    this.hintEl.classList.add('in');
+    clearTimeout(this.hintTimer);
+    this.hintTimer = setTimeout(() => this.hintEl?.classList.remove('in'), 6000);
+  }
+
   private scannerEl: HTMLElement | null = null;
   /** Level 5 medical scanner readout (top-left), null hides it */
   setScanner(text: string | null, alarm = 0): void {

@@ -34,6 +34,8 @@ export interface EntityManagerOptions {
   monster?: { scale: number; skin: number; accessory: string; tuning: Partial<MonsterTuning> };
   /** the main creature's body from an external model (The Whisperer); the procedural Receiver otherwise */
   creature?: { main: SceneAsset; phantom: SceneAsset | null };
+  /** final AI tuning (level profile × difficulty); falls back to monster.tuning */
+  tuning?: Partial<MonsterTuning>;
 }
 
 interface Pose { p: THREE.Vector3; yaw: number; state: AIState; speed: number; head: number; attack: number }
@@ -117,7 +119,7 @@ export class EntityManager {
     this.drone = o.audio.loop('drone', 0);
 
     if (o.simulate && o.enabled) {
-      this.ai = new ReceiverAI(o.physics, o.world, new THREE.Vector3(0, 0, 0), o.seed, o.hooks, o.ignoreColliders, o.monster?.tuning);
+      this.ai = new ReceiverAI(o.physics, o.world, new THREE.Vector3(0, 0, 0), o.seed, o.hooks, o.ignoreColliders, o.tuning ?? o.monster?.tuning);
       this.onAI?.(this.ai);
       this.director = new RevealDirector(this.ai, o.world, o.seed, o.revealMode);
       if (o.spawnDelay !== undefined) this.director.setDelay(o.spawnDelay);
@@ -194,7 +196,7 @@ export class EntityManager {
     this.o.simulate = simulate;
     if (simulate) {
       if (!this.o.enabled) return;
-      this.ai = new ReceiverAI(this.o.physics, this.o.world, this.pose.p.clone(), this.o.seed ^ 0x51, this.o.hooks, this.o.ignoreColliders, this.o.monster?.tuning);
+      this.ai = new ReceiverAI(this.o.physics, this.o.world, this.pose.p.clone(), this.o.seed ^ 0x51, this.o.hooks, this.o.ignoreColliders, this.o.tuning ?? this.o.monster?.tuning);
       this.onAI?.(this.ai);
       this.director = new RevealDirector(this.ai, this.o.world, this.o.seed, 'skip');
       if (this.pose.state !== 'hidden') this.ai.appear(this.pose.p.clone(), this.pose.yaw, 'search');
