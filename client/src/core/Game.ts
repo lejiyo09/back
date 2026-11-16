@@ -40,6 +40,7 @@ import { Lurkers } from './Lurkers';
 import { Facilities } from './Facilities';
 import { AdaptiveQuality } from './AdaptiveQuality';
 import { Tutorial } from './Tutorial';
+import { Progress } from './Progress';
 import { tuneForDifficulty, lurkerDamage } from './Difficulty';
 
 export interface GameOptions {
@@ -224,6 +225,7 @@ export class Game {
     o.onProgress('Level 0 생성 · 조명 베이크 · 텍스처 생성', 0.3);
     await nextFrame();
     this.levelIndex = o.level ?? 0;
+    Progress.reachLevel(this.levelIndex);
     this.world = new World(this.session.mapSeed, this.physics, preset, this.renderer.maxAnisotropy, this.levelIndex);
     if (this.levelIndex === 1) this.fogLit = new THREE.Color(0x585b55); // Level 1: grey, low fog
     if (this.levelIndex === 2) this.fogLit = new THREE.Color(0x2b2520); // Level 2: hot, dark, rust-brown
@@ -237,7 +239,7 @@ export class Game {
     this.assets.setMaterialHook((m) => this.world.baked.apply(m as THREE.MeshStandardMaterial));
     if (URL_FLAGS.props) await this.assets.loadCatalog();
     await this.assets.loadGroups(dressingGroups(this.levelIndex), (p) => o.onProgress('모델 불러오는 중', 0.45 + p * 0.25));
-    this.world.dress(this.assets);
+    this.world.dress(this.assets, q === 'low');
     this.scene.add(this.world.group);
     this.scene.fog = new THREE.FogExp2(this.fogLit.getHex(), 0.042);
     this.scene.background = new THREE.Color(0x000000);
@@ -1128,6 +1130,7 @@ export class Game {
     this.epilogueWalk = false;
     this.endingLoops.forEach((l) => { if (l.isPlaying) l.stop(); });
     const escaped = this.endingFreq === this.world.level.correctFrequency;
+    Progress.sawEnding(escaped ? 'A' : 'B');
     // Ending B is not a stop: the campaign runs straight on into Level 1, no screen in between
     if (!escaped && this.levelIndex === 0 && this.autoAdvance()) return;
     const secs = Math.floor(this.time);
@@ -1370,6 +1373,7 @@ export class Game {
       }
     }
     if (this.levelIndex === 10) { this.showLastEnding(); return; }
+    Progress.sawEnding(this.finalChoice === 0 ? 'C' : 'D');
     const carry = this.carryState();
     const secs = Math.floor(carry.time);
     const loop = this.finalChoice === 0;
@@ -1400,6 +1404,7 @@ export class Game {
     const carry = this.carryState();
     const secs = Math.floor(carry.time);
     const transmit = this.finalChoice === 0;
+    Progress.sawEnding(transmit ? 'E' : 'F');
     const echo = this.l2Choice === 'C'
       ? (transmit ? '두 번째 녹음이다. 처음 녹음했던 목소리 위에, 같은 목소리가 겹친다.' : 'Level 2에서 남긴 녹음이 마지막으로 한 번 재생되고, 테이프가 끊어진다.')
       : this.l2Choice === 'D'

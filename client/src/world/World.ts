@@ -330,7 +330,7 @@ export class World {
 
   /** Real-model set dressing (after the level is built, once its asset groups are loaded). */
   dressing: Dressing | null = null;
-  dress(assets: AssetManager): void {
+  dress(assets: AssetManager, lowSpec = false): void {
     const L = this.level;
     const blocked = new Set<string>();
     const near = (cx: number, cy: number, r: number) => {
@@ -342,6 +342,7 @@ export class World {
     for (const r of L.relays) near(r.cx, r.cy, 0);
     for (const c of [...L.crates, ...L.machines, ...L.steam, ...L.water]) blocked.add(`${c.cx},${c.cy}`);
     this.dressing = new Dressing(L, assets, this.physics, blocked, H);
+    if (lowSpec) this.dressing.viewScale = [0.7, 0.6];
     this.group.add(this.dressing.group);
   }
 

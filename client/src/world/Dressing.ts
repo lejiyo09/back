@@ -265,9 +265,11 @@ export class Dressing {
   private chunks: { obj: THREE.Object3D; center: THREE.Vector3; small: boolean }[] = [];
   /** hide what the fog swallows anyway: big pieces past ~24 m, small clutter past ~12 m */
   private view: [number, number] = [24, 12];
+  /** low quality: props fade out sooner (placements and colliders stay identical for multiplayer) */
+  viewScale: [number, number] = [1, 1];
   cull(viewer: THREE.Vector3): void {
     const half = 4 * WORLD.CELL_SIZE * 0.71;
-    for (const c of this.chunks) c.obj.visible = Math.hypot(c.center.x - viewer.x, c.center.z - viewer.z) < (c.small ? this.view[1] : this.view[0]) + half;
+    for (const c of this.chunks) c.obj.visible = Math.hypot(c.center.x - viewer.x, c.center.z - viewer.z) < (c.small ? this.view[1] * this.viewScale[1] : this.view[0] * this.viewScale[0]) + half;
   }
 
   get total(): number {

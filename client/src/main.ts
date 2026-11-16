@@ -5,6 +5,7 @@ import { loadSettings, saveSettings, URL_FLAGS, type Settings } from './core/Gam
 import { Game } from './core/Game';
 import { MainMenu } from './ui/MainMenu';
 import { buildSettingsPanel } from './ui/SettingsUI';
+import { buildRecordsPanel } from './ui/RecordsUI';
 import { NetworkManager } from './multiplayer/NetworkManager';
 import { SaveGame, type CarryState } from './core/SaveGame';
 import { MAX_LEVEL, nextLevelSeed } from '@shared/Levels';
@@ -30,6 +31,7 @@ class App {
       host: (name) => void this.host(name),
       join: (code, name) => void this.join(code, name),
       settings: () => this.openSettings(),
+      records: () => this.openRecords(),
       lobbyStart: () => this.net?.socket.emit('game:start'),
       lobbyLeave: () => this.leaveLobby(),
     }, this.settings.playerName);
@@ -77,6 +79,17 @@ class App {
   private rememberName(name: string): void {
     this.settings.playerName = name;
     saveSettings(this.settings);
+  }
+
+  /** endings collected + start any level reached before (single-player, fresh carry with the recorder) */
+  private openRecords(): void {
+    const panel = buildRecordsPanel((level) => {
+      panel.remove();
+      const name = this.settings.playerName || 'Survivor';
+      void this.launch('single', randomSeed(), 'SOLO', [{ id: 'local', name, isHost: true, online: true }], level,
+        level > 0 ? { recorder: true, heard: [0], deaths: 0, time: 0, battery: 100 } : undefined);
+    }, () => panel.remove());
+    document.body.appendChild(panel);
   }
 
   openSettings(onClose?: () => void): void {

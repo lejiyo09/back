@@ -7,6 +7,7 @@ export interface MenuHandlers {
   host: (name: string) => void;
   join: (code: string, name: string) => void;
   settings: () => void;
+  records: () => void;
   lobbyStart: () => void;
   lobbyLeave: () => void;
 }
@@ -39,6 +40,7 @@ export class MainMenu {
               <button data-act="join">참가</button>
             </div>
           </div>
+          <button data-act="records" class="ghost">기록 · 레벨 선택</button>
           <button data-act="settings" class="ghost">설정</button>
           <div class="offline-status"></div>
           <div class="error"></div>
@@ -76,6 +78,7 @@ export class MainMenu {
     });
     codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') (this.root.querySelector('[data-act="join"]') as HTMLButtonElement).click(); });
     on('settings', () => h.settings());
+    on('records', () => h.records());
     on('start', () => h.lobbyStart());
     on('leave', () => h.lobbyLeave());
     this.lobby = this.root.querySelector('.lobby')!;

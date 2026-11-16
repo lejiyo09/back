@@ -211,3 +211,17 @@ kbd {
   background: rgba(10,9,6,0.72); border: 1px solid rgba(201,180,88,0.55); color: #efe6c8; font-size: 14px; line-height: 1.5; text-align: center;
   opacity: 0; transition: opacity 0.5s, transform 0.5s; pointer-events: none; }
 #hud .tut-hint.in { opacity: 1; transform: translate(-50%, 0); }
+
+/* records & level select */
+.records .sub { color: var(--dim); margin: -4px 0 4px; font-size: 13px; }
+.records h3 { font-size: 15px; margin: 10px 0 2px; }
+.records h3 small { color: var(--dim); font-weight: normal; font-size: 12px; }
+.records .endings { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 6px; }
+.records .endings li { padding: 7px 10px; border: 1px solid rgba(255,255,255,0.12); opacity: 0.55; font-size: 14px; display: flex; flex-direction: column; gap: 2px; }
+.records .endings li.got { opacity: 1; border-color: var(--accent); }
+.records .endings li b { color: var(--accent); margin-right: 6px; }
+.records .levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 6px; }
+.records .levels button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font-size: 14px; }
+.records .levels button small { font-size: 11px; color: var(--dim); }
+.records .panel { max-height: 92vh; overflow-y: auto; }
+.records .levels button small { text-align: left; }
