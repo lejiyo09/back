@@ -13,7 +13,7 @@ import { worldToCell } from '../world/Level0Layout';
 import { NOTES } from '../world/Notes';
 import { PlayerController } from '../player/PlayerController';
 import { Flashlight } from '../player/Flashlight';
-import { AudioManager } from '../audio/AudioManager';
+import { AudioManager, type RoomAcoustic } from '../audio/AudioManager';
 import { InteractionManager } from '../interaction/InteractionManager';
 import { HUD } from '../ui/HUD';
 import { escapeHtml } from '../ui/MainMenu';
@@ -267,6 +267,24 @@ export class Game {
     this.scene.add(this.flashlight.light, this.flashlight.target, this.flashlight.bounce);
 
     this.audio = new AudioManager(this.scene, this.camera);
+    {
+      // what you walk on and the space you hear it in, per level
+      const lv = this.levelIndex;
+      const th = THEMES[lv];
+      const floor = th ? (th.surface.floor === 'wood' ? 'wood' : th.surface.floor === 'tile' ? 'tile' : th.surface.floor === 'concrete' ? 'concrete' : 'carpet') : lv === 0 ? 'carpet' : 'concrete';
+      this.audio.setFloor(floor);
+      const ROOMS: Record<number, RoomAcoustic> = {
+        0: { decay: 0.8, wet: 0.16, damp: 0.75 },  // carpet, drop ceiling, wallpaper: close and dead
+        1: { decay: 2.0, wet: 0.26, damp: 0.45 },  // bare concrete warehouse
+        2: { decay: 1.5, wet: 0.3, damp: 0.22 },   // steel pipes ring
+        3: { decay: 0.9, wet: 0.15, damp: 0.7 },   // paper and wooden shelves
+        5: { decay: 1.3, wet: 0.22, damp: 0.4 },   // tiled ward
+        6: { decay: 3.0, wet: 0.32, damp: 0.35 },  // flooded concrete hall
+        8: { decay: 3.2, wet: 0.34, damp: 0.18 },  // tiled pool hall
+      };
+      const style = th?.layout.style;
+      this.audio.setRoom(ROOMS[lv] ?? (style === 'hall' ? { decay: 2.4, wet: 0.28, damp: 0.4 } : style === 'maze' ? { decay: 1.3, wet: 0.22, damp: 0.5 } : { decay: 1.0, wet: 0.18, damp: 0.6 }));
+    }
     this.world.lighting.poolLights.forEach((l) => this.audio.attachHum(l));
     this.interaction = new InteractionManager(this.physics, this.world, this.player.collider);
     this.remotes = new RemotePlayers(this.audio, (p) => this.isOccluded(p));

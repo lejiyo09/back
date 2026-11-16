@@ -1,0 +1,101 @@
+{
+ "doorOpen": [
+  "door_open_1.mp3",
+  "door_open_2.mp3",
+  "door_open_3.mp3"
+ ],
+ "doorClose": [
+  "door_close_1.mp3",
+  "door_close_2.mp3",
+  "door_close_3.mp3"
+ ],
+ "step:carpet": [
+  "step_carpet_0.mp3",
+  "step_carpet_1.mp3",
+  "step_carpet_2.mp3",
+  "step_carpet_3.mp3",
+  "step_carpet_4.mp3"
+ ],
+ "step:concrete": [
+  "step_concrete_0.mp3",
+  "step_concrete_1.mp3",
+  "step_concrete_2.mp3",
+  "step_concrete_3.mp3",
+  "step_concrete_4.mp3"
+ ],
+ "step:wood": [
+  "step_wood_0.mp3",
+  "step_wood_1.mp3",
+  "step_wood_2.mp3",
+  "step_wood_3.mp3",
+  "step_wood_4.mp3"
+ ],
+ "step:tile": [
+  "step_tile_0.mp3",
+  "step_tile_1.mp3",
+  "step_tile_2.mp3",
+  "step_tile_3.mp3",
+  "step_tile_4.mp3"
+ ],
+ "hit": [
+  "hit_1.mp3",
+  "hit_2.mp3",
+  "hit_3.mp3"
+ ],
+ "click": [
+  "click_1.mp3"
+ ],
+ "paper": [
+  "paper_1.mp3",
+  "paper_2.mp3"
+ ],
+ "pickup": [
+  "pickup_1.mp3",
+  "pickup_2.mp3"
+ ],
+ "drip": [
+  "drip_1.mp3",
+  "drip_2.mp3",
+  "drip_3.mp3",
+  "drip_4.mp3"
+ ],
+ "relay": [
+  "relay_1.mp3"
+ ],
+ "bang": [
+  "bang_1.mp3"
+ ],
+ "knock": [
+  "knock_1.mp3"
+ ],
+ "distant0": [
+  "distant_1.mp3"
+ ],
+ "distant1": [
+  "distant_2.mp3"
+ ],
+ "distant2": [
+  "distant_3.mp3"
+ ],
+ "grate0": [
+  "grate_1.mp3"
+ ],
+ "grate1": [
+  "grate_2.mp3"
+ ],
+ "elevDoor": [
+  "elevator_door_1.mp3"
+ ],
+ "surge": [
+  "surge_1.mp3"
+ ],
+ "rStep0": [
+  "creature_step_1.mp3"
+ ],
+ "rStep1": [
+  "creature_step_2.mp3"
+ ],
+ "rStep2": [
+  "creature_step_3.mp3"
+ ]
+}

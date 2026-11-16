@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import * as Synth from './SoundSynth';
 
+export type FloorKind = 'carpet' | 'concrete' | 'wood' | 'tile';
+
+/** a room's acoustic: reverb tail (s), wet level, damping 0..1 (soft furnishings → dark tail) */
+export interface RoomAcoustic { decay: number; wet: number; damp: number }
+
 export type SoundKey =
   | 'hum' | 'roomTone' | 'doorOpen' | 'doorClose' | 'click' | 'paper' | 'pickup'
   | 'step0' | 'step1' | 'step2' | 'step3' | 'distant0' | 'distant1' | 'distant2'
@@ -24,6 +29,14 @@ export class AudioManager {
   private globalHum?: THREE.Audio;
   private distantTimer = 25;
   private stepIdx = 0;
+  /** recorded variants (assets/audio/sfx.json), preferred over the synthesized buffer when loaded */
+  private variants = new Map<string, AudioBuffer[]>();
+  private lastVariant = new Map<string, number>();
+  private floor: FloorKind = 'carpet';
+  private convolver: ConvolverNode | null = null;
+  private wet: GainNode | null = null;
+  /** resolves when the recorded set has been decoded (or failed — synth stays) */
+  readonly samplesReady: Promise<void>;
 
   constructor(private scene: THREE.Scene, camera: THREE.Camera) {
     this.listener = new THREE.AudioListener();
@@ -71,6 +84,8 @@ export class AudioManager {
     this.buffers.set('flutter', Synth.mothFlutter(ctx));
     this.buffers.set('giggle', Synth.smilerGiggle(ctx));
 
+    this.samplesReady = this.loadSamples('assets/audio/');
+
     for (let i = 0; i < 8; i++) this.oneShots.push(new THREE.Audio(this.listener));
     for (let i = 0; i < 6; i++) {
       const p = new THREE.PositionalAudio(this.listener);
@@ -80,6 +95,55 @@ export class AudioManager {
       scene.add(p);
       this.spatialShots.push(p);
     }
+  }
+
+  /** Recorded CC0 set (Kenney packs + modelled hinge creaks), decoded in the background. */
+  private async loadSamples(base: string): Promise<void> {
+    const ctx = this.listener.context;
+    try {
+      const res = await fetch(`${base}sfx.json`);
+      if (!res.ok) return;
+      const man = (await res.json()) as Record<string, string[]>;
+      await Promise.all(Object.entries(man).map(async ([key, files]) => {
+        const bufs = await Promise.all(files.map(async (f) => {
+          try { return await ctx.decodeAudioData(await (await fetch(base + f)).arrayBuffer()); } catch { return null; }
+        }));
+        const ok = bufs.filter((b): b is AudioBuffer => !!b);
+        if (ok.length) this.variants.set(key, ok);
+      }));
+    } catch { /* offline without cache, or blocked: the synthesized set stays */ }
+  }
+
+  /** a variant for this key (never the same one twice in a row), else the synthesized buffer */
+  private pick(key: string): AudioBuffer | undefined {
+    const v = this.variants.get(key);
+    if (v?.length) {
+      let i = Math.floor(Math.random() * v.length);
+      if (v.length > 1 && i === this.lastVariant.get(key)) i = (i + 1) % v.length;
+      this.lastVariant.set(key, i);
+      return v[i];
+    }
+    return this.buffers.get(key as SoundKey);
+  }
+
+  /** what the player's feet are on (per level) */
+  setFloor(kind: FloorKind): void { this.floor = kind; }
+
+  /**
+   * The space everything is heard in: a generated impulse response (early
+   * reflections + a decaying, darkening tail) on a parallel send after the master.
+   */
+  setRoom(room: RoomAcoustic): void {
+    const ctx = this.listener.context;
+    if (!this.convolver) {
+      this.convolver = ctx.createConvolver();
+      this.wet = ctx.createGain();
+      this.listener.gain.connect(this.convolver);
+      this.convolver.connect(this.wet);
+      this.wet.connect(ctx.destination);
+    }
+    this.convolver.buffer = impulseResponse(ctx, room);
+    this.wet!.gain.value = room.wet;
   }
 
   async resume(): Promise<void> {
@@ -181,7 +245,7 @@ export class AudioManager {
   }
 
   play(key: SoundKey, volume = 1, rate = 1): void {
-    const buf = this.buffers.get(key);
+    const buf = this.pick(key);
     if (!buf) return;
     const a = this.oneShots[this.oneShotIdx++ % this.oneShots.length];
     if (a.isPlaying) a.stop();
@@ -192,7 +256,7 @@ export class AudioManager {
   }
 
   playAt(key: SoundKey, pos: THREE.Vector3, volume = 1, rate = 1, muffled = false): void {
-    const buf = this.buffers.get(key);
+    const buf = this.pick(key);
     if (!buf) return;
     const a = this.spatialShots[this.spatialIdx++ % this.spatialShots.length];
     if (a.isPlaying) a.stop();
@@ -213,9 +277,10 @@ export class AudioManager {
   }
 
   footstep(gait: 'crouch' | 'walk' | 'run', at?: THREE.Vector3, muffled = false): void {
-    const key = `step${this.stepIdx++ % 4}` as SoundKey;
-    const vol = gait === 'crouch' ? 0.18 : gait === 'run' ? 0.75 : 0.42;
-    const rate = (gait === 'run' ? 1.08 : 1) * (0.92 + Math.random() * 0.16);
+    const recorded = this.variants.has(`step:${this.floor}`);
+    const key = (recorded ? `step:${this.floor}` : `step${this.stepIdx++ % 4}`) as SoundKey;
+    const vol = (gait === 'crouch' ? 0.18 : gait === 'run' ? 0.75 : 0.42) * (recorded ? 0.85 : 1);
+    const rate = (gait === 'run' ? 1.05 : gait === 'crouch' ? 0.94 : 1) * (0.95 + Math.random() * 0.1);
     if (at) this.playAt(key, at, vol * 1.4, rate, muffled);
     else this.play(key, vol, rate);
   }
@@ -245,4 +310,31 @@ export class AudioManager {
     this.listener.removeFromParent();
     void this.scene;
   }
+}
+
+/** Stereo impulse response: sparse early reflections, then noise decaying to −60 dB over `decay`, losing highs as it goes. */
+function impulseResponse(ctx: BaseAudioContext, room: RoomAcoustic): AudioBuffer {
+  const sr = ctx.sampleRate;
+  const len = Math.max(1, Math.floor(sr * Math.min(4, room.decay * 1.1)));
+  const b = ctx.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = b.getChannelData(ch);
+    let seed = 1234567 + ch * 7919;
+    const rnd = () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return ((seed >>> 0) / 4294967296) * 2 - 1; };
+    let lp = 0;
+    for (let i = 0; i < len; i++) {
+      const t = i / sr;
+      const env = Math.pow(10, (-3 * t) / room.decay);           // −60 dB at `decay`
+      const k = Math.max(0.02, (1 - room.damp) * Math.exp(-t * (1 + room.damp * 6)) + 0.04);
+      lp += (rnd() - lp) * k;                                   // the tail gets darker
+      const onset = Math.min(1, t / 0.012);                      // a little pre-delay
+      d[i] = lp * env * onset * 0.6;
+    }
+    // early reflections off nearby walls
+    for (let r = 0; r < 7; r++) {
+      const at = Math.floor(sr * (0.006 + r * (0.007 + room.decay * 0.004) + Math.abs(rnd()) * 0.004));
+      if (at < len) d[at] += (rnd() > 0 ? 1 : -1) * 0.5 * Math.pow(0.72, r);
+    }
+  }
+  return b;
 }

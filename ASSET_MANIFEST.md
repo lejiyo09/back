@@ -33,6 +33,21 @@
 - **1DesignTool 지게차·밸브**: 1DesignTool 3D Library License — 개인·상업 프로젝트 사용, 수정, 게임에 포함해 배포 가능, 출처 표기 불필요. 모델 파일만 따로 재배포/다른 사이트 업로드/모델 팩 배포 금지 → **공개 저장소에는 넣지 않고** `npm run build` 때 원본 주소에서 받아 배포 빌드에만 포함 (`.gitignore`: `client/public/assets/models/external/`). 다운로드 실패 시 기존 절차적 지게차/벽 밸브로 동작.
 - 세 모델 모두 GLB 안에 라이선스 메타데이터가 없어, 배포 페이지의 라이선스 원문으로 확인함 (2026-11-14).
 
+## 사운드 (녹음 · CC0)
+
+`client/public/assets/audio/` — `tools/audio/build-sfx.mjs`로 생성(원본 78개를 SHA-256으로 고정: `tools/audio/sources.json`), 51개 mp3 · 약 500KB, 오프라인 캐시에 포함.
+
+| 팩 | 제작 | 라이선스 | 쓰인 곳 |
+|---|---|---|---|
+| RPG Audio 1.0 | Kenney (kenney.nl) | CC0 1.0 (팩의 License.txt) | 문 열림/닫힘·걸쇠·삐걱임, 종이, 옷깃 |
+| Impact Sounds | Kenney | CC0 1.0 | 바닥별 발소리(카펫·콘크리트·나무·타일), 피격, 노크, 쾅, 멀리서 쿵, 철제 바닥, 괴물 발소리 |
+| Foley Sounds | Kenney | CC0 1.0 | 줍기, 물방울, 엘리베이터 문(끌림), 괴물 발 끌림 |
+| Sci-fi Sounds | Kenney | CC0 1.0 | 전력 서지, 멀리서 쿵(저주파), 엘리베이터 문 |
+
+- 원본 출처: Kenney 공식 팩을 그대로 담은 github.com/series-ai/jam-ready-assets (Git LFS) — 각 팩의 License.txt에서 CC0 확인
+- 문 경첩의 끼익 소리는 직접 만든 물리 모델(스틱-슬립 마찰 + 문짝 공진) 합성을 녹음과 섞은 것
+- 괴물 소리·형광등 웅웅·환경음 루프 등 나머지는 코드로 합성(`client/src/audio/SoundSynth.ts`)
+
 ## level-00
 | 모델 | 제작자 | 출처 | 라이선스 | 폴리곤(원본 → 512 / 1K) | 512 / 1K |
 |---|---|---|---|---|---|

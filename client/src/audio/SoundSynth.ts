@@ -36,30 +36,44 @@ function normalize(b: AudioBuffer, peak = 0.9): AudioBuffer {
 
 /** Magnetic-ballast fluorescent hum: 120 Hz + harmonics with a gritty buzz. Seamless 2 s loop. */
 export function fluorescentHum(ctx: Ctx): AudioBuffer {
+  // Magnetic-ballast tube: 120 Hz magnetostriction with a long, uneven harmonic
+  // series, a rasp from the iron core saturating, harmonics breathing slowly
+  // against each other, a faint high ballast whine and the odd arc tick.
+  // Every period divides 2 s, so the loop is seamless.
   const noise = rngFrom(77);
-  let lp = 0;
+  const harm = [1, 0.62, 0.48, 0.3, 0.22, 0.16, 0.12, 0.1, 0.07, 0.06, 0.045, 0.035, 0.03, 0.022, 0.018, 0.012];
+  const phase = harm.map((_, k) => (k * 2.399) % (Math.PI * 2));
+  let lp = 0, hp = 0, prev = 0;
+  const ticks = [0.31, 0.93, 1.47, 1.71];
   return normalize(buffer(ctx, 2, (t) => {
     const w = 2 * Math.PI * t;
-    const tone =
-      Math.sin(w * 120) * 0.5 +
-      Math.sin(w * 240 + 0.3) * 0.32 +
-      Math.sin(w * 360 + 1.1) * 0.18 +
-      Math.sin(w * 480) * 0.08 +
-      Math.sin(w * 1080 + 0.7) * 0.05;
-    // buzz: clipped 120 Hz gives the characteristic rasp
-    const buzz = Math.max(-0.4, Math.min(0.4, Math.sin(w * 120) * 3)) * 0.18;
-    lp += (noise() - lp) * 0.08;
-    return tone + buzz + lp * 0.12;
+    let tone = 0;
+    for (let k = 0; k < harm.length; k++) {
+      const breathe = 1 + 0.25 * Math.sin(w * (0.5 * ((k % 3) + 1)) + k);   // 0.5 / 1 / 1.5 Hz
+      tone += Math.sin(w * 120 * (k + 1) + phase[k]) * harm[k] * breathe;
+    }
+    const core = Math.tanh(Math.sin(w * 120) * 4) * 0.22;                    // saturating core: the rasp
+    const n = noise();
+    lp += (n - lp) * 0.06;
+    hp = 0.97 * (hp + n - prev); prev = n;
+    const whine = Math.sin(w * 7680) * 0.006 * (1 + Math.sin(w * 0.5));      // ballast whine, barely there
+    let tick = 0;
+    for (const tt of ticks) { const d = t - tt; if (d >= 0 && d < 0.004) tick += hp * (1 - d / 0.004) * 0.5; }
+    return tone * 0.55 + core + lp * 0.08 + hp * 0.012 + whine + tick;
   }), 0.7);
 }
 
-/** Low room tone / building rumble, 4 s loop with crossfaded seam. */
+/** Room tone: distant air handling — a low rumble, a soft airy hiss and a slow beat between two fans. 4 s loop. */
 export function roomTone(ctx: Ctx): AudioBuffer {
   const noise = rngFrom(5);
-  let brown = 0;
+  let brown = 0, pink1 = 0, pink2 = 0;
   const b = buffer(ctx, 4, (t) => {
-    brown = (brown + noise() * 0.02) * 0.995;
-    return brown * 3 + Math.sin(2 * Math.PI * 55 * t) * 0.02;
+    const n = noise();
+    brown = (brown + n * 0.02) * 0.995;
+    pink1 = 0.97 * pink1 + n * 0.03;
+    pink2 = 0.6 * pink2 + n * 0.2;
+    const fans = (Math.sin(2 * Math.PI * 47 * t) + Math.sin(2 * Math.PI * 47.5 * t)) * 0.012; // 0.5 Hz beat
+    return brown * 3 + pink1 * 0.5 + pink2 * 0.05 + fans + Math.sin(2 * Math.PI * 55 * t) * 0.012;
   });
   const d = b.getChannelData(0);
   const fade = Math.floor(ctx.sampleRate * 0.25);
